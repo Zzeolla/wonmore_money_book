@@ -10,8 +10,8 @@ class Transactions extends Table {
   DateTimeColumn get date => dateTime()();
   IntColumn get amount => integer()();
   TextColumn get type => textEnum<TransactionType>()();
-  IntColumn get categoryId => integer().references(Categories, #id)();
-  IntColumn get assetId => integer().references(Assets, #id)();
+  IntColumn get categoryId => integer().nullable().references(Categories, #id)();
+  IntColumn get assetId => integer().nullable().references(Assets, #id)();
   TextColumn get title => text().nullable()(); // 거래 내역 (예: 편의점, 택시비 등)
   TextColumn get memo => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
+import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
 import 'package:wonmore_money_book/widget/calendar_widget.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
@@ -35,6 +36,15 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    // 앱 시작 시 현재 달의 거래내역만 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MoneyProvider>().changeMonth(_focusedDay);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final paddingTop = MediaQuery.of(context).padding.top;
@@ -54,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _realAdHeight = remainingHeight - (_rowHeight * 7);
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: CommonAppBar(),
       drawer: CustomDrawer(),
       body: Stack(
@@ -115,22 +126,24 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
 
               Expanded(
-                child: CalendarWidget(
-                  focusedDay: _focusedDay,
-                  selectedDay: _selectedDay,
-                  rowHeight: _rowHeight,
-                  onDaySelected: (selectedDay, focusedDay) {
-                    setState(() {
-                      _selectedDay = selectedDay;
-                      _focusedDay = focusedDay;
-                    });
-                    _showBottomSheet(context, _selectedDay, _rowHeight);
-                  },
-                  onPageChanged: (focusedDay) {
-                    setState(() {
-                      _focusedDay = focusedDay;
-                    });
-                  },
+                child: SingleChildScrollView(
+                  child: CalendarWidget(
+                    focusedDay: _focusedDay,
+                    selectedDay: _selectedDay,
+                    rowHeight: _rowHeight,
+                    onDaySelected: (selectedDay, focusedDay) {
+                      setState(() {
+                        _selectedDay = selectedDay;
+                        _focusedDay = focusedDay;
+                      });
+                      _showBottomSheet(context, _selectedDay, _rowHeight);
+                    },
+                    onPageChanged: (focusedDay) {
+                      setState(() {
+                        _focusedDay = focusedDay;
+                      });
+                    },
+                  ),
                 ),
               ),
               SizedBox(
@@ -147,11 +160,21 @@ class _HomeScreenState extends State<HomeScreen> {
             bottom: _realAdHeight + 16,
             child: FloatingActionButton(
               onPressed: () {
-                final now = DateTime.now();
+                final provider = context.read<MoneyProvider>();
                 showDialog(
                   context: context,
-                  builder: (_) => RecordInputDialog(initialDate: now),
-                );
+                  builder: (context) => RecordInputDialog(
+                    initialDate: DateTime.now(),
+                    categories: provider.categories,
+                    assetList: provider.assets.map((a) => a.name).toList(),
+                  ),
+                ).then((result) {
+                  if (result == true) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('저장되었습니다!')),
+                    );
+                  }
+                });
               },
               backgroundColor: Color(0xFFA79BFF),
               shape: const CircleBorder(),
@@ -185,7 +208,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final formattedAmount = NumberFormat('#,###').format(amount);
     final displayAmount = '$prefix $formattedAmount';
     final Color amountColor = switch (prefix) {
-      '+' => Color(0xFF6A50FF),
+      '+' => Colors.blue,
       '-' => Colors.red,
       _ => Colors.black,
     };

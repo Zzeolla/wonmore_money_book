@@ -28,7 +28,7 @@ class MoreScreen extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.settings_outlined),
-            title: const Text('설정'),
+            title: const Text('설정'),  
             onTap: () {
               // TODO: 설정 화면으로 이동
             },

@@ -1,0 +1,5 @@
+memoController,
+TextInputType.text,
+maxLines: 1,
+textInputAction: TextInputAction.done,
+onSubmitted: (_) => FocusScope.of(context).unfocus(),

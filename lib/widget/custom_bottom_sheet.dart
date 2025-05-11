@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
+import 'package:wonmore_money_book/provider/money_provider.dart';
 
 class CustomBottomSheet extends StatefulWidget {
   final DateTime selectedDay;
@@ -66,6 +69,43 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       isDefault: true,
       iconName: 'movie',
       colorValue: 0xFF9C27B0, // purple
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      userId: null,
+      createdBy: null,
+      updatedBy: null,
+    ),
+  ];
+
+  // 더미 자산 데이터
+  final List<Asset> dummyAssets = [
+    Asset(
+      id: 1,
+      name: '카카오뱅크',
+      balance: 1500000,
+      type: '현금',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      userId: null,
+      createdBy: null,
+      updatedBy: null,
+    ),
+    Asset(
+      id: 2,
+      name: '토스뱅크',
+      balance: 2500000,
+      type: '현금',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+      userId: null,
+      createdBy: null,
+      updatedBy: null,
+    ),
+    Asset(
+      id: 3,
+      name: '신한은행',
+      balance: 5000000,
+      type: '현금',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       userId: null,
@@ -153,9 +193,41 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
     ),
   ];
 
+  late DateTime _baseDay;
+  late int _currentPageIndex;
+  final int pageRange = 15;
+  final int initialPage = 15;
+  late final PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _baseDay = widget.selectedDay;
+    _currentPageIndex = initialPage;
+    _pageController = PageController(initialPage: initialPage);
+  }
+
   @override
   Widget build(BuildContext context) {
-    const String won = '\u20A9'; // ₩
+    final provider = context.watch<MoneyProvider>();
+    // 현재 보여지는 날짜 계산
+    final currentDate = _baseDay.add(Duration(days: _currentPageIndex - initialPage));
+    // 해당 날짜의 거래만 필터링
+    List<Transaction> txList = provider.currentMonthTransactions.where((tx) =>
+      tx.date.year == currentDate.year &&
+      tx.date.month == currentDate.month &&
+      tx.date.day == currentDate.day
+    ).toList();
+    txList.sort((a, b) => a.date.compareTo(b.date));
+
+    // 선택된 날짜의 수입/지출 합계 계산
+    final incomeSum = txList
+        .where((tx) => tx.type == TransactionType.income)
+        .fold(0, (sum, tx) => sum + tx.amount);
+    final expenseSum = txList
+        .where((tx) => tx.type == TransactionType.expense)
+        .fold(0, (sum, tx) => sum + tx.amount);
+
     final screenHeight = MediaQuery.of(context).size.height;
     final paddingTop = MediaQuery.of(context).padding.top;
 
@@ -172,7 +244,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
-              widget.selectedDay.day.toString().padLeft(2, '0'),
+              currentDate.day.toString().padLeft(2, '0'),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
           ),
@@ -187,18 +259,18 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
             ),
             alignment: Alignment.center,
             child: Text(
-              _weekdayString(widget.selectedDay.weekday),
+              _weekdayString(currentDate.weekday),
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
           const SizedBox(width: 4),
           // 연/월
           Text(
-            '${widget.selectedDay.year}.${widget.selectedDay.month.toString().padLeft(2, '0')}',
+            '${currentDate.year}.${currentDate.month.toString().padLeft(2, '0')}',
             style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
           ),
           const SizedBox(width: 36),
-          // 수입/지출 합계 (더미)
+          // 수입/지출 합계 (실제 데이터)
           Expanded(
             flex: 2,
             child: Row(
@@ -206,7 +278,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                 Expanded(
                   child: Center(
                     child: Text(
-                      '+450,000원',
+                      '+${_formatAmount(incomeSum)}원',
                       style: TextStyle(
                           color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16),
                     ),
@@ -215,7 +287,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                 Expanded(
                   child: Center(
                     child: Text(
-                      '-61,000원',
+                      '-${_formatAmount(expenseSum)}원',
                       style: TextStyle(
                           color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
                     ),
@@ -228,44 +300,85 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       ),
     );
 
-    // 거래 내역 카드 리스트
+    // PageView로 날짜 이동 구현
     Widget recordList = Expanded(
-      child: Container(
-        color: Colors.white,
-        child: ListView.builder(
-          padding: const EdgeInsets.only(top: 4, bottom: 8),
-          itemCount: dummyTransactions.length,
-          itemBuilder: (context, index) {
-            final tx = dummyTransactions[index];
-            final category = dummyCategories.firstWhere((c) => c.id == tx.categoryId);
-            return Card(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: tx.type == TransactionType.income ? Colors.blue : Colors.red,
-                  width: 1,
-                ),
-              ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: Color(category.colorValue),
-                  child: Icon(getIconData(category.iconName), color: Colors.white),
-                ),
-                title: Text(tx.title ?? ''),
-                subtitle: Text(category.name),
-                trailing: Text(
-                  '${tx.type == TransactionType.income ? '+' : '-'}${_formatAmount(tx.amount)}원',
-                  style: TextStyle(
-                    color: tx.type == TransactionType.income ? Colors.blue : Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+      child: PageView.builder(
+        controller: _pageController,
+        onPageChanged: (index) {
+          setState(() {
+            _currentPageIndex = index;
+          });
+        },
+        itemCount: pageRange * 2 + 1,
+        itemBuilder: (context, pageIndex) {
+          final date = _baseDay.add(Duration(days: pageIndex - initialPage));
+          // 해당 날짜의 거래만 필터링
+          List<Transaction> txList = provider.currentMonthTransactions.where((tx) =>
+            tx.date.year == date.year &&
+            tx.date.month == date.month &&
+            tx.date.day == date.day
+          ).toList();
+          txList.sort((a, b) => a.date.compareTo(b.date));
+          return Container(
+            color: Colors.white,
+            child: ListView.builder(
+              padding: const EdgeInsets.only(top: 4, bottom: 8),
+              itemCount: txList.length,
+              itemBuilder: (context, index) {
+                Category? category;
+                try {
+                  category = provider.categories.firstWhere((c) => c.id == txList[index].categoryId);
+                } catch (_) {
+                  category = null;
+                }
+                Asset? asset;
+                try {
+                  asset = provider.assets.firstWhere((a) => a.id == txList[index].assetId);
+                } catch (_) {
+                  asset = null;
+                }
+                final tx = txList[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  color: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: Colors.amberAccent,
+                      width: 1,
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+                  child: ListTile(
+                    leading: category != null ? Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircleAvatar(
+                          radius: 14,
+                          backgroundColor: Color(category.colorValue),
+                          child: Icon(getIconData(category.iconName), color: Colors.white, size: 16),
+                        ),
+                        Text(
+                          category.name,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ],
+                    ) : null,
+                    title: Text(tx.title ?? ''),
+                    subtitle: asset != null ? Text(asset.name) : null,
+                    trailing: Text(
+                      '${tx.type == TransactionType.income ? '+' : '-'}${_formatAmount(tx.amount)}원',
+                      style: TextStyle(
+                        color: tx.type == TransactionType.income ? Colors.blue : Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
 
@@ -285,7 +398,24 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       bottom: 50 + 16,
       child: FloatingActionButton(
         onPressed: () {
-          // TODO: 거래 입력 다이얼로그 띄우기
+          final provider = context.read<MoneyProvider>();
+          final now = DateTime.now();
+          final selected = _baseDay;
+          final date = DateTime(selected.year, selected.month, selected.day, now.hour, now.minute);
+          showDialog(
+            context: context,
+            builder: (context) => RecordInputDialog(
+              initialDate: date,
+              categories: provider.categories,
+              assetList: provider.assets.map((a) => a.name).toList(),
+            ),
+          ).then((result) {
+            if (result == true) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('저장되었습니다!')),
+              );
+            }
+          });
         },
         backgroundColor: const Color(0xFFA79BFF),
         shape: const CircleBorder(),

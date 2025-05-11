@@ -1065,18 +1065,18 @@ class $TransactionsTable extends Transactions
       const VerificationMeta('categoryId');
   @override
   late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
-      'category_id', aliasedName, false,
+      'category_id', aliasedName, true,
       type: DriftSqlType.int,
-      requiredDuringInsert: true,
+      requiredDuringInsert: false,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES categories (id)'));
   static const VerificationMeta _assetIdMeta =
       const VerificationMeta('assetId');
   @override
   late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
-      'asset_id', aliasedName, false,
+      'asset_id', aliasedName, true,
       type: DriftSqlType.int,
-      requiredDuringInsert: true,
+      requiredDuringInsert: false,
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'));
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
@@ -1168,14 +1168,10 @@ class $TransactionsTable extends Transactions
           _categoryIdMeta,
           categoryId.isAcceptableOrUnknown(
               data['category_id']!, _categoryIdMeta));
-    } else if (isInserting) {
-      context.missing(_categoryIdMeta);
     }
     if (data.containsKey('asset_id')) {
       context.handle(_assetIdMeta,
           assetId.isAcceptableOrUnknown(data['asset_id']!, _assetIdMeta));
-    } else if (isInserting) {
-      context.missing(_assetIdMeta);
     }
     if (data.containsKey('title')) {
       context.handle(
@@ -1224,9 +1220,9 @@ class $TransactionsTable extends Transactions
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!),
       categoryId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}category_id'])!,
+          .read(DriftSqlType.int, data['${effectivePrefix}category_id']),
       assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}asset_id'])!,
+          .read(DriftSqlType.int, data['${effectivePrefix}asset_id']),
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title']),
       memo: attachedDatabase.typeMapping
@@ -1258,8 +1254,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final DateTime date;
   final int amount;
   final TransactionType type;
-  final int categoryId;
-  final int assetId;
+  final int? categoryId;
+  final int? assetId;
   final String? title;
   final String? memo;
   final DateTime createdAt;
@@ -1272,8 +1268,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       required this.date,
       required this.amount,
       required this.type,
-      required this.categoryId,
-      required this.assetId,
+      this.categoryId,
+      this.assetId,
       this.title,
       this.memo,
       required this.createdAt,
@@ -1291,8 +1287,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       map['type'] =
           Variable<String>($TransactionsTable.$convertertype.toSql(type));
     }
-    map['category_id'] = Variable<int>(categoryId);
-    map['asset_id'] = Variable<int>(assetId);
+    if (!nullToAbsent || categoryId != null) {
+      map['category_id'] = Variable<int>(categoryId);
+    }
+    if (!nullToAbsent || assetId != null) {
+      map['asset_id'] = Variable<int>(assetId);
+    }
     if (!nullToAbsent || title != null) {
       map['title'] = Variable<String>(title);
     }
@@ -1319,8 +1319,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       date: Value(date),
       amount: Value(amount),
       type: Value(type),
-      categoryId: Value(categoryId),
-      assetId: Value(assetId),
+      categoryId: categoryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(categoryId),
+      assetId: assetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(assetId),
       title:
           title == null && nullToAbsent ? const Value.absent() : Value(title),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
@@ -1346,8 +1350,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       amount: serializer.fromJson<int>(json['amount']),
       type: $TransactionsTable.$convertertype
           .fromJson(serializer.fromJson<String>(json['type'])),
-      categoryId: serializer.fromJson<int>(json['categoryId']),
-      assetId: serializer.fromJson<int>(json['assetId']),
+      categoryId: serializer.fromJson<int?>(json['categoryId']),
+      assetId: serializer.fromJson<int?>(json['assetId']),
       title: serializer.fromJson<String?>(json['title']),
       memo: serializer.fromJson<String?>(json['memo']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -1366,8 +1370,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'amount': serializer.toJson<int>(amount),
       'type': serializer
           .toJson<String>($TransactionsTable.$convertertype.toJson(type)),
-      'categoryId': serializer.toJson<int>(categoryId),
-      'assetId': serializer.toJson<int>(assetId),
+      'categoryId': serializer.toJson<int?>(categoryId),
+      'assetId': serializer.toJson<int?>(assetId),
       'title': serializer.toJson<String?>(title),
       'memo': serializer.toJson<String?>(memo),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -1383,8 +1387,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           DateTime? date,
           int? amount,
           TransactionType? type,
-          int? categoryId,
-          int? assetId,
+          Value<int?> categoryId = const Value.absent(),
+          Value<int?> assetId = const Value.absent(),
           Value<String?> title = const Value.absent(),
           Value<String?> memo = const Value.absent(),
           DateTime? createdAt,
@@ -1397,8 +1401,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         date: date ?? this.date,
         amount: amount ?? this.amount,
         type: type ?? this.type,
-        categoryId: categoryId ?? this.categoryId,
-        assetId: assetId ?? this.assetId,
+        categoryId: categoryId.present ? categoryId.value : this.categoryId,
+        assetId: assetId.present ? assetId.value : this.assetId,
         title: title.present ? title.value : this.title,
         memo: memo.present ? memo.value : this.memo,
         createdAt: createdAt ?? this.createdAt,
@@ -1473,8 +1477,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<DateTime> date;
   final Value<int> amount;
   final Value<TransactionType> type;
-  final Value<int> categoryId;
-  final Value<int> assetId;
+  final Value<int?> categoryId;
+  final Value<int?> assetId;
   final Value<String?> title;
   final Value<String?> memo;
   final Value<DateTime> createdAt;
@@ -1502,8 +1506,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     required DateTime date,
     required int amount,
     required TransactionType type,
-    required int categoryId,
-    required int assetId,
+    this.categoryId = const Value.absent(),
+    this.assetId = const Value.absent(),
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -1513,9 +1517,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.updatedBy = const Value.absent(),
   })  : date = Value(date),
         amount = Value(amount),
-        type = Value(type),
-        categoryId = Value(categoryId),
-        assetId = Value(assetId);
+        type = Value(type);
   static Insertable<Transaction> custom({
     Expression<int>? id,
     Expression<DateTime>? date,
@@ -1553,8 +1555,8 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<DateTime>? date,
       Value<int>? amount,
       Value<TransactionType>? type,
-      Value<int>? categoryId,
-      Value<int>? assetId,
+      Value<int?>? categoryId,
+      Value<int?>? assetId,
       Value<String?>? title,
       Value<String?>? memo,
       Value<DateTime>? createdAt,
@@ -2324,8 +2326,8 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   required DateTime date,
   required int amount,
   required TransactionType type,
-  required int categoryId,
-  required int assetId,
+  Value<int?> categoryId,
+  Value<int?> assetId,
   Value<String?> title,
   Value<String?> memo,
   Value<DateTime> createdAt,
@@ -2340,8 +2342,8 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<DateTime> date,
   Value<int> amount,
   Value<TransactionType> type,
-  Value<int> categoryId,
-  Value<int> assetId,
+  Value<int?> categoryId,
+  Value<int?> assetId,
   Value<String?> title,
   Value<String?> memo,
   Value<DateTime> createdAt,
@@ -2359,9 +2361,9 @@ final class $$TransactionsTableReferences
       db.categories.createAlias(
           $_aliasNameGenerator(db.transactions.categoryId, db.categories.id));
 
-  $$CategoriesTableProcessedTableManager get categoryId {
-    final $_column = $_itemColumn<int>('category_id')!;
-
+  $$CategoriesTableProcessedTableManager? get categoryId {
+    final $_column = $_itemColumn<int>('category_id');
+    if ($_column == null) return null;
     final manager = $$CategoriesTableTableManager($_db, $_db.categories)
         .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_categoryIdTable($_db));
@@ -2373,9 +2375,9 @@ final class $$TransactionsTableReferences
   static $AssetsTable _assetIdTable(_$AppDatabase db) => db.assets
       .createAlias($_aliasNameGenerator(db.transactions.assetId, db.assets.id));
 
-  $$AssetsTableProcessedTableManager get assetId {
-    final $_column = $_itemColumn<int>('asset_id')!;
-
+  $$AssetsTableProcessedTableManager? get assetId {
+    final $_column = $_itemColumn<int>('asset_id');
+    if ($_column == null) return null;
     final manager = $$AssetsTableTableManager($_db, $_db.assets)
         .filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_assetIdTable($_db));
@@ -2663,8 +2665,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<DateTime> date = const Value.absent(),
             Value<int> amount = const Value.absent(),
             Value<TransactionType> type = const Value.absent(),
-            Value<int> categoryId = const Value.absent(),
-            Value<int> assetId = const Value.absent(),
+            Value<int?> categoryId = const Value.absent(),
+            Value<int?> assetId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -2693,8 +2695,8 @@ class $$TransactionsTableTableManager extends RootTableManager<
             required DateTime date,
             required int amount,
             required TransactionType type,
-            required int categoryId,
-            required int assetId,
+            Value<int?> categoryId = const Value.absent(),
+            Value<int?> assetId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
