@@ -7,6 +7,7 @@ class CalendarWidget extends StatefulWidget {
   final double rowHeight;
   final void Function(DateTime selectedDay, DateTime focusedDay) onDaySelected;
   final void Function(DateTime)? onPageChanged;
+  final Map<DateTime, Map<String, int>> dailySummary;
 
   const CalendarWidget({
     super.key,
@@ -14,7 +15,8 @@ class CalendarWidget extends StatefulWidget {
     required this.selectedDay,
     required this.rowHeight,
     required this.onDaySelected,
-    this.onPageChanged
+    this.onPageChanged,
+    required this.dailySummary,
   });
 
   @override
@@ -63,31 +65,16 @@ class _CalendarWidgetState extends State<CalendarWidget> {
           }
         },
         defaultBuilder: (context, day, focusedDay) {
-          return _buildDayCell('${day.day}', Colors.grey.shade100, Colors.black87);
+          return _buildDayCell(day, widget.dailySummary);
         },
         todayBuilder: (context, day, focusedDay) {
-          return _buildDayCell('${day.day}', Colors.amberAccent.withOpacity(0.5), Colors.black);
+          return _buildDayCell(day, widget.dailySummary, isToday: true);
         },
         selectedBuilder: (context, day, focusedDay) {
-          return Container(
-            margin: EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.amber, width: 2),
-              borderRadius: BorderRadius.circular(8),
-              color: Colors.transparent,
-            ),
-            alignment: Alignment.topCenter,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 6.0),
-              child: Text(
-                '${day.day}',
-                style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
-              ),
-            ),
-          );
+          return _buildDayCell(day, widget.dailySummary, isSelected: true);
         },
         outsideBuilder: (context, day, focusedDay) {
-          return _buildDayCell('${day.day}', Colors.transparent, Colors.grey);
+          return _buildDayCell(day, widget.dailySummary, isOutside: true);
         },
       ),
       calendarStyle: CalendarStyle(
@@ -99,22 +86,59 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     );
   }
 
-  static Widget _buildDayCell(String text, Color bgColor, Color textColor) {
+  Widget _buildDayCell(
+    DateTime day,
+    Map<DateTime, Map<String, int>> dailySummary, {
+    bool isToday = false,
+    bool isSelected = false,
+    bool isOutside = false,
+  }) {
+    final summary = dailySummary[DateTime(day.year, day.month, day.day)];
+    final income = summary?['income'] ?? 0;
+    final expense = summary?['expense'] ?? 0;
+
+    Color bgColor = Colors.grey.shade100;
+    if (isToday) bgColor = Colors.amberAccent.withOpacity(0.5);
+    if (isSelected) bgColor = Colors.transparent;
+    if (isOutside) bgColor = Colors.transparent;
+
     return Container(
       margin: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(8),
+        border: isSelected
+            ? Border.all(color: Colors.amber, width: 2)
+            : null,
       ),
       alignment: Alignment.topCenter,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 6.0),
-        child: Text(
-          text,
-          style: TextStyle(fontSize: 14, color: textColor),
-        ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text('${day.day}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+          SizedBox(height: 2),
+          Text(
+            income > 0 ? '+${_formatAmount(income)}' : '',
+            style: TextStyle(color: Colors.blue, fontSize: 10),
+          ),
+          Text(
+            expense > 0 ? '-${_formatAmount(expense)}' : '',
+            style: TextStyle(color: Colors.red, fontSize: 10),
+          ),
+        ],
       ),
     );
+  }
+
+  String _formatAmount(int amount) {
+    if (amount == 0) return '';
+    if (amount.abs() >= 10000000) {
+      double m = amount / 1000000;
+      // 소수점 첫째자리까지 표기(예: 12.5M), 정수면 12M
+      return m % 1 == 0 ? '${m.toInt()}M' : '${m.toStringAsFixed(1)}M';
+    }
+    return amount.toString().replaceAllMapped(
+        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
   }
 
   static String _weekdayString(int weekday) {

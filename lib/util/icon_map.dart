@@ -9,6 +9,7 @@ final Map<String, IconData> iconMap = {
   'local_bar': Icons.local_bar,
   'free_breakfast': Icons.free_breakfast,
   'emoji_food_beverage': Icons.emoji_food_beverage,
+  'lunch_dining': Icons.lunch_dining,
 
   // 쇼핑/패션
   'shopping_bag': Icons.shopping_bag,
@@ -17,6 +18,7 @@ final Map<String, IconData> iconMap = {
   'loyalty': Icons.loyalty,
   'local_mall': Icons.local_mall,
   'redeem': Icons.redeem,
+  'directions_bus': Icons.directions_bus,
 
   // 교통/이동
   'commute': Icons.commute,
@@ -34,6 +36,10 @@ final Map<String, IconData> iconMap = {
   'savings': Icons.savings,
   'monetization_on': Icons.monetization_on,
   'euro_symbol': Icons.euro_symbol,
+  'account_balance_wallet': Icons.account_balance_wallet,
+  'payments': Icons.payments,
+  'phone_android': Icons.phone_android,
+  'security': Icons.security,
 
   // 주거/생활
   'home': Icons.home,

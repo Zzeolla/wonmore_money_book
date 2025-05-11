@@ -63,6 +63,9 @@ class _HomeScreenState extends State<HomeScreen> {
     _rowHeight = ((remainingHeight - kMinAdHeight) / 7).floorToDouble();
     _realAdHeight = remainingHeight - (_rowHeight * 7);
 
+    final provider = context.watch<MoneyProvider>();
+    final dailySummary = provider.dailySummaryMap;
+
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: CommonAppBar(),
@@ -142,7 +145,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       setState(() {
                         _focusedDay = focusedDay;
                       });
+                      context.read<MoneyProvider>().changeMonth(_focusedDay);
                     },
+                    dailySummary: dailySummary,
                   ),
                 ),
               ),

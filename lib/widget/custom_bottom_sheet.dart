@@ -349,20 +349,31 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                     ),
                   ),
                   child: ListTile(
-                    leading: category != null ? Column(
+                    leading: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         CircleAvatar(
                           radius: 14,
-                          backgroundColor: Color(category.colorValue),
-                          child: Icon(getIconData(category.iconName), color: Colors.white, size: 16),
+                          backgroundColor: category != null 
+                            ? Color(category.colorValue)
+                            : Colors.grey.shade300,
+                          child: Icon(
+                            category != null 
+                              ? getIconData(category.iconName)
+                              : Icons.category,
+                            color: Colors.white,
+                            size: 16
+                          ),
                         ),
                         Text(
-                          category.name,
-                          style: const TextStyle(fontSize: 12),
+                          category?.name ?? '미분류',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: category != null ? Colors.black : Colors.grey,
+                          ),
                         ),
                       ],
-                    ) : null,
+                    ),
                     title: Text(tx.title ?? ''),
                     subtitle: asset != null ? Text(asset.name) : null,
                     trailing: Text(
@@ -373,6 +384,32 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                         fontSize: 14,
                       ),
                     ),
+                    onLongPress: () async {
+                      final result = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text('삭제하시겠습니까?'),
+                          content: Text('이 내역을 삭제하시겠습니까?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              child: Text('취소'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              child: Text('확인', style: TextStyle(color: Colors.red)),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (result == true) {
+                        // 삭제 실행
+                        await context.read<MoneyProvider>().deleteTransaction(tx.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('삭제되었습니다.')),
+                        );
+                      }
+                    },
                   ),
                 );
               },

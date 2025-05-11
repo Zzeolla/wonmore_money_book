@@ -27,7 +27,7 @@ class RecordInputDialog extends StatefulWidget {
 
 class _RecordInputDialogState extends State<RecordInputDialog> {
   late DateTime selectedDate = widget.initialDate;
-  late TransactionType _selectedType = TransactionType.expense;
+  TransactionType _selectedType = TransactionType.expense;
 
   final amountController = TextEditingController();
   final contentController = TextEditingController();
@@ -290,7 +290,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                     );
                                     return;
                                   }
-                                  final amount = int.tryParse(amountController.text.trim()) ?? 0;
+                                  final amount = int.tryParse(amountController.text.replaceAll(',', '')) ?? 0;
                                   final title = contentController.text.trim();
                                   final memo = memoController.text.trim().isEmpty ? null : memoController.text.trim();
                                   final categoryId = selectedCategory?.id;
@@ -317,6 +317,8 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                         assetId: assetId == null ? const drift.Value.absent() : drift.Value(assetId),
                                         title: drift.Value(title),
                                         memo: memo == null ? const drift.Value.absent() : drift.Value(memo),
+                                        createdAt: drift.Value(DateTime.now()),
+                                        updatedAt: drift.Value(DateTime.now()),
                                       ),
                                     );
                                     Navigator.pop(context, true);

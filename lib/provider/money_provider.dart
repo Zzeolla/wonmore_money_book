@@ -24,13 +24,13 @@ class MoneyProvider extends ChangeNotifier {
   List<Category> getExpenseCategories() => _categories.where((c) => c.type == TransactionType.expense).toList();
   List<Category> getTransferCategories() => _categories.where((c) => c.type == TransactionType.transfer).toList();
 
-  // 월별 거래내역 캐시 관리
-  final Map<String, List<Transaction>> _monthlyTransactions = {};
-  static const int _maxCachedMonths = 3;
-  
-  // 현재 월의 거래내역 getter
-  List<Transaction> get currentMonthTransactions => 
-    _monthlyTransactions[_getMonthKey(_selectedMonth)] ?? [];
+  // 월별 거래내역 상태 관리
+  List<Transaction> _currentMonthTransactions = [];
+  List<Transaction> get currentMonthTransactions => _currentMonthTransactions;
+
+  // 날짜별 수입/지출 합계 상태 관리 추가
+  Map<DateTime, Map<String, int>> _dailySummaryMap = {};
+  Map<DateTime, Map<String, int>> get dailySummaryMap => _dailySummaryMap;
 
   MoneyProvider(this._database) {
     _loadMonthlySummary();
@@ -44,23 +44,6 @@ class MoneyProvider extends ChangeNotifier {
   int get monthlyExpense => _monthlyExpense;
   int get monthlyBalance => _monthlyBalance;
 
-  // 월 키 생성 (예: "2024-05")
-  String _getMonthKey(DateTime date) => 
-    '${date.year}-${date.month.toString().padLeft(2, '0')}';
-
-  // 캐시된 월 정리
-  void _cleanupCache() {
-    if (_monthlyTransactions.length > _maxCachedMonths) {
-      final sortedKeys = _monthlyTransactions.keys.toList()
-        ..sort((a, b) => b.compareTo(a)); // 최신순 정렬
-      
-      // 최신 3개월만 유지
-      for (var i = _maxCachedMonths; i < sortedKeys.length; i++) {
-        _monthlyTransactions.remove(sortedKeys[i]);
-      }
-    }
-  }
-
   // 사용자 ID 설정
   void setUserId(String userId) {
     _currentUserId = userId;
@@ -69,16 +52,6 @@ class MoneyProvider extends ChangeNotifier {
 
   // 월별 거래내역 로드
   Future<void> loadTransactionsForMonth(DateTime month) async {
-    final monthKey = _getMonthKey(month);
-    
-    // 이미 로드된 월이면 캐시된 데이터 사용
-    if (_monthlyTransactions.containsKey(monthKey)) {
-      _selectedMonth = month;
-      notifyListeners();
-      return;
-    }
-
-    // 새로운 월이면 DB에서 로드
     final startDate = DateTime(month.year, month.month, 1);
     final endDate = DateTime(month.year, month.month + 1, 0);
     final query = _database.select(_database.transactions)
@@ -86,24 +59,47 @@ class MoneyProvider extends ChangeNotifier {
     if (_currentUserId != null) {
       query.where((t) => t.userId.equals(_currentUserId!));
     }
-    
-    final transactions = await query.get();
-    _monthlyTransactions[monthKey] = transactions;
-    _cleanupCache(); // 캐시 정리
-    _selectedMonth = month;
+    _currentMonthTransactions = await query.get();
+    _updateDailySummaryMap();
     notifyListeners();
+  }
+
+  // 날짜별 수입/지출 합계 Map 갱신 함수
+  void _updateDailySummaryMap() {
+    final Map<DateTime, Map<String, int>> summary = {};
+    for (final tx in _currentMonthTransactions) {
+      final date = DateTime(tx.date.year, tx.date.month, tx.date.day);
+      summary.putIfAbsent(date, () => {'income': 0, 'expense': 0});
+      if (tx.type == TransactionType.income) {
+        summary[date]!['income'] = summary[date]!['income']! + tx.amount;
+      } else if (tx.type == TransactionType.expense) {
+        summary[date]!['expense'] = summary[date]!['expense']! + tx.amount;
+      }
+    }
+    _dailySummaryMap = summary;
   }
 
   // 월 변경 시 거래내역도 새로 로드
   Future<void> changeMonth(DateTime month) async {
+    _selectedMonth = month;
     await loadTransactionsForMonth(month);
     await _loadMonthlySummary();
+    notifyListeners();
   }
 
   // 월별 요약 데이터 로드
   Future<void> _loadMonthlySummary() async {
-    final monthKey = _getMonthKey(_selectedMonth);
-    final transactions = _monthlyTransactions[monthKey] ?? [];
+    final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+    final endDate = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
+
+    final query = _database.select(_database.transactions)
+      ..where((t) => t.date.isBetweenValues(startDate, endDate));
+    
+    if (_currentUserId != null) {
+      query.where((t) => t.userId.equals(_currentUserId!));
+    }
+
+    final transactions = await query.get();
     
     _monthlyIncome = transactions
         .where((t) => t.type == TransactionType.income)
@@ -114,7 +110,6 @@ class MoneyProvider extends ChangeNotifier {
         .fold(0, (sum, t) => sum + t.amount);
 
     _monthlyBalance = _monthlyIncome - _monthlyExpense;
-    notifyListeners();
   }
 
   // 거래 추가/수정/삭제 시 월별 리스트도 갱신
@@ -124,17 +119,10 @@ class MoneyProvider extends ChangeNotifier {
       createdBy: Value(_currentUserId),
       updatedBy: Value(_currentUserId),
     );
-    final id = await _database.into(_database.transactions).insert(transactionWithUser);
-    final tx = await (_database.select(_database.transactions)..where((t) => t.id.equals(id))).getSingle();
-    
-    // 해당 월의 캐시에 추가
-    final monthKey = _getMonthKey(tx.date);
-    if (_monthlyTransactions.containsKey(monthKey)) {
-      _monthlyTransactions[monthKey]!.add(tx);
-      if (monthKey == _getMonthKey(_selectedMonth)) {
-        await _loadMonthlySummary();
-      }
-    }
+    await _database.into(_database.transactions).insert(transactionWithUser);
+    // 거래 추가 후, 현재 월 거래내역을 DB에서 다시 불러오기!
+    await loadTransactionsForMonth(_selectedMonth);
+    await _loadMonthlySummary();
     notifyListeners();
   }
 
@@ -143,7 +131,6 @@ class MoneyProvider extends ChangeNotifier {
     final oldTransaction = await (_database.select(_database.transactions)
       ..where((t) => t.id.equals(transaction.id)))
       .getSingleOrNull();
-      
     if (oldTransaction != null) {
       await (_database.update(_database.transactions)
         ..where((t) => t.id.equals(transaction.id)))
@@ -158,53 +145,21 @@ class MoneyProvider extends ChangeNotifier {
           updatedAt: Value(DateTime.now()),
           updatedBy: Value(_currentUserId),
         ));
-
-      // 캐시 업데이트
-      final oldMonthKey = _getMonthKey(oldTransaction.date);
-      final newMonthKey = _getMonthKey(transaction.date);
-      
-      if (_monthlyTransactions.containsKey(oldMonthKey)) {
-        _monthlyTransactions[oldMonthKey]!.removeWhere((t) => t.id == transaction.id);
-      }
-      
-      if (_monthlyTransactions.containsKey(newMonthKey)) {
-        _monthlyTransactions[newMonthKey]!.add(transaction);
-      }
-      
+      // 월이 바뀌었을 수도 있으니 다시 로드
+      await loadTransactionsForMonth(_selectedMonth);
       await _loadMonthlySummary();
       notifyListeners();
     }
   }
 
   Future<void> deleteTransaction(int id) async {
-    // 삭제할 거래 찾기
-    Transaction? transactionToDelete;
-    String? monthKey;
-    
-    for (final key in _monthlyTransactions.keys) {
-      final tx = _monthlyTransactions[key]!.firstWhere(
-        (t) => t.id == id,
-        orElse: () => null as Transaction,
-      );
-      if (tx != null) {
-        transactionToDelete = tx;
-        monthKey = key;
-        break;
-      }
-    }
-
-    if (transactionToDelete != null) {
-      await (_database.delete(_database.transactions)
-        ..where((t) => t.id.equals(id)))
-        .go();
-        
-      // 캐시에서 제거
-      if (monthKey != null && _monthlyTransactions.containsKey(monthKey)) {
-        _monthlyTransactions[monthKey]!.removeWhere((t) => t.id == id);
-        await _loadMonthlySummary();
-        notifyListeners();
-      }
-    }
+    await (_database.delete(_database.transactions)
+      ..where((t) => t.id.equals(id)))
+      .go();
+    // 삭제 후 다시 로드
+    await loadTransactionsForMonth(_selectedMonth);
+    await _loadMonthlySummary();
+    notifyListeners();
   }
 
   // 기간별 거래 내역 조회
@@ -317,6 +272,7 @@ class MoneyProvider extends ChangeNotifier {
     }
     _categories = await query.get();
     notifyListeners();
+    print(categories.map((c) => '${c.name}: ${c.iconName}').toList());
   }
 
   // 카테고리 추가
