@@ -273,7 +273,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                             children: [
                               IconButton(
                                 onPressed: () {},
-                                icon: const Icon(Icons.star_border, size: 32),
+                                icon: const Icon(Icons.star_border_purple500, size: 32),
                                 tooltip: '즐겨찾기',
                               ),
                               IconButton(

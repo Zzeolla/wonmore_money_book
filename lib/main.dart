@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
 import 'package:wonmore_money_book/screen/home_screen.dart';
 import 'package:wonmore_money_book/screen/assets_screen.dart';
@@ -24,9 +25,8 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => MoneyProvider(database),
-        ),
+        ChangeNotifierProvider(create: (_) => MoneyProvider(database)),
+        ChangeNotifierProvider(create: (_) => HomeScreenTabProvider()),
       ],
       child: const MyApp(),
     ),

@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
+import 'package:wonmore_money_book/model/home_screen_tab.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
+import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/screen/favorite_screen.dart';
+import 'package:wonmore_money_book/screen/todo_list_screen.dart';
 import 'package:wonmore_money_book/widget/calendar_widget.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/custom_bottom_sheet.dart';
@@ -65,132 +69,172 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final provider = context.watch<MoneyProvider>();
     final dailySummary = provider.dailySummaryMap;
+    final tab = context.watch<HomeScreenTabProvider>().currentTab;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      appBar: CommonAppBar(),
+      appBar: CommonAppBar(
+        actions: [
+          IconButton(
+            icon: Icon(Icons.search, color: Color(0xFFF2F4F6), size: 36),
+            onPressed: () {
+              // TODO: 검색기능(구현할지 말지 고민해보자)
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.star_border_purple500, color: Color(0xFFF2F4F6), size: 36),
+            onPressed: () =>
+                context.read<HomeScreenTabProvider>().setTab(HomeTab.favorite), // TODO: 즐겨찾기 팝업
+          ),
+          IconButton(
+            icon: Icon(Icons.checklist, color: Color(0xFFF2F4F6), size: 36),
+            onPressed: () => context.read<HomeScreenTabProvider>().setTab(HomeTab.todo),
+            // TODO: 투두 화면 이동 또는 팝업 열기
+            // 장보기 목록, 처리해야 할 금융 업무(이체, 납부 등), 기념일 체크
+          ),
+        ],
+      ),
       drawer: CustomDrawer(),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              /// 연도.월 + 화살표 구현
-              Container(
-                color: Color(0xFFF1F1FD),
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: SizedBox(
-                  height: kYearMonthBoxHeight,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      body: Builder(
+        builder: (context) {
+          switch (tab) {
+            case HomeTab.favorite:
+              return FavoriteScreen(
+                  onClose: () => context.read<HomeScreenTabProvider>().resetToHome());
+            case HomeTab.todo:
+              return TodoListScreen(
+                  onClose: () => context.read<HomeScreenTabProvider>().resetToHome());
+            case HomeTab.home:
+              return Stack(
+                children: [
+                  Column(
                     children: [
-                      IconButton(
-                        onPressed: _onLeftArrow,
-                        icon: Icon(Icons.chevron_left),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          // TODO: 월 선택 다이얼로그 구현
-                        },
-                        child: Text(
-                          _yearMonthText,
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      /// 연도.월 + 화살표 구현
+                      Container(
+                        color: Color(0xFFF1F1FD),
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: SizedBox(
+                          height: kYearMonthBoxHeight,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                onPressed: _onLeftArrow,
+                                icon: Icon(Icons.chevron_left),
+                              ),
+                              GestureDetector(
+                                onTap: () {
+                                  // TODO: 월 선택 다이얼로그 구현
+                                },
+                                child: Text(
+                                  _yearMonthText,
+                                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed: _onRightArrow,
+                                icon: Icon(Icons.chevron_right),
+                              )
+                            ],
+                          ),
                         ),
                       ),
-                      IconButton(
-                        onPressed: _onRightArrow,
-                        icon: Icon(Icons.chevron_right),
-                      )
+
+                      /// 수입/지출/잔액 정보
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          height: kSummaryBoxHeight,
+                          child: Consumer<MoneyProvider>(
+                            builder: (context, provider, child) {
+                              return Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                      child: _buildSummaryItem('수입', provider.monthlyIncome, '+')),
+                                  Expanded(
+                                      child: _buildSummaryItem('지출', provider.monthlyExpense, '-')),
+                                  Expanded(
+                                      child: _buildSummaryItem(
+                                          '잔액', provider.monthlyBalance, '\u20A9')),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: CalendarWidget(
+                            focusedDay: _focusedDay,
+                            selectedDay: _selectedDay,
+                            rowHeight: _rowHeight,
+                            onDaySelected: (selectedDay, focusedDay) {
+                              setState(() {
+                                _selectedDay = selectedDay;
+                                _focusedDay = focusedDay;
+                              });
+                              _showBottomSheet(context, _selectedDay, _rowHeight);
+                            },
+                            onPageChanged: (focusedDay) {
+                              setState(() {
+                                _focusedDay = focusedDay;
+                              });
+                              context.read<MoneyProvider>().changeMonth(_focusedDay);
+                            },
+                            dailySummary: dailySummary,
+                          ),
+                        ),
+                      ),
+                      SizedBox(
+                        height: _realAdHeight,
+                        child: Container(
+                          color: Colors.grey,
+                          child: Center(child: Text('광고 자리')),
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ),
-
-              /// 수입/지출/잔액 정보
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: kSummaryBoxHeight,
-                  child: Consumer<MoneyProvider>(
-                    builder: (context, provider, child) {
-                      return Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Expanded(child: _buildSummaryItem('수입', provider.monthlyIncome, '+')),
-                          Expanded(child: _buildSummaryItem('지출', provider.monthlyExpense, '-')),
-                          Expanded(child: _buildSummaryItem('잔액', provider.monthlyBalance, '\u20A9')),
-                        ],
-                      );
-                    },
+                  Positioned(
+                    right: 16,
+                    bottom: _realAdHeight + 16,
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        final provider = context.read<MoneyProvider>();
+                        showDialog(
+                          context: context,
+                          builder: (context) => RecordInputDialog(
+                            initialDate: DateTime.now(),
+                            categories: provider.categories,
+                            assetList: provider.assets.map((a) => a.name).toList(),
+                          ),
+                        ).then(
+                          (result) {
+                            if (result == true) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('저장되었습니다!')),
+                              );
+                            }
+                          },
+                        );
+                      },
+                      backgroundColor: Color(0xFFA79BFF),
+                      shape: const CircleBorder(),
+                      child: Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 36,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-
-              Expanded(
-                child: SingleChildScrollView(
-                  child: CalendarWidget(
-                    focusedDay: _focusedDay,
-                    selectedDay: _selectedDay,
-                    rowHeight: _rowHeight,
-                    onDaySelected: (selectedDay, focusedDay) {
-                      setState(() {
-                        _selectedDay = selectedDay;
-                        _focusedDay = focusedDay;
-                      });
-                      _showBottomSheet(context, _selectedDay, _rowHeight);
-                    },
-                    onPageChanged: (focusedDay) {
-                      setState(() {
-                        _focusedDay = focusedDay;
-                      });
-                      context.read<MoneyProvider>().changeMonth(_focusedDay);
-                    },
-                    dailySummary: dailySummary,
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: _realAdHeight,
-                child: Container(
-                  color: Colors.grey,
-                  child: Center(child: Text('광고 자리')),
-                ),
-              ),
-            ],
-          ),
-          Positioned(
-            right: 16,
-            bottom: _realAdHeight + 16,
-            child: FloatingActionButton(
-              onPressed: () {
-                final provider = context.read<MoneyProvider>();
-                showDialog(
-                  context: context,
-                  builder: (context) => RecordInputDialog(
-                    initialDate: DateTime.now(),
-                    categories: provider.categories,
-                    assetList: provider.assets.map((a) => a.name).toList(),
-                  ),
-                ).then((result) {
-                  if (result == true) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('저장되었습니다!')),
-                    );
-                  }
-                });
-              },
-              backgroundColor: Color(0xFFA79BFF),
-              shape: const CircleBorder(),
-              child: Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 36,
-              )
-            )
-          )
-        ],
+                ],
+              );
+          }
+        },
       ),
     );
   }
@@ -224,10 +268,9 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           label,
           style: const TextStyle(
-            fontSize: 20, // 폰트 크기 축소
-            color: Color(0xFF7C7C7C),
-            fontWeight: FontWeight.bold
-          ),
+              fontSize: 20, // 폰트 크기 축소
+              color: Color(0xFF7C7C7C),
+              fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 4), // 간격 축소
         Text(
