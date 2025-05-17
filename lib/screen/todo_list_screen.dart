@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/todo_input_dialog.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
@@ -49,15 +50,9 @@ class TodoListScreen extends StatelessWidget {
   }
 
   void _confirmDelete(BuildContext context, int id) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('삭제할까요?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제')),
-        ],
-      ),
+    final confirm = await showCustomDeleteDialog(
+      context,
+      message: '이 할 일을 정말 삭제할까요?',
     );
     if (confirm == true) {
       context.read<TodoProvider>().deleteTodo(id);
@@ -108,6 +103,16 @@ class TodoListScreen extends StatelessWidget {
                   ),
                   child: InkWell(
                     onLongPress: () => _confirmDelete(context, todo.id),
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => TodoInputDialog(
+                          todoId: todo.id,
+                          initialTitle: todo.title,
+                          initialMemo: todo.memo,
+                        ),
+                      );
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(

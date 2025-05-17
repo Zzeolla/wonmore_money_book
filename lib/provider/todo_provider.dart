@@ -17,7 +17,7 @@ class TodoProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addTodo(String title, {String? memo}) async {
+  Future<void> addTodo(String title, String? memo) async {
     final todo = TodosCompanion.insert(
       title: title,
       memo: memo == null ? const Value.absent() : Value(memo),
@@ -37,6 +37,17 @@ class TodoProvider extends ChangeNotifier {
 
   Future<void> deleteTodo(int id) async {
     await (_db.delete(_db.todos)..where((t) => t.id.equals(id))).go();
+    await _loadTodos();
+  }
+
+  Future<void> updateTodo(int id, String title, String? memo) async {
+    await (_db.update(_db.todos)..where((t) => t.id.equals(id))).write(
+      TodosCompanion(
+        title: Value(title),
+        memo: memo == null ? const Value.absent() : Value(memo),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
     await _loadTodos();
   }
 } 

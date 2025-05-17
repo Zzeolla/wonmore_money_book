@@ -8,6 +8,7 @@ import 'package:wonmore_money_book/util/icon_map.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
 import 'package:flutter/services.dart';
+import 'package:wonmore_money_book/widget/custom_circle_button.dart';
 
 class RecordInputDialog extends StatefulWidget {
   final DateTime initialDate;
@@ -19,7 +20,7 @@ class RecordInputDialog extends StatefulWidget {
   final int? initialCategoryId;
   final int? initialAssetId;
   final String? initialMemo;
-  final int? transactionId;  // 수정할 거래 내역의 ID
+  final int? transactionId; // 수정할 거래 내역의 ID
 
   const RecordInputDialog({
     super.key,
@@ -59,7 +60,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
     super.initState();
     // 금액 입력 필드 포맷팅을 위한 리스너 추가
     amountController.addListener(_formatAmount);
-    
+
     // 초기값 설정
     if (widget.initialTitle != null) {
       contentController.text = widget.initialTitle!;
@@ -81,9 +82,9 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
     }
     if (widget.initialAssetId != null) {
       final asset = context.read<MoneyProvider>().assets.firstWhere(
-        (a) => a.id == widget.initialAssetId,
-        orElse: () => context.read<MoneyProvider>().assets.first,
-      );
+            (a) => a.id == widget.initialAssetId,
+            orElse: () => context.read<MoneyProvider>().assets.first,
+          );
       selectedAsset = asset.name;
     }
   }
@@ -106,10 +107,10 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
 
     // 콤마 제거
     final cleanText = text.replaceAll(',', '');
-    
+
     // 숫자가 아닌 문자 제거
     final numericText = cleanText.replaceAll(RegExp(r'[^\d]'), '');
-    
+
     // 포맷팅된 텍스트 생성
     final formattedText = numericText.replaceAllMapped(
       RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
@@ -118,12 +119,12 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
 
     // 현재 커서 위치 저장
     final cursorPosition = amountController.selection.baseOffset;
-    
+
     // 포맷팅된 텍스트가 현재 텍스트와 다를 경우에만 업데이트
     if (formattedText != text) {
       // 커서 위치 조정 (콤마 추가로 인한 위치 변화 계산)
       final newCursorPosition = cursorPosition + (formattedText.length - text.length);
-      
+
       amountController.value = TextEditingValue(
         text: formattedText,
         selection: TextSelection.collapsed(offset: newCursorPosition),
@@ -192,7 +193,8 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                         children: [
                           Padding(
                             padding: const EdgeInsets.only(left: 4.0),
-                            child: Text(title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                            child: Text(title,
+                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                           ),
                           Padding(
                             padding: const EdgeInsets.only(right: 4.0),
@@ -236,105 +238,128 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                           ),
                           const SizedBox(height: 32),
                           _buildFieldRow('날짜', _buildDateField()),
-                          _buildFieldRow('금액', _buildTextBox(
-                            amountController,
-                            TextInputType.number,
-                            focusNode: _amountFocus,
-                            onSubmitted: (_) => _contentFocus.requestFocus(),
-                          )),
-                          _buildFieldRow('내역', _buildTextBox(
-                            contentController,
-                            TextInputType.text,
-                            focusNode: _contentFocus,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (_) => FocusScope.of(context).unfocus(),
-                          )),
-                          _buildFieldRow('분류', _buildDropdown(
-                            value: selectedCategory?.name,
-                            items: [
-                              DropdownMenuItem<String>(
-                                value: null,
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 12,
-                                      backgroundColor: Colors.grey.shade300,
-                                      child: Icon(Icons.help_outline, color: Colors.white, size: 16),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text('선택하세요', style: TextStyle(color: Colors.grey)),
-                                  ],
-                                ),
-                              ),
-                              ..._filteredCategories.map((c) => DropdownMenuItem(
-                                value: c.name,
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 12,
-                                      backgroundColor: Color(c.colorValue),
-                                      child: Icon(getIconData(c.iconName), color: Colors.white, size: 16),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(c.name, style: TextStyle(fontWeight: FontWeight.w500)),
-                                  ],
-                                ),
+                          _buildFieldRow(
+                              '금액',
+                              _buildTextBox(
+                                amountController,
+                                TextInputType.number,
+                                focusNode: _amountFocus,
+                                onSubmitted: (_) => _contentFocus.requestFocus(),
                               )),
-                            ],
-                            onChanged: (value) {
-                              setState(() {
-                                selectedCategory = value == null ? null : 
-                                  _filteredCategories.firstWhere((c) => c.name == value);
-                              });
-                            },
-                          )),
-                          _buildFieldRow('자산', _buildDropdown(
-                            value: selectedAsset,
-                            items: [
-                              DropdownMenuItem<String>(
-                                value: null,
-                                child: Text('선택하세요', style: TextStyle(color: Colors.grey)),
-                              ),
-                              ...widget.assetList.map((a) => DropdownMenuItem(
-                                value: a,
-                                child: Text(a),
+                          _buildFieldRow(
+                              '내역',
+                              _buildTextBox(
+                                contentController,
+                                TextInputType.text,
+                                focusNode: _contentFocus,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => FocusScope.of(context).unfocus(),
                               )),
-                            ],
-                            onChanged: (value) => setState(() => selectedAsset = value),
-                          )),
-                          _buildFieldRow('메모', _buildTextBox(
-                            memoController,
-                            TextInputType.multiline,
-                            maxLines: 3,
-                            textInputAction: TextInputAction.done,
-                            onSubmitted: (_) => FocusScope.of(context).unfocus(),
-                          )),
+                          _buildFieldRow(
+                              '분류',
+                              _buildDropdown(
+                                value: selectedCategory?.name,
+                                items: [
+                                  DropdownMenuItem<String>(
+                                    value: null,
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: Colors.grey.shade300,
+                                          child: Icon(Icons.help_outline,
+                                              color: Colors.white, size: 16),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text('선택하세요', style: TextStyle(color: Colors.grey)),
+                                      ],
+                                    ),
+                                  ),
+                                  ..._filteredCategories.map((c) => DropdownMenuItem(
+                                        value: c.name,
+                                        child: Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 12,
+                                              backgroundColor: Color(c.colorValue),
+                                              child: Icon(getIconData(c.iconName),
+                                                  color: Colors.white, size: 16),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Text(c.name,
+                                                style: TextStyle(fontWeight: FontWeight.w500)),
+                                          ],
+                                        ),
+                                      )),
+                                ],
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedCategory = value == null
+                                        ? null
+                                        : _filteredCategories.firstWhere((c) => c.name == value);
+                                  });
+                                },
+                              )),
+                          _buildFieldRow(
+                              '자산',
+                              _buildDropdown(
+                                value: selectedAsset,
+                                items: [
+                                  DropdownMenuItem<String>(
+                                    value: null,
+                                    child: Text('선택하세요', style: TextStyle(color: Colors.grey)),
+                                  ),
+                                  ...widget.assetList.map((a) => DropdownMenuItem(
+                                        value: a,
+                                        child: Text(a),
+                                      )),
+                                ],
+                                onChanged: (value) => setState(() => selectedAsset = value),
+                              )),
+                          _buildFieldRow(
+                              '메모',
+                              _buildTextBox(
+                                memoController,
+                                TextInputType.multiline,
+                                maxLines: 3,
+                                textInputAction: TextInputAction.done,
+                                onSubmitted: (_) => FocusScope.of(context).unfocus(),
+                              )),
                           const SizedBox(height: 16),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
-                              IconButton(
-                                onPressed: () {},
-                                icon: const Icon(Icons.star_border_purple500, size: 32),
-                                tooltip: '즐겨찾기',
+                              CustomCircleButton(
+                                icon: Icons.star_border_purple500,
+                                color: Colors.white,
+                                backgroundColor: const Color(0xFFA79BFF),
+                                onTap: () {},
                               ),
-                              IconButton(
-                                onPressed: () => Navigator.pop(context),
-                                icon: const Icon(Icons.delete_outline, size: 32),
-                                tooltip: '취소',
+                              CustomCircleButton(
+                                icon: Icons.delete_outline,
+                                color: Colors.white,
+                                backgroundColor: const Color(0xFFA79BFF),
+                                onTap: () {},
                               ),
-                              IconButton(
-                                onPressed: () async {
+                              CustomCircleButton(
+                                icon: Icons.check,
+                                color: Colors.white,
+                                backgroundColor: const Color(0xFFA79BFF),
+                                onTap: () async {
                                   // 입력값 검증 (금액, 내역 필수)
-                                  if (amountController.text.trim().isEmpty || contentController.text.trim().isEmpty) {
+                                  if (amountController.text.trim().isEmpty ||
+                                      contentController.text.trim().isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text('금액과 내역을 입력해 주세요.')),
                                     );
                                     return;
                                   }
-                                  final amount = int.tryParse(amountController.text.replaceAll(',', '')) ?? 0;
+                                  final amount =
+                                      int.tryParse(amountController.text.replaceAll(',', '')) ?? 0;
                                   final title = contentController.text.trim();
-                                  final memo = memoController.text.trim().isEmpty ? null : memoController.text.trim();
+                                  final memo = memoController.text.trim().isEmpty
+                                      ? null
+                                      : memoController.text.trim();
                                   final categoryId = selectedCategory?.id;
                                   final assetName = selectedAsset;
                                   final provider = context.read<MoneyProvider>();
@@ -342,7 +367,8 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                   if (assetName != null) {
                                     Asset? asset;
                                     try {
-                                      asset = provider.assets.firstWhere((a) => a.name == assetName);
+                                      asset =
+                                          provider.assets.firstWhere((a) => a.name == assetName);
                                     } catch (_) {
                                       asset = null;
                                     }
@@ -351,8 +377,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                   try {
                                     if (widget.transactionId != null) {
                                       // 변경 사항이 있는지 확인
-                                      final hasChanges = 
-                                          widget.initialDate != selectedDate ||
+                                      final hasChanges = widget.initialDate != selectedDate ||
                                           widget.initialAmount != amount ||
                                           widget.initialType != _selectedType ||
                                           widget.initialCategoryId != categoryId ||
@@ -367,10 +392,16 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                             date: drift.Value(selectedDate),
                                             amount: drift.Value(amount),
                                             type: drift.Value(_selectedType),
-                                            categoryId: categoryId == null ? const drift.Value.absent() : drift.Value(categoryId),
-                                            assetId: assetId == null ? const drift.Value.absent() : drift.Value(assetId),
+                                            categoryId: categoryId == null
+                                                ? const drift.Value.absent()
+                                                : drift.Value(categoryId),
+                                            assetId: assetId == null
+                                                ? const drift.Value.absent()
+                                                : drift.Value(assetId),
                                             title: drift.Value(title),
-                                            memo: memo == null ? const drift.Value.absent() : drift.Value(memo),
+                                            memo: memo == null
+                                                ? const drift.Value.absent()
+                                                : drift.Value(memo),
                                             updatedAt: drift.Value(DateTime.now()),
                                           ),
                                         );
@@ -385,10 +416,16 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                           date: drift.Value(selectedDate),
                                           amount: drift.Value(amount),
                                           type: drift.Value(_selectedType),
-                                          categoryId: categoryId == null ? const drift.Value.absent() : drift.Value(categoryId),
-                                          assetId: assetId == null ? const drift.Value.absent() : drift.Value(assetId),
+                                          categoryId: categoryId == null
+                                              ? const drift.Value.absent()
+                                              : drift.Value(categoryId),
+                                          assetId: assetId == null
+                                              ? const drift.Value.absent()
+                                              : drift.Value(assetId),
                                           title: drift.Value(title),
-                                          memo: memo == null ? const drift.Value.absent() : drift.Value(memo),
+                                          memo: memo == null
+                                              ? const drift.Value.absent()
+                                              : drift.Value(memo),
                                           createdAt: drift.Value(DateTime.now()),
                                           updatedAt: drift.Value(DateTime.now()),
                                         ),
@@ -401,8 +438,6 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                     );
                                   }
                                 },
-                                icon: const Icon(Icons.check, size: 32),
-                                tooltip: '확인',
                               ),
                             ],
                           )
@@ -425,12 +460,14 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: ElevatedButton(
-          onPressed: enabled ? () {
-            setState(() {
-              selectedCategory = null; // 거래 유형 변경 시 카테고리 초기화
-              _selectedType = type;
-            });
-          } : null,
+          onPressed: enabled
+              ? () {
+                  setState(() {
+                    selectedCategory = null; // 거래 유형 변경 시 카테고리 초기화
+                    _selectedType = type;
+                  });
+                }
+              : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: isSelected ? Colors.amber : Colors.grey.shade300,
             foregroundColor: Colors.black,
@@ -475,10 +512,13 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
       keyboardType: type,
       focusNode: focusNode,
       onSubmitted: onSubmitted,
-      textInputAction: textInputAction ?? (maxLines > 1 ? TextInputAction.newline : TextInputAction.next),
-      inputFormatters: type == TextInputType.number ? [
-        FilteringTextInputFormatter.digitsOnly,
-      ] : null,
+      textInputAction:
+          textInputAction ?? (maxLines > 1 ? TextInputAction.newline : TextInputAction.next),
+      inputFormatters: type == TextInputType.number
+          ? [
+              FilteringTextInputFormatter.digitsOnly,
+            ]
+          : null,
       decoration: InputDecoration(
         filled: true,
         fillColor: Color(0xFFF1F1FD),

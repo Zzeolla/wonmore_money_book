@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
@@ -29,7 +30,8 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       type: TransactionType.expense,
       isDefault: true,
       iconName: 'restaurant',
-      colorValue: 0xFFFFC107, // amber
+      colorValue: 0xFFFFC107,
+      // amber
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       userId: null,
@@ -42,7 +44,8 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       type: TransactionType.expense,
       isDefault: true,
       iconName: 'shopping_bag',
-      colorValue: 0xFFE91E63, // pink
+      colorValue: 0xFFE91E63,
+      // pink
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       userId: null,
@@ -55,7 +58,8 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       type: TransactionType.income,
       isDefault: true,
       iconName: 'attach_money',
-      colorValue: 0xFF4CAF50, // green
+      colorValue: 0xFF4CAF50,
+      // green
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       userId: null,
@@ -68,7 +72,8 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       type: TransactionType.expense,
       isDefault: true,
       iconName: 'movie',
-      colorValue: 0xFF9C27B0, // purple
+      colorValue: 0xFF9C27B0,
+      // purple
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       userId: null,
@@ -214,9 +219,9 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
     final currentDate = _baseDay.add(Duration(days: _currentPageIndex - initialPage));
     // 해당 날짜의 거래만 필터링
     List<Transaction> txList = provider.currentMonthTransactions.where((tx) =>
-      tx.date.year == currentDate.year &&
-      tx.date.month == currentDate.month &&
-      tx.date.day == currentDate.day
+    tx.date.year == currentDate.year &&
+        tx.date.month == currentDate.month &&
+        tx.date.day == currentDate.day
     ).toList();
     txList.sort((a, b) => a.date.compareTo(b.date));
 
@@ -228,8 +233,14 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
         .where((tx) => tx.type == TransactionType.expense)
         .fold(0, (sum, tx) => sum + tx.amount);
 
-    final screenHeight = MediaQuery.of(context).size.height;
-    final paddingTop = MediaQuery.of(context).padding.top;
+    final screenHeight = MediaQuery
+        .of(context)
+        .size
+        .height;
+    final paddingTop = MediaQuery
+        .of(context)
+        .padding
+        .top;
 
     // 상단 날짜/요일/월 표시
     Widget dateHeader = Padding(
@@ -314,9 +325,9 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
           final date = _baseDay.add(Duration(days: pageIndex - initialPage));
           // 해당 날짜의 거래만 필터링
           List<Transaction> txList = provider.currentMonthTransactions.where((tx) =>
-            tx.date.year == date.year &&
-            tx.date.month == date.month &&
-            tx.date.day == date.day
+          tx.date.year == date.year &&
+              tx.date.month == date.month &&
+              tx.date.day == date.day
           ).toList();
           txList.sort((a, b) => a.date.compareTo(b.date));
           return Container(
@@ -327,7 +338,8 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
               itemBuilder: (context, index) {
                 Category? category;
                 try {
-                  category = provider.categories.firstWhere((c) => c.id == txList[index].categoryId);
+                  category =
+                      provider.categories.firstWhere((c) => c.id == txList[index].categoryId);
                 } catch (_) {
                   category = null;
                 }
@@ -354,15 +366,15 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                       children: [
                         CircleAvatar(
                           radius: 14,
-                          backgroundColor: category != null 
-                            ? Color(category.colorValue)
-                            : Colors.grey.shade300,
+                          backgroundColor: category != null
+                              ? Color(category.colorValue)
+                              : Colors.grey.shade300,
                           child: Icon(
-                            category != null 
-                              ? getIconData(category.iconName)
-                              : Icons.category,
-                            color: Colors.white,
-                            size: 16
+                              category != null
+                                  ? getIconData(category.iconName)
+                                  : Icons.category,
+                              color: Colors.white,
+                              size: 16
                           ),
                         ),
                         Text(
@@ -377,7 +389,8 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                     title: Text(tx.title ?? ''),
                     subtitle: asset != null ? Text(asset.name) : null,
                     trailing: Text(
-                      '${tx.type == TransactionType.income ? '+' : '-'}${_formatAmount(tx.amount)}원',
+                      '${tx.type == TransactionType.income ? '+' : '-'}${_formatAmount(tx
+                          .amount)}원',
                       style: TextStyle(
                         color: tx.type == TransactionType.income ? Colors.blue : Colors.red,
                         fontWeight: FontWeight.bold,
@@ -387,18 +400,19 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                     onTap: () {
                       showDialog(
                         context: context,
-                        builder: (context) => RecordInputDialog(
-                          initialDate: tx.date,
-                          categories: provider.categories,
-                          assetList: provider.assets.map((a) => a.name).toList(),
-                          initialTitle: tx.title,
-                          initialAmount: tx.amount,
-                          initialType: tx.type,
-                          initialCategoryId: tx.categoryId,
-                          initialAssetId: tx.assetId,
-                          initialMemo: tx.memo,
-                          transactionId: tx.id,
-                        ),
+                        builder: (context) =>
+                            RecordInputDialog(
+                              initialDate: tx.date,
+                              categories: provider.categories,
+                              assetList: provider.assets.map((a) => a.name).toList(),
+                              initialTitle: tx.title,
+                              initialAmount: tx.amount,
+                              initialType: tx.type,
+                              initialCategoryId: tx.categoryId,
+                              initialAssetId: tx.assetId,
+                              initialMemo: tx.memo,
+                              transactionId: tx.id,
+                            ),
                       ).then((result) {
                         if (result == true) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -408,22 +422,9 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                       });
                     },
                     onLongPress: () async {
-                      final result = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text('삭제하시겠습니까?'),
-                          content: Text('이 내역을 삭제하시겠습니까?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(false),
-                              child: Text('취소'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(true),
-                              child: Text('확인', style: TextStyle(color: Colors.red)),
-                            ),
-                          ],
-                        ),
+                      final result = await showCustomDeleteDialog(
+                        context,
+                        message: '이 내역을 정말 삭제할까요?'
                       );
                       if (result == true) {
                         // 삭제 실행
@@ -464,11 +465,12 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
           final date = DateTime(selected.year, selected.month, selected.day, now.hour, now.minute);
           showDialog(
             context: context,
-            builder: (context) => RecordInputDialog(
-              initialDate: date,
-              categories: provider.categories,
-              assetList: provider.assets.map((a) => a.name).toList(),
-            ),
+            builder: (context) =>
+                RecordInputDialog(
+                  initialDate: date,
+                  categories: provider.categories,
+                  assetList: provider.assets.map((a) => a.name).toList(),
+                ),
           ).then((result) {
             if (result == true) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -488,7 +490,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       children: [
         Container(
           width: double.infinity,
-          height: (screenHeight - paddingTop) / 2 + widget.rowHeight ,
+          height: (screenHeight - paddingTop) / 2 + widget.rowHeight,
           decoration: const BoxDecoration(
             color: Color(0xFFF1F1FD),
             borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
