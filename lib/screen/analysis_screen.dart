@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:wonmore_money_book/widget/common_app_bar.dart';
+import 'package:wonmore_money_book/widget/common_drawer.dart';
 
 class AnalysisScreen extends StatelessWidget {
   const AnalysisScreen({super.key});
@@ -6,10 +8,9 @@ class AnalysisScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('분석'),
-        centerTitle: true,
-      ),
+      // todo: 분석 기능 만들기 최대한 간단하게
+      appBar: CommonAppBar(),
+      drawer: CommonDrawer(),
       body: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,

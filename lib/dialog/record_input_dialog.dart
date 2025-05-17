@@ -13,12 +13,26 @@ class RecordInputDialog extends StatefulWidget {
   final DateTime initialDate;
   final List<Category> categories;
   final List<String> assetList;
+  final String? initialTitle;
+  final int? initialAmount;
+  final TransactionType? initialType;
+  final int? initialCategoryId;
+  final int? initialAssetId;
+  final String? initialMemo;
+  final int? transactionId;  // 수정할 거래 내역의 ID
 
   const RecordInputDialog({
     super.key,
     required this.initialDate,
     required this.categories,
     required this.assetList,
+    this.initialTitle,
+    this.initialAmount,
+    this.initialType,
+    this.initialCategoryId,
+    this.initialAssetId,
+    this.initialMemo,
+    this.transactionId,
   });
 
   @override
@@ -45,6 +59,33 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
     super.initState();
     // 금액 입력 필드 포맷팅을 위한 리스너 추가
     amountController.addListener(_formatAmount);
+    
+    // 초기값 설정
+    if (widget.initialTitle != null) {
+      contentController.text = widget.initialTitle!;
+    }
+    if (widget.initialAmount != null) {
+      amountController.text = widget.initialAmount!.toString();
+    }
+    if (widget.initialType != null) {
+      _selectedType = widget.initialType!;
+    }
+    if (widget.initialMemo != null) {
+      memoController.text = widget.initialMemo!;
+    }
+    if (widget.initialCategoryId != null) {
+      selectedCategory = widget.categories.firstWhere(
+        (c) => c.id == widget.initialCategoryId,
+        orElse: () => widget.categories.first,
+      );
+    }
+    if (widget.initialAssetId != null) {
+      final asset = context.read<MoneyProvider>().assets.firstWhere(
+        (a) => a.id == widget.initialAssetId,
+        orElse: () => context.read<MoneyProvider>().assets.first,
+      );
+      selectedAsset = asset.name;
+    }
   }
 
   @override
@@ -96,6 +137,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
 
   String _iconSubtitleText() {
     return switch (_selectedType) {
+      // todo: 반복/할부 기능 구현 필요
       TransactionType.income => '반복',
       TransactionType.expense => '반복/할부',
       TransactionType.transfer => '반복',
@@ -307,21 +349,52 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                     assetId = asset?.id;
                                   }
                                   try {
-                                    // 새로운 거래내역 추가
-                                    await provider.addTransaction(
-                                      TransactionsCompanion(
-                                        date: drift.Value(selectedDate),
-                                        amount: drift.Value(amount),
-                                        type: drift.Value(_selectedType),
-                                        categoryId: categoryId == null ? const drift.Value.absent() : drift.Value(categoryId),
-                                        assetId: assetId == null ? const drift.Value.absent() : drift.Value(assetId),
-                                        title: drift.Value(title),
-                                        memo: memo == null ? const drift.Value.absent() : drift.Value(memo),
-                                        createdAt: drift.Value(DateTime.now()),
-                                        updatedAt: drift.Value(DateTime.now()),
-                                      ),
-                                    );
-                                    Navigator.pop(context, true);
+                                    if (widget.transactionId != null) {
+                                      // 변경 사항이 있는지 확인
+                                      final hasChanges = 
+                                          widget.initialDate != selectedDate ||
+                                          widget.initialAmount != amount ||
+                                          widget.initialType != _selectedType ||
+                                          widget.initialCategoryId != categoryId ||
+                                          widget.initialAssetId != assetId ||
+                                          widget.initialTitle != title ||
+                                          widget.initialMemo != memo;
+
+                                      if (hasChanges) {
+                                        await provider.updateTransaction(
+                                          widget.transactionId!,
+                                          TransactionsCompanion(
+                                            date: drift.Value(selectedDate),
+                                            amount: drift.Value(amount),
+                                            type: drift.Value(_selectedType),
+                                            categoryId: categoryId == null ? const drift.Value.absent() : drift.Value(categoryId),
+                                            assetId: assetId == null ? const drift.Value.absent() : drift.Value(assetId),
+                                            title: drift.Value(title),
+                                            memo: memo == null ? const drift.Value.absent() : drift.Value(memo),
+                                            updatedAt: drift.Value(DateTime.now()),
+                                          ),
+                                        );
+                                        Navigator.pop(context, true);
+                                      } else {
+                                        Navigator.pop(context, false);
+                                      }
+                                    } else {
+                                      // 새로운 거래내역 추가
+                                      await provider.addTransaction(
+                                        TransactionsCompanion(
+                                          date: drift.Value(selectedDate),
+                                          amount: drift.Value(amount),
+                                          type: drift.Value(_selectedType),
+                                          categoryId: categoryId == null ? const drift.Value.absent() : drift.Value(categoryId),
+                                          assetId: assetId == null ? const drift.Value.absent() : drift.Value(assetId),
+                                          title: drift.Value(title),
+                                          memo: memo == null ? const drift.Value.absent() : drift.Value(memo),
+                                          createdAt: drift.Value(DateTime.now()),
+                                          updatedAt: drift.Value(DateTime.now()),
+                                        ),
+                                      );
+                                      Navigator.pop(context, true);
+                                    }
                                   } catch (e) {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text('저장에 실패했습니다. 다시 시도해 주세요.')),

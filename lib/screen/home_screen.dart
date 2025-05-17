@@ -11,7 +11,7 @@ import 'package:wonmore_money_book/screen/todo_list_screen.dart';
 import 'package:wonmore_money_book/widget/calendar_widget.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/custom_bottom_sheet.dart';
-import 'package:wonmore_money_book/widget/custom_drawer.dart';
+import 'package:wonmore_money_book/widget/common_drawer.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -94,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      drawer: CustomDrawer(),
+      drawer: CommonDrawer(),
       body: Builder(
         builder: (context) {
           switch (tab) {
@@ -223,7 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                       backgroundColor: Color(0xFFA79BFF),
-                      shape: const CircleBorder(),
                       child: Icon(
                         Icons.add,
                         color: Colors.white,

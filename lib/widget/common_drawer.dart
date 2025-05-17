@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-class CustomDrawer extends StatefulWidget {
-  const CustomDrawer({super.key});
+class CommonDrawer extends StatefulWidget {
+  const CommonDrawer({super.key});
 
   @override
-  State<CustomDrawer> createState() => _CustomDrawerState();
+  State<CommonDrawer> createState() => _CommonDrawerState();
 }
 
-class _CustomDrawerState extends State<CustomDrawer> {
+class _CommonDrawerState extends State<CommonDrawer> {
   @override
   Widget build(BuildContext context) {
     return Drawer(

@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/screen/home_screen.dart';
 import 'package:wonmore_money_book/screen/assets_screen.dart';
 import 'package:wonmore_money_book/screen/analysis_screen.dart';
@@ -27,6 +28,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => MoneyProvider(database)),
         ChangeNotifierProvider(create: (_) => HomeScreenTabProvider()),
+        ChangeNotifierProvider(create: (_) => TodoProvider(database)),
       ],
       child: const MyApp(),
     ),

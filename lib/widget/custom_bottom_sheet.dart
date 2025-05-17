@@ -384,6 +384,29 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                         fontSize: 14,
                       ),
                     ),
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => RecordInputDialog(
+                          initialDate: tx.date,
+                          categories: provider.categories,
+                          assetList: provider.assets.map((a) => a.name).toList(),
+                          initialTitle: tx.title,
+                          initialAmount: tx.amount,
+                          initialType: tx.type,
+                          initialCategoryId: tx.categoryId,
+                          initialAssetId: tx.assetId,
+                          initialMemo: tx.memo,
+                          transactionId: tx.id,
+                        ),
+                      ).then((result) {
+                        if (result == true) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('수정되었습니다!')),
+                          );
+                        }
+                      });
+                    },
                     onLongPress: () async {
                       final result = await showDialog<bool>(
                         context: context,

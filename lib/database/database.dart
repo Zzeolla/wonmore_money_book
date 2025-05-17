@@ -7,15 +7,16 @@ import 'package:wonmore_money_book/model/asset.dart';
 import 'package:wonmore_money_book/model/category.dart';
 import 'package:wonmore_money_book/model/transaction.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
+import 'package:wonmore_money_book/model/todo.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Categories, Assets, Transactions])
+@DriftDatabase(tables: [Categories, Assets, Transactions, Todos])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
@@ -25,6 +26,12 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
         // 기본 카테고리 데이터 삽입
         await _insertDefaultCategories();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 3) {
+          // Todos 테이블 추가
+          await m.createTable(todos);
+        }
       },
     );
   }

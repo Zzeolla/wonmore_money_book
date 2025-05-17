@@ -127,29 +127,17 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   // 거래 내역 수정
-  Future<void> updateTransaction(Transaction transaction) async {
-    final oldTransaction = await (_database.select(_database.transactions)
-      ..where((t) => t.id.equals(transaction.id)))
-      .getSingleOrNull();
-    if (oldTransaction != null) {
-      await (_database.update(_database.transactions)
-        ..where((t) => t.id.equals(transaction.id)))
-        .write(TransactionsCompanion(
-          date: Value(transaction.date),
-          amount: Value(transaction.amount),
-          type: Value(transaction.type),
-          categoryId: Value(transaction.categoryId),
-          assetId: Value(transaction.assetId),
-          title: Value(transaction.title),
-          memo: Value(transaction.memo),
-          updatedAt: Value(DateTime.now()),
-          updatedBy: Value(_currentUserId),
-        ));
-      // 월이 바뀌었을 수도 있으니 다시 로드
-      await loadTransactionsForMonth(_selectedMonth);
-      await _loadMonthlySummary();
-      notifyListeners();
-    }
+  Future<void> updateTransaction(int id, TransactionsCompanion transaction) async {
+    await (_database.update(_database.transactions)
+      ..where((t) => t.id.equals(id)))
+      .write(transaction.copyWith(
+        updatedAt: Value(DateTime.now()),
+        updatedBy: Value(_currentUserId),
+      ));
+    // 월이 바뀌었을 수도 있으니 다시 로드
+    await loadTransactionsForMonth(_selectedMonth);
+    await _loadMonthlySummary();
+    notifyListeners();
   }
 
   Future<void> deleteTransaction(int id) async {

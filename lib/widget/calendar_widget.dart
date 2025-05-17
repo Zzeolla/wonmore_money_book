@@ -115,15 +115,21 @@ class _CalendarWidgetState extends State<CalendarWidget> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('${day.day}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+          Text('${day.day}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 12)),
           SizedBox(height: 2),
           Text(
             income > 0 ? '+${_formatAmount(income)}' : '',
-            style: TextStyle(color: Colors.blue, fontSize: 10),
+            style: TextStyle(color: Colors.blue, fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
           ),
           Text(
             expense > 0 ? '-${_formatAmount(expense)}' : '',
-            style: TextStyle(color: Colors.red, fontSize: 10),
+            style: TextStyle(color: Colors.red, fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
           ),
         ],
       ),
@@ -132,7 +138,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
 
   String _formatAmount(int amount) {
     if (amount == 0) return '';
-    if (amount.abs() >= 10000000) {
+    if (amount.abs() >= 1000000) {
       double m = amount / 1000000;
       // 소수점 첫째자리까지 표기(예: 12.5M), 정수면 12M
       return m % 1 == 0 ? '${m.toInt()}M' : '${m.toStringAsFixed(1)}M';

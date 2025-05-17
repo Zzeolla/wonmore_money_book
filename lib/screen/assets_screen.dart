@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:wonmore_money_book/widget/common_app_bar.dart';
+import 'package:wonmore_money_book/widget/common_drawer.dart';
 
 class AssetsScreen extends StatelessWidget {
   const AssetsScreen({super.key});
@@ -6,11 +8,10 @@ class AssetsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('자산 관리'),
-        centerTitle: true,
-      ),
+      appBar: CommonAppBar(),
+      drawer: CommonDrawer(),
       body: ListView(
+        // todo: 자산 관리 항목 만들기
         padding: const EdgeInsets.all(16),
         children: [
           _buildAssetCard(
