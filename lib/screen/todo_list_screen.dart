@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/todo_input_dialog.dart';
@@ -94,7 +95,6 @@ class TodoListScreen extends StatelessWidget {
                   child: const Icon(Icons.check, color: Colors.white),
                 ),
                 child: Card(
-                  // todo: 카드 선택 시 todo_input_dialog 파일 띄워주기
                   margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   color: Colors.white,
                   shape: RoundedRectangleBorder(
@@ -150,14 +150,7 @@ class TodoListScreen extends StatelessWidget {
             },
           ),
         ),
-        bottomNavigationBar: Container(
-          height: 50,
-          width: double.infinity,
-          color: Colors.grey.shade300,
-          child: const Center(
-            child: Text('광고 자리', style: TextStyle(color: Colors.black54)),
-          ),
-        ),
+        bottomNavigationBar: BannerAdWidget(),
         floatingActionButton: FloatingActionButton(
           onPressed: () => showDialog(
             context: context,

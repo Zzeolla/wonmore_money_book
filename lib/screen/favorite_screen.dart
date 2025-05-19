@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-class FavoriteScreen extends StatefulWidget {
+class FavoriteScreen extends StatelessWidget {
   final VoidCallback onClose;
 
   const FavoriteScreen({
@@ -9,17 +9,18 @@ class FavoriteScreen extends StatefulWidget {
   });
 
   @override
-  State<FavoriteScreen> createState() => _FavoriteScreenState();
-}
-
-class _FavoriteScreenState extends State<FavoriteScreen> {
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Text("즐겨찾기"),
-        ElevatedButton(onPressed: widget.onClose, child: Text("닫기")),
-      ],
+    return WillPopScope(
+      onWillPop: () {
+        onClose();
+        return Future.value(false);
+      },
+      child: Column(
+        children: [
+          Text("즐겨찾기"),
+          ElevatedButton(onPressed: onClose, child: Text("닫기")),
+        ],
+      ),
     );
   }
 }

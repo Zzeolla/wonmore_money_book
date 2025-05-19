@@ -13,10 +13,14 @@ import 'package:wonmore_money_book/screen/analysis_screen.dart';
 import 'package:wonmore_money_book/screen/main_screen.dart';
 import 'package:wonmore_money_book/screen/more_screen.dart';
 import 'package:wonmore_money_book/screen/splash_screen.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
+  // 광고 기능 초기화
+  await MobileAds.instance.initialize();
+
   // 날짜 포맷 초기화
   await initializeDateFormatting('ko_KR', null);
   

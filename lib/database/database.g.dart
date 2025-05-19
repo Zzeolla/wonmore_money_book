@@ -28,16 +28,14 @@ class $CategoriesTable extends Categories
       GeneratedColumn<String>('type', aliasedName, false,
               type: DriftSqlType.string, requiredDuringInsert: true)
           .withConverter<TransactionType>($CategoriesTable.$convertertype);
-  static const VerificationMeta _isDefaultMeta =
-      const VerificationMeta('isDefault');
+  static const VerificationMeta _sortOrderMeta =
+      const VerificationMeta('sortOrder');
   @override
-  late final GeneratedColumn<bool> isDefault = GeneratedColumn<bool>(
-      'is_default', aliasedName, false,
-      type: DriftSqlType.bool,
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+      'sort_order', aliasedName, false,
+      type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('CHECK ("is_default" IN (0, 1))'),
-      defaultValue: const Constant(false));
+      defaultValue: const Constant(0));
   static const VerificationMeta _iconNameMeta =
       const VerificationMeta('iconName');
   @override
@@ -92,7 +90,7 @@ class $CategoriesTable extends Categories
         id,
         name,
         type,
-        isDefault,
+        sortOrder,
         iconName,
         colorValue,
         createdAt,
@@ -120,9 +118,9 @@ class $CategoriesTable extends Categories
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('is_default')) {
-      context.handle(_isDefaultMeta,
-          isDefault.isAcceptableOrUnknown(data['is_default']!, _isDefaultMeta));
+    if (data.containsKey('sort_order')) {
+      context.handle(_sortOrderMeta,
+          sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta));
     }
     if (data.containsKey('icon_name')) {
       context.handle(_iconNameMeta,
@@ -169,8 +167,8 @@ class $CategoriesTable extends Categories
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       type: $CategoriesTable.$convertertype.fromSql(attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!),
-      isDefault: attachedDatabase.typeMapping
-          .read(DriftSqlType.bool, data['${effectivePrefix}is_default'])!,
+      sortOrder: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sort_order'])!,
       iconName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}icon_name'])!,
       colorValue: attachedDatabase.typeMapping
@@ -201,7 +199,7 @@ class Category extends DataClass implements Insertable<Category> {
   final int id;
   final String name;
   final TransactionType type;
-  final bool isDefault;
+  final int sortOrder;
   final String iconName;
   final int colorValue;
   final DateTime createdAt;
@@ -213,7 +211,7 @@ class Category extends DataClass implements Insertable<Category> {
       {required this.id,
       required this.name,
       required this.type,
-      required this.isDefault,
+      required this.sortOrder,
       required this.iconName,
       required this.colorValue,
       required this.createdAt,
@@ -230,7 +228,7 @@ class Category extends DataClass implements Insertable<Category> {
       map['type'] =
           Variable<String>($CategoriesTable.$convertertype.toSql(type));
     }
-    map['is_default'] = Variable<bool>(isDefault);
+    map['sort_order'] = Variable<int>(sortOrder);
     map['icon_name'] = Variable<String>(iconName);
     map['color_value'] = Variable<int>(colorValue);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -252,7 +250,7 @@ class Category extends DataClass implements Insertable<Category> {
       id: Value(id),
       name: Value(name),
       type: Value(type),
-      isDefault: Value(isDefault),
+      sortOrder: Value(sortOrder),
       iconName: Value(iconName),
       colorValue: Value(colorValue),
       createdAt: Value(createdAt),
@@ -276,7 +274,7 @@ class Category extends DataClass implements Insertable<Category> {
       name: serializer.fromJson<String>(json['name']),
       type: $CategoriesTable.$convertertype
           .fromJson(serializer.fromJson<String>(json['type'])),
-      isDefault: serializer.fromJson<bool>(json['isDefault']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
       iconName: serializer.fromJson<String>(json['iconName']),
       colorValue: serializer.fromJson<int>(json['colorValue']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -294,7 +292,7 @@ class Category extends DataClass implements Insertable<Category> {
       'name': serializer.toJson<String>(name),
       'type': serializer
           .toJson<String>($CategoriesTable.$convertertype.toJson(type)),
-      'isDefault': serializer.toJson<bool>(isDefault),
+      'sortOrder': serializer.toJson<int>(sortOrder),
       'iconName': serializer.toJson<String>(iconName),
       'colorValue': serializer.toJson<int>(colorValue),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -309,7 +307,7 @@ class Category extends DataClass implements Insertable<Category> {
           {int? id,
           String? name,
           TransactionType? type,
-          bool? isDefault,
+          int? sortOrder,
           String? iconName,
           int? colorValue,
           DateTime? createdAt,
@@ -321,7 +319,7 @@ class Category extends DataClass implements Insertable<Category> {
         id: id ?? this.id,
         name: name ?? this.name,
         type: type ?? this.type,
-        isDefault: isDefault ?? this.isDefault,
+        sortOrder: sortOrder ?? this.sortOrder,
         iconName: iconName ?? this.iconName,
         colorValue: colorValue ?? this.colorValue,
         createdAt: createdAt ?? this.createdAt,
@@ -335,7 +333,7 @@ class Category extends DataClass implements Insertable<Category> {
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
-      isDefault: data.isDefault.present ? data.isDefault.value : this.isDefault,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       iconName: data.iconName.present ? data.iconName.value : this.iconName,
       colorValue:
           data.colorValue.present ? data.colorValue.value : this.colorValue,
@@ -353,7 +351,7 @@ class Category extends DataClass implements Insertable<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('isDefault: $isDefault, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('iconName: $iconName, ')
           ..write('colorValue: $colorValue, ')
           ..write('createdAt: $createdAt, ')
@@ -366,7 +364,7 @@ class Category extends DataClass implements Insertable<Category> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, type, isDefault, iconName,
+  int get hashCode => Object.hash(id, name, type, sortOrder, iconName,
       colorValue, createdAt, updatedAt, userId, createdBy, updatedBy);
   @override
   bool operator ==(Object other) =>
@@ -375,7 +373,7 @@ class Category extends DataClass implements Insertable<Category> {
           other.id == this.id &&
           other.name == this.name &&
           other.type == this.type &&
-          other.isDefault == this.isDefault &&
+          other.sortOrder == this.sortOrder &&
           other.iconName == this.iconName &&
           other.colorValue == this.colorValue &&
           other.createdAt == this.createdAt &&
@@ -389,7 +387,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<int> id;
   final Value<String> name;
   final Value<TransactionType> type;
-  final Value<bool> isDefault;
+  final Value<int> sortOrder;
   final Value<String> iconName;
   final Value<int> colorValue;
   final Value<DateTime> createdAt;
@@ -401,7 +399,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
-    this.isDefault = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.iconName = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -414,7 +412,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.id = const Value.absent(),
     required String name,
     required TransactionType type,
-    this.isDefault = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.iconName = const Value.absent(),
     this.colorValue = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -428,7 +426,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<int>? id,
     Expression<String>? name,
     Expression<String>? type,
-    Expression<bool>? isDefault,
+    Expression<int>? sortOrder,
     Expression<String>? iconName,
     Expression<int>? colorValue,
     Expression<DateTime>? createdAt,
@@ -441,7 +439,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
-      if (isDefault != null) 'is_default': isDefault,
+      if (sortOrder != null) 'sort_order': sortOrder,
       if (iconName != null) 'icon_name': iconName,
       if (colorValue != null) 'color_value': colorValue,
       if (createdAt != null) 'created_at': createdAt,
@@ -456,7 +454,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       {Value<int>? id,
       Value<String>? name,
       Value<TransactionType>? type,
-      Value<bool>? isDefault,
+      Value<int>? sortOrder,
       Value<String>? iconName,
       Value<int>? colorValue,
       Value<DateTime>? createdAt,
@@ -468,7 +466,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
-      isDefault: isDefault ?? this.isDefault,
+      sortOrder: sortOrder ?? this.sortOrder,
       iconName: iconName ?? this.iconName,
       colorValue: colorValue ?? this.colorValue,
       createdAt: createdAt ?? this.createdAt,
@@ -492,8 +490,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       map['type'] =
           Variable<String>($CategoriesTable.$convertertype.toSql(type.value));
     }
-    if (isDefault.present) {
-      map['is_default'] = Variable<bool>(isDefault.value);
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
     }
     if (iconName.present) {
       map['icon_name'] = Variable<String>(iconName.value);
@@ -525,7 +523,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
-          ..write('isDefault: $isDefault, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('iconName: $iconName, ')
           ..write('colorValue: $colorValue, ')
           ..write('createdAt: $createdAt, ')
@@ -2036,7 +2034,7 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
   required String name,
   required TransactionType type,
-  Value<bool> isDefault,
+  Value<int> sortOrder,
   Value<String> iconName,
   Value<int> colorValue,
   Value<DateTime> createdAt,
@@ -2049,7 +2047,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<int> id,
   Value<String> name,
   Value<TransactionType> type,
-  Value<bool> isDefault,
+  Value<int> sortOrder,
   Value<String> iconName,
   Value<int> colorValue,
   Value<DateTime> createdAt,
@@ -2099,8 +2097,8 @@ class $$CategoriesTableFilterComposer
           column: $table.type,
           builder: (column) => ColumnWithTypeConverterFilters(column));
 
-  ColumnFilters<bool> get isDefault => $composableBuilder(
-      column: $table.isDefault, builder: (column) => ColumnFilters(column));
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+      column: $table.sortOrder, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get iconName => $composableBuilder(
       column: $table.iconName, builder: (column) => ColumnFilters(column));
@@ -2163,8 +2161,8 @@ class $$CategoriesTableOrderingComposer
   ColumnOrderings<String> get type => $composableBuilder(
       column: $table.type, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<bool> get isDefault => $composableBuilder(
-      column: $table.isDefault, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+      column: $table.sortOrder, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get iconName => $composableBuilder(
       column: $table.iconName, builder: (column) => ColumnOrderings(column));
@@ -2206,8 +2204,8 @@ class $$CategoriesTableAnnotationComposer
   GeneratedColumnWithTypeConverter<TransactionType, String> get type =>
       $composableBuilder(column: $table.type, builder: (column) => column);
 
-  GeneratedColumn<bool> get isDefault =>
-      $composableBuilder(column: $table.isDefault, builder: (column) => column);
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
 
   GeneratedColumn<String> get iconName =>
       $composableBuilder(column: $table.iconName, builder: (column) => column);
@@ -2278,7 +2276,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<TransactionType> type = const Value.absent(),
-            Value<bool> isDefault = const Value.absent(),
+            Value<int> sortOrder = const Value.absent(),
             Value<String> iconName = const Value.absent(),
             Value<int> colorValue = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -2291,7 +2289,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             id: id,
             name: name,
             type: type,
-            isDefault: isDefault,
+            sortOrder: sortOrder,
             iconName: iconName,
             colorValue: colorValue,
             createdAt: createdAt,
@@ -2304,7 +2302,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<int> id = const Value.absent(),
             required String name,
             required TransactionType type,
-            Value<bool> isDefault = const Value.absent(),
+            Value<int> sortOrder = const Value.absent(),
             Value<String> iconName = const Value.absent(),
             Value<int> colorValue = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
@@ -2317,7 +2315,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             id: id,
             name: name,
             type: type,
-            isDefault: isDefault,
+            sortOrder: sortOrder,
             iconName: iconName,
             colorValue: colorValue,
             createdAt: createdAt,

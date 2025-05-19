@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
+  final bool isMainScreen;
 
   const CommonAppBar({
     super.key,
+    this.isMainScreen = true,
     this.actions,
   });
 
@@ -14,13 +16,17 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: const Color(0xFFA79BFF),
       scrolledUnderElevation: 3,
       elevation: 1,
-      leading: Builder(
+      leading: isMainScreen ? Builder(
         builder: (context) {
           return IconButton(
             onPressed: () => Scaffold.of(context).openDrawer(),
             icon: const Icon(Icons.menu, color: Color(0xFFF2F4F6), size: 36),
           );
         },
+      ) : IconButton(
+        icon: Icon(Icons.arrow_back, size: 36),
+        onPressed: () => Navigator.of(context).maybePop(),
+        color: Colors.white,
       ),
       title: const Text(
         '원모아 가계부',

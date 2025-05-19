@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/screen/category_management_screen.dart';
 import 'package:wonmore_money_book/util/custom_datetime_picker.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:wonmore_money_book/widget/custom_circle_button.dart';
+import 'package:wonmore_money_book/widget/transaction_type_button.dart';
 
 class RecordInputDialog extends StatefulWidget {
   final DateTime initialDate;
@@ -167,56 +169,56 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
             constraints: BoxConstraints(
               maxHeight: dialogHeight,
             ),
-            child: SingleChildScrollView(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // 제목 + 아이콘 영역
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFF1F1FD),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4.0),
-                            child: Text(title,
-                                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(right: 4.0),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.repeat, size: 28, color: Colors.black54),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _iconSubtitleText(),
-                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // 제목 + 아이콘 영역
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F1FD),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
                       ),
                     ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4.0),
+                          child: Text(title,
+                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.repeat, size: 28, color: Colors.black54),
+                              const SizedBox(height: 2),
+                              Text(
+                                _iconSubtitleText(),
+                                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                    const Divider(height: 1, thickness: 1, color: Color(0xFFDADCE0)),
+                  const Divider(height: 1, thickness: 1, color: Color(0xFFDADCE0)),
 
-                    Padding(
+                  Flexible(
+                    child: SingleChildScrollView(
                       padding: EdgeInsets.only(
                         left: 20,
                         right: 20,
@@ -224,16 +226,46 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                         bottom: 20 + keyboardHeight, // 키보드 높이만큼 하단 패딩 추가
                       ),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const SizedBox(height: 12),
                           Row(
                             children: [
-                              _buildTypeButton('수입', TransactionType.income),
+                              TransactionTypeButton(
+                                label: '수입',
+                                type: TransactionType.income,
+                                selectedType: _selectedType,
+                                onSelected: (type) {
+                                  setState(() {
+                                    _selectedType = type;
+                                    selectedCategory = null;
+                                  });
+                                },
+                              ),
                               const SizedBox(width: 8),
-                              _buildTypeButton('지출', TransactionType.expense),
+                              TransactionTypeButton(
+                                label: '지출',
+                                type: TransactionType.expense,
+                                selectedType: _selectedType,
+                                onSelected: (type) {
+                                  setState(() {
+                                    _selectedType = type;
+                                    selectedCategory = null;
+                                  });
+                                },
+                              ),
                               const SizedBox(width: 8),
-                              _buildTypeButton('이체', TransactionType.transfer, enabled: false),
+                              TransactionTypeButton(
+                                label: '이체',
+                                type: TransactionType.transfer,
+                                selectedType: _selectedType,
+                                onSelected: (type) {
+                                  setState(() {
+                                    _selectedType = type;
+                                    selectedCategory = null;
+                                  });
+                                },
+                                enabled: false,
+                              ),
                             ],
                           ),
                           const SizedBox(height: 32),
@@ -256,66 +288,108 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                 onSubmitted: (_) => FocusScope.of(context).unfocus(),
                               )),
                           _buildFieldRow(
-                              '분류',
-                              _buildDropdown(
-                                value: selectedCategory?.name,
-                                items: [
-                                  DropdownMenuItem<String>(
-                                    value: null,
+                            '분류',
+                            _buildDropdown(
+                              value: selectedCategory?.name,
+                              items: [
+                                DropdownMenuItem<String>(
+                                  value: null,
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: Colors.grey.shade300,
+                                        child:
+                                            Icon(Icons.help_outline, color: Colors.white, size: 16),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text('선택하세요', style: TextStyle(color: Colors.grey)),
+                                    ],
+                                  ),
+                                ),
+                                ..._filteredCategories.map(
+                                  (c) => DropdownMenuItem(
+                                    value: c.name,
                                     child: Row(
                                       children: [
                                         CircleAvatar(
                                           radius: 12,
-                                          backgroundColor: Colors.grey.shade300,
-                                          child: Icon(Icons.help_outline,
+                                          backgroundColor: Color(c.colorValue),
+                                          child: Icon(getIconData(c.iconName),
                                               color: Colors.white, size: 16),
                                         ),
                                         const SizedBox(width: 8),
-                                        Text('선택하세요', style: TextStyle(color: Colors.grey)),
+                                        Text(c.name, style: TextStyle(fontWeight: FontWeight.w500)),
                                       ],
                                     ),
                                   ),
-                                  ..._filteredCategories.map((c) => DropdownMenuItem(
-                                        value: c.name,
-                                        child: Row(
-                                          children: [
-                                            CircleAvatar(
-                                              radius: 12,
-                                              backgroundColor: Color(c.colorValue),
-                                              child: Icon(getIconData(c.iconName),
-                                                  color: Colors.white, size: 16),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            Text(c.name,
-                                                style: TextStyle(fontWeight: FontWeight.w500)),
-                                          ],
-                                        ),
-                                      )),
-                                ],
-                                onChanged: (value) {
-                                  setState(() {
-                                    selectedCategory = value == null
-                                        ? null
-                                        : _filteredCategories.firstWhere((c) => c.name == value);
-                                  });
-                                },
-                              )),
-                          _buildFieldRow(
-                              '자산',
-                              _buildDropdown(
-                                value: selectedAsset,
-                                items: [
-                                  DropdownMenuItem<String>(
-                                    value: null,
-                                    child: Text('선택하세요', style: TextStyle(color: Colors.grey)),
+                                ),
+                                DropdownMenuItem<String>(
+                                  value: '---divider---', // 이건 구분용으로 사용
+                                  enabled: false,
+                                  child: Column(
+                                    children: [
+                                      const Divider(height: 1, thickness: 1),
+                                    ],
                                   ),
-                                  ...widget.assetList.map((a) => DropdownMenuItem(
-                                        value: a,
-                                        child: Text(a),
-                                      )),
-                                ],
-                                onChanged: (value) => setState(() => selectedAsset = value),
-                              )),
+                                ),
+                                const DropdownMenuItem<String>(
+                                  value: '__edit__',
+                                  child: Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: Colors.black,
+                                        child: Icon(Icons.edit, color: Colors.white, size: 16),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text('분류 수정', style: TextStyle(fontWeight: FontWeight.w500)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) {
+                                if (value == '__edit__') {
+                                  // 분류 수정 화면으로 이동
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                        builder: (_) => CategoryManagementScreen(
+                                              selectedType: _selectedType,
+                                            )),
+                                  );
+                                  setState(() => selectedCategory = null);
+                                } else {
+                                  setState(
+                                    () {
+                                      selectedCategory = value == null
+                                          ? null
+                                          : _filteredCategories.firstWhere((c) => c.name == value);
+                                    },
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                          _buildFieldRow(
+                            '자산',
+                            _buildDropdown(
+                              value: selectedAsset,
+                              items: [
+                                DropdownMenuItem<String>(
+                                  value: null,
+                                  child: Text('선택하세요', style: TextStyle(color: Colors.grey)),
+                                ),
+                                ...widget.assetList.map(
+                                  (a) => DropdownMenuItem(
+                                    value: a,
+                                    child: Text(a),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) => setState(() => selectedAsset = value),
+                            ),
+                          ),
                           _buildFieldRow(
                               '메모',
                               _buildTextBox(
@@ -325,158 +399,133 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                 textInputAction: TextInputAction.done,
                                 onSubmitted: (_) => FocusScope.of(context).unfocus(),
                               )),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              CustomCircleButton(
-                                icon: Icons.star_border_purple500,
-                                color: Colors.white,
-                                backgroundColor: const Color(0xFFA79BFF),
-                                onTap: () {},
-                              ),
-                              CustomCircleButton(
-                                icon: Icons.delete_outline,
-                                color: Colors.white,
-                                backgroundColor: const Color(0xFFA79BFF),
-                                onTap: () {},
-                              ),
-                              CustomCircleButton(
-                                icon: Icons.check,
-                                color: Colors.white,
-                                backgroundColor: const Color(0xFFA79BFF),
-                                onTap: () async {
-                                  // 입력값 검증 (금액, 내역 필수)
-                                  if (amountController.text.trim().isEmpty ||
-                                      contentController.text.trim().isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('금액과 내역을 입력해 주세요.')),
-                                    );
-                                    return;
-                                  }
-                                  final amount =
-                                      int.tryParse(amountController.text.replaceAll(',', '')) ?? 0;
-                                  final title = contentController.text.trim();
-                                  final memo = memoController.text.trim().isEmpty
-                                      ? null
-                                      : memoController.text.trim();
-                                  final categoryId = selectedCategory?.id;
-                                  final assetName = selectedAsset;
-                                  final provider = context.read<MoneyProvider>();
-                                  int? assetId;
-                                  if (assetName != null) {
-                                    Asset? asset;
-                                    try {
-                                      asset =
-                                          provider.assets.firstWhere((a) => a.name == assetName);
-                                    } catch (_) {
-                                      asset = null;
-                                    }
-                                    assetId = asset?.id;
-                                  }
-                                  try {
-                                    if (widget.transactionId != null) {
-                                      // 변경 사항이 있는지 확인
-                                      final hasChanges = widget.initialDate != selectedDate ||
-                                          widget.initialAmount != amount ||
-                                          widget.initialType != _selectedType ||
-                                          widget.initialCategoryId != categoryId ||
-                                          widget.initialAssetId != assetId ||
-                                          widget.initialTitle != title ||
-                                          widget.initialMemo != memo;
-
-                                      if (hasChanges) {
-                                        await provider.updateTransaction(
-                                          widget.transactionId!,
-                                          TransactionsCompanion(
-                                            date: drift.Value(selectedDate),
-                                            amount: drift.Value(amount),
-                                            type: drift.Value(_selectedType),
-                                            categoryId: categoryId == null
-                                                ? const drift.Value.absent()
-                                                : drift.Value(categoryId),
-                                            assetId: assetId == null
-                                                ? const drift.Value.absent()
-                                                : drift.Value(assetId),
-                                            title: drift.Value(title),
-                                            memo: memo == null
-                                                ? const drift.Value.absent()
-                                                : drift.Value(memo),
-                                            updatedAt: drift.Value(DateTime.now()),
-                                          ),
-                                        );
-                                        Navigator.pop(context, true);
-                                      } else {
-                                        Navigator.pop(context, false);
-                                      }
-                                    } else {
-                                      // 새로운 거래내역 추가
-                                      await provider.addTransaction(
-                                        TransactionsCompanion(
-                                          date: drift.Value(selectedDate),
-                                          amount: drift.Value(amount),
-                                          type: drift.Value(_selectedType),
-                                          categoryId: categoryId == null
-                                              ? const drift.Value.absent()
-                                              : drift.Value(categoryId),
-                                          assetId: assetId == null
-                                              ? const drift.Value.absent()
-                                              : drift.Value(assetId),
-                                          title: drift.Value(title),
-                                          memo: memo == null
-                                              ? const drift.Value.absent()
-                                              : drift.Value(memo),
-                                          createdAt: drift.Value(DateTime.now()),
-                                          updatedAt: drift.Value(DateTime.now()),
-                                        ),
-                                      );
-                                      Navigator.pop(context, true);
-                                    }
-                                  } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('저장에 실패했습니다. 다시 시도해 주세요.')),
-                                    );
-                                  }
-                                },
-                              ),
-                            ],
-                          )
+                          const SizedBox(height: 12),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        CustomCircleButton(
+                          icon: Icons.star_border_purple500,
+                          color: Colors.white,
+                          backgroundColor: const Color(0xFFA79BFF),
+                          onTap: () {},
+                        ),
+                        CustomCircleButton(
+                          icon: Icons.delete_outline,
+                          color: Colors.white,
+                          backgroundColor: const Color(0xFFA79BFF),
+                          onTap: () {},
+                        ),
+                        CustomCircleButton(
+                          icon: Icons.check,
+                          color: Colors.white,
+                          backgroundColor: const Color(0xFFA79BFF),
+                          onTap: () async {
+                            // 입력값 검증 (금액, 내역 필수)
+                            if (amountController.text.trim().isEmpty ||
+                                contentController.text.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('금액과 내역을 입력해 주세요.')),
+                              );
+                              return;
+                            }
+                            final amount =
+                                int.tryParse(amountController.text.replaceAll(',', '')) ?? 0;
+                            final title = contentController.text.trim();
+                            final memo = memoController.text.trim().isEmpty
+                                ? null
+                                : memoController.text.trim();
+                            final categoryId = selectedCategory?.id;
+                            final assetName = selectedAsset;
+                            final provider = context.read<MoneyProvider>();
+                            int? assetId;
+                            if (assetName != null) {
+                              Asset? asset;
+                              try {
+                                asset = provider.assets.firstWhere((a) => a.name == assetName);
+                              } catch (_) {
+                                asset = null;
+                              }
+                              assetId = asset?.id;
+                            }
+                            try {
+                              if (widget.transactionId != null) {
+                                // 변경 사항이 있는지 확인
+                                final hasChanges = widget.initialDate != selectedDate ||
+                                    widget.initialAmount != amount ||
+                                    widget.initialType != _selectedType ||
+                                    widget.initialCategoryId != categoryId ||
+                                    widget.initialAssetId != assetId ||
+                                    widget.initialTitle != title ||
+                                    widget.initialMemo != memo;
+
+                                if (hasChanges) {
+                                  await provider.updateTransaction(
+                                    widget.transactionId!,
+                                    TransactionsCompanion(
+                                      date: drift.Value(selectedDate),
+                                      amount: drift.Value(amount),
+                                      type: drift.Value(_selectedType),
+                                      categoryId: categoryId == null
+                                          ? const drift.Value.absent()
+                                          : drift.Value(categoryId),
+                                      assetId: assetId == null
+                                          ? const drift.Value.absent()
+                                          : drift.Value(assetId),
+                                      title: drift.Value(title),
+                                      memo: memo == null
+                                          ? const drift.Value.absent()
+                                          : drift.Value(memo),
+                                      updatedAt: drift.Value(DateTime.now()),
+                                    ),
+                                  );
+                                  Navigator.pop(context, true);
+                                } else {
+                                  Navigator.pop(context, false);
+                                }
+                              } else {
+                                // 새로운 거래내역 추가
+                                await provider.addTransaction(
+                                  TransactionsCompanion(
+                                    date: drift.Value(selectedDate),
+                                    amount: drift.Value(amount),
+                                    type: drift.Value(_selectedType),
+                                    categoryId: categoryId == null
+                                        ? const drift.Value.absent()
+                                        : drift.Value(categoryId),
+                                    assetId: assetId == null
+                                        ? const drift.Value.absent()
+                                        : drift.Value(assetId),
+                                    title: drift.Value(title),
+                                    memo: memo == null
+                                        ? const drift.Value.absent()
+                                        : drift.Value(memo),
+                                    createdAt: drift.Value(DateTime.now()),
+                                    updatedAt: drift.Value(DateTime.now()),
+                                  ),
+                                );
+                                Navigator.pop(context, true);
+                              }
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('저장에 실패했습니다. 다시 시도해 주세요.')),
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  )
+                ],
               ),
             ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildTypeButton(String label, TransactionType type, {bool enabled = true}) {
-    final isSelected = _selectedType == type;
-    return Expanded(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4),
-        child: ElevatedButton(
-          onPressed: enabled
-              ? () {
-                  setState(() {
-                    selectedCategory = null; // 거래 유형 변경 시 카테고리 초기화
-                    _selectedType = type;
-                  });
-                }
-              : null,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isSelected ? Colors.amber : Colors.grey.shade300,
-            foregroundColor: Colors.black,
-            minimumSize: const Size.fromHeight(52),
-            textStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: Text(label),
-        ),
       ),
     );
   }

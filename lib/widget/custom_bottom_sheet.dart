@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
@@ -22,181 +23,6 @@ class CustomBottomSheet extends StatefulWidget {
 }
 
 class _CustomBottomSheetState extends State<CustomBottomSheet> {
-  // 더미 카테고리 데이터
-  final List<Category> dummyCategories = [
-    Category(
-      id: 1,
-      name: '식비',
-      type: TransactionType.expense,
-      isDefault: true,
-      iconName: 'restaurant',
-      colorValue: 0xFFFFC107,
-      // amber
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Category(
-      id: 2,
-      name: '쇼핑',
-      type: TransactionType.expense,
-      isDefault: true,
-      iconName: 'shopping_bag',
-      colorValue: 0xFFE91E63,
-      // pink
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Category(
-      id: 3,
-      name: '월급',
-      type: TransactionType.income,
-      isDefault: true,
-      iconName: 'attach_money',
-      colorValue: 0xFF4CAF50,
-      // green
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Category(
-      id: 4,
-      name: '문화생활',
-      type: TransactionType.expense,
-      isDefault: true,
-      iconName: 'movie',
-      colorValue: 0xFF9C27B0,
-      // purple
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-  ];
-
-  // 더미 자산 데이터
-  final List<Asset> dummyAssets = [
-    Asset(
-      id: 1,
-      name: '카카오뱅크',
-      balance: 1500000,
-      type: '현금',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Asset(
-      id: 2,
-      name: '토스뱅크',
-      balance: 2500000,
-      type: '현금',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Asset(
-      id: 3,
-      name: '신한은행',
-      balance: 5000000,
-      type: '현금',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-  ];
-
-  // 더미 거래 데이터
-  late final List<Transaction> dummyTransactions = [
-    Transaction(
-      id: 1,
-      date: DateTime.now().subtract(const Duration(hours: 2)),
-      amount: 12000,
-      type: TransactionType.expense,
-      categoryId: 1,
-      assetId: 1,
-      title: '점심 식사',
-      memo: '카카오뱅크',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Transaction(
-      id: 2,
-      date: DateTime.now().subtract(const Duration(hours: 5)),
-      amount: 35000,
-      type: TransactionType.expense,
-      categoryId: 2,
-      assetId: 2,
-      title: '티셔츠 구매',
-      memo: '토스뱅크',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Transaction(
-      id: 3,
-      date: DateTime.now().subtract(const Duration(hours: 6)),
-      amount: 3000000,
-      type: TransactionType.income,
-      categoryId: 3,
-      assetId: 3,
-      title: '월급',
-      memo: '신한은행',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Transaction(
-      id: 4,
-      date: DateTime.now().subtract(const Duration(hours: 8)),
-      amount: 3000000,
-      type: TransactionType.income,
-      categoryId: 3,
-      assetId: 3,
-      title: null,
-      memo: null,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-    Transaction(
-      id: 5,
-      date: DateTime.now().subtract(const Duration(hours: 6)),
-      amount: 3000000,
-      type: TransactionType.expense,
-      categoryId: 4,
-      assetId: 3,
-      title: '영화 관람',
-      memo: '신한은행',
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-      userId: null,
-      createdBy: null,
-      updatedBy: null,
-    ),
-  ];
 
   late DateTime _baseDay;
   late int _currentPageIndex;
@@ -224,7 +50,6 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
         tx.date.day == currentDate.day
     ).toList();
     txList.sort((a, b) => a.date.compareTo(b.date));
-
     // 선택된 날짜의 수입/지출 합계 계산
     final incomeSum = txList
         .where((tx) => tx.type == TransactionType.income)
@@ -442,17 +267,6 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
         },
       ),
     );
-
-    // 광고 영역
-    Widget adArea = Container(
-      height: 50,
-      width: double.infinity,
-      color: Colors.grey.shade300,
-      child: const Center(
-        child: Text('광고 자리', style: TextStyle(color: Colors.black54)),
-      ),
-    );
-
     // 플로팅 버튼
     Widget fab = Positioned(
       right: 16,
@@ -500,7 +314,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
               dateHeader,
               Divider(height: 1, thickness: 1, color: Colors.grey.shade400),
               recordList,
-              adArea,
+              BannerAdWidget(),
             ],
           ),
         ),

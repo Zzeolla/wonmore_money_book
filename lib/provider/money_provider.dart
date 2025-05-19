@@ -53,12 +53,15 @@ class MoneyProvider extends ChangeNotifier {
   // 월별 거래내역 로드
   Future<void> loadTransactionsForMonth(DateTime month) async {
     final startDate = DateTime(month.year, month.month, 1);
-    final endDate = DateTime(month.year, month.month + 1, 0);
+    final endDate = DateTime(month.year, month.month + 1, 1); // 다음 달 1일로 변경
+
     final query = _database.select(_database.transactions)
-      ..where((t) => t.date.isBetweenValues(startDate, endDate));
+      ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
+      t.date.isSmallerThanValue(endDate)); // isBetweenValues 대신 사용
     if (_currentUserId != null) {
       query.where((t) => t.userId.equals(_currentUserId!));
     }
+
     _currentMonthTransactions = await query.get();
     _updateDailySummaryMap();
     notifyListeners();
@@ -90,10 +93,11 @@ class MoneyProvider extends ChangeNotifier {
   // 월별 요약 데이터 로드
   Future<void> _loadMonthlySummary() async {
     final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-    final endDate = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
+    final endDate = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
 
     final query = _database.select(_database.transactions)
-      ..where((t) => t.date.isBetweenValues(startDate, endDate));
+      ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
+      t.date.isSmallerThanValue(endDate));
     
     if (_currentUserId != null) {
       query.where((t) => t.userId.equals(_currentUserId!));
@@ -119,12 +123,14 @@ class MoneyProvider extends ChangeNotifier {
       createdBy: Value(_currentUserId),
       updatedBy: Value(_currentUserId),
     );
-    await _database.into(_database.transactions).insert(transactionWithUser);
+    final id = await _database.into(_database.transactions).insert(transactionWithUser);
     // 거래 추가 후, 현재 월 거래내역을 DB에서 다시 불러오기!
     await loadTransactionsForMonth(_selectedMonth);
     await _loadMonthlySummary();
     notifyListeners();
   }
+
+
 
   // 거래 내역 수정
   Future<void> updateTransaction(int id, TransactionsCompanion transaction) async {
@@ -254,13 +260,13 @@ class MoneyProvider extends ChangeNotifier {
 
   // 전체 카테고리 로드
   Future<void> _loadAllCategories() async {
-    final query = _database.select(_database.categories);
+    final query = _database.select(_database.categories)
+    ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]);
     if (_currentUserId != null) {
       query.where((c) => c.userId.equals(_currentUserId!));
     }
     _categories = await query.get();
     notifyListeners();
-    print(categories.map((c) => '${c.name}: ${c.iconName}').toList());
   }
 
   // 카테고리 추가
@@ -296,6 +302,12 @@ class MoneyProvider extends ChangeNotifier {
       await _loadAllCategories(); // 카테고리 목록 새로고침
     }
     return result;
+  }
+
+  Future<void> reorderCategories(List<Category> reorderedList) async {
+    await _database.reorderCategories(reorderedList); // database.dart의 reorderCategories 사용
+    await _loadAllCategories(); // 변경된 순서 반영 후 전체 새로고침
+    notifyListeners();
   }
 
   // 특정 날짜의 거래 내역 조회

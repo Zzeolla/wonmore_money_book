@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/home_screen_tab.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
@@ -23,14 +24,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   // 상수 정의
   static const double kAppBarHeight = 56.0;
-  static const double kYearMonthBoxHeight = 56.0;
+  static const double kYearMonthBoxHeight = 48.0;
   static const double kSummaryBoxHeight = 80.0;
   static const double kDaysOfWeekHeight = 36.0;
   static const double kBottomNavBarHeight = 56.0;
-  static const double kMinAdHeight = 50.0;
+  static const double kMinAdHeight = 52.0;
 
   late double _rowHeight;
-  late double _realAdHeight;
 
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
@@ -65,22 +65,23 @@ class _HomeScreenState extends State<HomeScreen> {
     final remainingHeight = screenHeight - usedHeight;
 
     _rowHeight = ((remainingHeight - kMinAdHeight) / 7).floorToDouble();
-    _realAdHeight = remainingHeight - (_rowHeight * 7);
 
     final provider = context.watch<MoneyProvider>();
     final dailySummary = provider.dailySummaryMap;
     final tab = context.watch<HomeScreenTabProvider>().currentTab;
+    final isMainScreen = context.watch<HomeScreenTabProvider>().isMainScreen;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: CommonAppBar(
+        isMainScreen: isMainScreen,
         actions: [
-          IconButton(
-            icon: Icon(Icons.search, color: Color(0xFFF2F4F6), size: 36),
-            onPressed: () {
-              // TODO: 검색기능(구현할지 말지 고민해보자)
-            },
-          ),
+          // IconButton(
+          //   icon: Icon(Icons.search, color: Color(0xFFF2F4F6), size: 36),
+          //   onPressed: () {
+          //     // TODO: 검색기능(구현할지 말지 고민해보자)
+          //   },
+          // ),
           IconButton(
             icon: Icon(Icons.star_border_purple500, color: Color(0xFFF2F4F6), size: 36),
             onPressed: () =>
@@ -176,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             onDaySelected: (selectedDay, focusedDay) {
                               setState(() {
                                 _selectedDay = selectedDay;
-                                _focusedDay = focusedDay;
+                                _focusedDay = selectedDay;
                               });
                               _showBottomSheet(context, _selectedDay, _rowHeight);
                             },
@@ -190,18 +191,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                       ),
-                      SizedBox(
-                        height: _realAdHeight,
-                        child: Container(
-                          color: Colors.grey,
-                          child: Center(child: Text('광고 자리')),
-                        ),
-                      ),
+                      BannerAdWidget(),
                     ],
                   ),
                   Positioned(
                     right: 16,
-                    bottom: _realAdHeight + 16,
+                    bottom: kMinAdHeight + 16,
                     child: FloatingActionButton(
                       onPressed: () {
                         final provider = context.read<MoneyProvider>();
