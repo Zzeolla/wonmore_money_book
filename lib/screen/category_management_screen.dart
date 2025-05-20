@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/dialog/category_input_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
@@ -21,28 +23,33 @@ class CategoryManagementScreen extends StatefulWidget {
 
 class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
   late TransactionType _selectedType;
-  List<Category> _categories = [];
 
   @override
   void initState() {
     super.initState();
     _selectedType = widget.selectedType;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _syncCategories();
-    });
-  }
-
-  void _syncCategories() {
-    final all = context.read<MoneyProvider>().categories;
-    setState(() {
-      _categories = all.where((c) => c.type == _selectedType).toList();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: CommonAppBar(isMainScreen: false),
+      appBar: CommonAppBar(
+        isMainScreen: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add, color: Color(0xFFF2F4F6), size: 36),
+            onPressed: () async {
+              final result = await showDialog(
+                context: context,
+                builder: (context) => CategoryInputDialog(type: _selectedType),
+              );
+              if (result == true) {
+                // 자동 반영되므로 setState 필요 없음
+              }
+            },
+          ),
+        ],
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -58,7 +65,6 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                     setState(() {
                       _selectedType = type;
                     });
-                    _syncCategories();
                   },
                 ),
                 const SizedBox(width: 24),
@@ -70,7 +76,6 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                     setState(() {
                       _selectedType = type;
                     });
-                    _syncCategories();
                   },
                 ),
               ],
@@ -80,75 +85,77 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(12),
-              child: ReorderableListView.builder(
-                itemCount: _categories.length,
-                onReorder: (oldIndex, newIndex) async {
-                  setState(() {
-                    if (newIndex > oldIndex) newIndex -= 1;
-                    final item = _categories.removeAt(oldIndex);
-                    _categories.insert(newIndex, item);
-                  });
+              child: Consumer<MoneyProvider>(
+                builder: (context, provider, _) {
+                  final filtered = provider.categories
+                      .where((c) => c.type == _selectedType)
+                      .toList();
 
-                  await context.read<MoneyProvider>().reorderCategories(_categories);
-                  _syncCategories(); // 최신 정렬 반영
-                },
-                itemBuilder: (context, index) {
-                  final category = _categories[index];
-                  return Card(
-                    key: ValueKey(category.id),
-                    margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(color: Colors.amberAccent, width: 1),
-                    ),
-                    child: ListTile(
-                      contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                      leading: CircleAvatar(
-                        radius: 20,
-                        backgroundColor: Color(category.colorValue),
-                        child: Icon(
-                          getIconData(category.iconName),
-                          color: Colors.white,
-                          size: 20,
+                  return ReorderableListView.builder(
+                    itemCount: filtered.length,
+                    onReorder: (oldIndex, newIndex) async {
+                      if (newIndex > oldIndex) newIndex--;
+                      final item = filtered.removeAt(oldIndex);
+                      filtered.insert(newIndex, item);
+                      await context.read<MoneyProvider>().reorderCategories(filtered);
+                    },
+                    itemBuilder: (context, index) {
+                      final category = filtered[index];
+                      return Card(
+                        key: ValueKey(category.id),
+                        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: const BorderSide(color: Colors.amberAccent, width: 1),
                         ),
-                      ),
-                      title: Text(
-                        category.name,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.grey),
-                            onPressed: () {
-                              // TODO: 수정 기능
-                            },
+                        child: ListTile(
+                          contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                          leading: CircleAvatar(
+                            radius: 20,
+                            backgroundColor: Color(category.colorValue),
+                            child: Icon(
+                              getIconData(category.iconName),
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.grey),
-                            onPressed: () async {
-                              final result = await context
-                                  .read<MoneyProvider>()
-                                  .deleteCategory(category.id);
-                              if (!result && context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('기본 카테고리는 삭제할 수 없습니다.')),
-                                );
-                              } else {
-                                _syncCategories(); // 삭제 후 목록 반영
-                              }
-                            },
+                          title: Text(
+                            category.name,
+                            style: const TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.w600),
                           ),
-                          ReorderableDragStartListener(
-                            index: index,
-                            child: const Icon(Icons.drag_handle, color: Colors.grey),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, color: Colors.grey),
+                                onPressed: () async {
+                                  final result = await showDialog(
+                                    context: context,
+                                    builder: (context) => CategoryInputDialog(
+                                      type: _selectedType,
+                                      category: category,
+                                    ),
+                                  );
+                                  if (result == true) {
+                                    // 목록은 자동 업데이트됨
+                                  }
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.grey),
+                                onPressed: () => _confirmDelete(context, category.id),
+                              ),
+                              ReorderableDragStartListener(
+                                index: index,
+                                child: const Icon(Icons.drag_handle, color: Colors.grey),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
@@ -157,5 +164,15 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
         ],
       ),
     );
+  }
+
+  void _confirmDelete(BuildContext context, int id) async {
+    final confirm = await showCustomDeleteDialog(
+      context,
+      message: '이 카테고리를 정말 삭제할까요?',
+    );
+    if (confirm == true) {
+      await context.read<MoneyProvider>().deleteCategory(id);
+    }
   }
 }

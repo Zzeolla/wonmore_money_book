@@ -69,14 +69,14 @@ class AppDatabase extends _$AppDatabase {
       name: '식비',
       type: TransactionType.expense,
       iconName: Value('lunch_dining'),
-      colorValue: Value(0xFFFF9800), // Colors.orangeAccent
+      colorValue: Value(0xFFFF9800), // Colors.orange
       sortOrder: Value(order_expense++),
     ));
     await into(categories).insert(CategoriesCompanion.insert(
       name: '교통비',
       type: TransactionType.expense,
       iconName: Value('directions_bus'),
-      colorValue: Value(0xFF2196F3), // Colors.blueAccent
+      colorValue: Value(0xFF03A9F4), // Colors.lightBlue
       sortOrder: Value(order_expense++),
     ));
 
@@ -85,7 +85,7 @@ class AppDatabase extends _$AppDatabase {
       name: '쇼핑',
       type: TransactionType.expense,
       iconName: Value('shopping_bag'),
-      colorValue: Value(0xFFE91E63), // Colors.pink
+      colorValue: Value(0xFFFF4081), // Colors.pinkAccent
       sortOrder: Value(order_expense++),
     ));
     await into(categories).insert(CategoriesCompanion.insert(

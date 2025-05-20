@@ -290,10 +290,10 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                           _buildFieldRow(
                             '분류',
                             _buildDropdown(
-                              value: selectedCategory?.name,
+                              value: selectedCategory?.name ?? '__none__',
                               items: [
                                 DropdownMenuItem<String>(
-                                  value: null,
+                                  value: '__none__',
                                   child: Row(
                                     children: [
                                       CircleAvatar(
@@ -354,15 +354,17 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                        builder: (_) => CategoryManagementScreen(
-                                              selectedType: _selectedType,
-                                            )),
-                                  );
-                                  setState(() => selectedCategory = null);
+                                      builder: (_) => CategoryManagementScreen(
+                                        selectedType: _selectedType,
+                                      ),
+                                    ),
+                                  ).then((_) {
+                                    if (mounted) setState(() => selectedCategory = null);
+                                  });
                                 } else {
                                   setState(
                                     () {
-                                      selectedCategory = value == null
+                                      selectedCategory = value == '__none__'
                                           ? null
                                           : _filteredCategories.firstWhere((c) => c.name == value);
                                     },

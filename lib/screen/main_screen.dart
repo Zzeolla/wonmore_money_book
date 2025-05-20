@@ -53,7 +53,7 @@ class _MainScreenState extends State<MainScreen> {
       _selectedIndex = index;
 
       final homeScreenTabProvider = context.read<HomeScreenTabProvider>();
-      homeScreenTabProvider.setTab(HomeTab.home);
+      homeScreenTabProvider.resetToHome();
     });
   }
 }
