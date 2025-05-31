@@ -16,7 +16,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -33,6 +33,9 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(todos);
         }
       },
+      beforeOpen: (details) async {
+        await customStatement('PRAGMA foreign_keys = ON');
+      }
     );
   }
 

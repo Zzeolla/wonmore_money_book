@@ -19,7 +19,7 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _screens = [
     const HomeScreen(),
-    const AssetsScreen(),
+    AssetsScreen(),
     const AnalysisScreen(),
     const MoreScreen(),
   ];
@@ -37,7 +37,7 @@ class _MainScreenState extends State<MainScreen> {
         selectedItemColor: Color(0xFF6A50FF),
         unselectedItemColor: Colors.grey,
         onTap: _onItemTapped,
-        iconSize: 40,
+        iconSize: 36,
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: ''),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: ''),

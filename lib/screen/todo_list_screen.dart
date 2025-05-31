@@ -13,51 +13,76 @@ class TodoListScreen extends StatelessWidget {
 
   const TodoListScreen({super.key, required this.onClose});
 
-  void _showFlushBar(BuildContext context, int todoId, String title) {
-    Flushbar(
+  void _showFlushBar(BuildContext outerContext, int todoId, String title) {
+    late Flushbar flush;
+
+    flush = Flushbar(
       margin: const EdgeInsets.all(12),
       borderRadius: BorderRadius.circular(8),
       messageText: Text('"$title" 처리됨', style: const TextStyle(color: Colors.white)),
       duration: const Duration(seconds: 5),
-      mainButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              showDialog(
-                context: context,
-                builder: (_) => RecordInputDialog(
-                  initialDate: DateTime.now(),
-                  initialTitle: title,
-                  categories: context.read<MoneyProvider>().categories,
-                  assetList: context.read<MoneyProvider>().assets.map((e) => e.name).toList(),
-                ),
-              );
-            },
-            child: const Text('내역 추가', style: TextStyle(color: Colors.white)),
-          ),
-          TextButton(
-            onPressed: () {
-              context.read<TodoProvider>().toggleTodo(todoId, false);
-              Navigator.of(context).pop();
-            },
-            child: const Text('되돌리기', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
       backgroundColor: Colors.black87,
-    ).show(context);
-  }
+      mainButton: Builder(
+        builder: (buttonContext) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(
+              onPressed: () async {
+                print("🔔 [내역 추가] 버튼 눌림");
+                await flush.dismiss(); // 💡 Flushbar 먼저 닫기
+                await Future.delayed(const Duration(milliseconds: 150)); // 💡 닫힌 후 약간의 딜레이
+                print("💬 flushbar 닫힘 후 dialog 띄우기 시도");
 
-  void _confirmDelete(BuildContext context, int id) async {
-    final confirm = await showCustomDeleteDialog(
-      context,
-      message: '이 할 일을 정말 삭제할까요?',
+                if (outerContext.mounted) {
+                  Navigator.of(outerContext, rootNavigator: true).push(
+                    PageRouteBuilder(
+                      opaque: false,
+                      barrierDismissible: true,
+                      barrierColor: Colors.black54,
+                      pageBuilder: (_, __, ___) {
+                        return Center(
+                          child: RecordInputDialog(
+                            initialDate: DateTime.now(),
+                            initialTitle: title,
+                            categories: outerContext.read<MoneyProvider>().categories,
+                            assetList: outerContext.read<MoneyProvider>().assets.map((e) => e.name).toList(),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+
+                  // print("📦 showDialog 실행 시작");
+                  // showDialog(
+                  //   context: outerContext,
+                  //   useRootNavigator: true,
+                  //   builder: (_) {
+                  //     print("📦 RecordInputDialog 생성됨");
+                  //     return RecordInputDialog(
+                  //       initialDate: DateTime.now(),
+                  //       initialTitle: title,
+                  //       categories: outerContext.read<MoneyProvider>().categories,
+                  //       assetList: outerContext.read<MoneyProvider>().assets.map((e) => e.name).toList(),
+                  //     );
+                  //   },
+                  // );
+                }
+              },
+              child: const Text('내역 추가', style: TextStyle(color: Colors.white)),
+            ),
+            TextButton(
+              onPressed: () {
+                outerContext.read<TodoProvider>().toggleTodo(todoId, false);
+                Navigator.of(outerContext).pop();
+              },
+              child: const Text('되돌리기', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
     );
-    if (confirm == true) {
-      context.read<TodoProvider>().deleteTodo(id);
-    }
+
+    flush.show(outerContext); // Flushbar 띄우기
   }
 
   @override
@@ -73,7 +98,38 @@ class TodoListScreen extends StatelessWidget {
         backgroundColor: const Color(0xFFF1F1FD),
         body: Padding(
           padding: const EdgeInsets.only(top: 12),
-          child: ListView.builder(
+          child: todos.isEmpty
+          ? const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.note_alt_outlined, size: 64, color: Color(0xFFB0AFFF)),
+                  SizedBox(height: 16),
+                  Text(
+                    '할 일이 없습니다',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF5A5A89),
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    '장보기 목록, 처리해야 할 금융 업무, \n기념일 체크 등 해야 할 일을 추가해 주세요',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+          : ListView.builder(
             padding: const EdgeInsets.only(bottom: 80),
             itemCount: todos.length,
             itemBuilder: (context, index) {
@@ -102,7 +158,18 @@ class TodoListScreen extends StatelessWidget {
                     side: const BorderSide(color: Colors.amberAccent, width: 1),
                   ),
                   child: InkWell(
-                    onLongPress: () => _confirmDelete(context, todo.id),
+                    onLongPress: () async {
+                      final result = await showCustomDeleteDialog(
+                        context,
+                        message: '이 할 일을 정말 삭제할까요?',
+                      );
+                      if (result!) {
+                        await context.read<TodoProvider>().deleteTodo(todo.id);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('삭제되었습니다.')),
+                        );
+                      }
+                    },
                     onTap: () {
                       showDialog(
                         context: context,

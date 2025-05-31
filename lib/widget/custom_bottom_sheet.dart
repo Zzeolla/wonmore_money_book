@@ -44,7 +44,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
     // 현재 보여지는 날짜 계산
     final currentDate = _baseDay.add(Duration(days: _currentPageIndex - initialPage));
     // 해당 날짜의 거래만 필터링
-    List<Transaction> txList = provider.currentMonthTransactions.where((tx) =>
+    List<Transaction> txList = provider.monthlyTransactions.where((tx) =>
     tx.date.year == currentDate.year &&
         tx.date.month == currentDate.month &&
         tx.date.day == currentDate.day
@@ -149,7 +149,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
         itemBuilder: (context, pageIndex) {
           final date = _baseDay.add(Duration(days: pageIndex - initialPage));
           // 해당 날짜의 거래만 필터링
-          List<Transaction> txList = provider.currentMonthTransactions.where((tx) =>
+          List<Transaction> txList = provider.monthlyTransactions.where((tx) =>
           tx.date.year == date.year &&
               tx.date.month == date.month &&
               tx.date.day == date.day
@@ -251,11 +251,11 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                         context,
                         message: '이 내역을 정말 삭제할까요?'
                       );
-                      if (result == true) {
+                      if (result!) {
                         // 삭제 실행
                         await context.read<MoneyProvider>().deleteTransaction(tx.id);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('삭제되었습니다.')),
+                          SnackBar(content: Text('삭제되었습니다')),
                         );
                       }
                     },

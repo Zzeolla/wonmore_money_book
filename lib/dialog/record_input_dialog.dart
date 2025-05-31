@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
@@ -60,6 +61,8 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
   @override
   void initState() {
     super.initState();
+
+    debugPrint("✅ RecordInputDialog initState 진입");
     // 금액 입력 필드 포맷팅을 위한 리스너 추가
     amountController.addListener(_formatAmount);
 
@@ -412,16 +415,38 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         CustomCircleButton(
+                            icon: Icons.close,
+                            color: Colors.black54,
+                            backgroundColor: const Color(0xFFE5E6EB),
+                            onTap: () => Navigator.pop(context)),
+                        CustomCircleButton(
                           icon: Icons.star_border_purple500,
                           color: Colors.white,
                           backgroundColor: const Color(0xFFA79BFF),
-                          onTap: () {},
+                          onTap: () {}, /// TODO: 즐겨찾기 불러오기 기능 수행 필요
+                          ///
                         ),
                         CustomCircleButton(
                           icon: Icons.delete_outline,
                           color: Colors.white,
                           backgroundColor: const Color(0xFFA79BFF),
-                          onTap: () {},
+                          onTap: () async {
+                            if (widget.transactionId == null) {
+                              Navigator.pop(context);
+                            } else {
+                              final result = await showCustomDeleteDialog(
+                                  context,
+                                  message: '이 내역을 정말 삭제할까요?'
+                              );
+                              if (result!) {
+                                await context.read<MoneyProvider>().deleteTransaction(widget.transactionId!);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('삭제되었습니다')),
+                                );
+                                Navigator.pop(context);
+                              }
+                            }
+                          },
                         ),
                         CustomCircleButton(
                           icon: Icons.check,
@@ -429,8 +454,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                           backgroundColor: const Color(0xFFA79BFF),
                           onTap: () async {
                             // 입력값 검증 (금액, 내역 필수)
-                            if (amountController.text.trim().isEmpty ||
-                                contentController.text.trim().isEmpty) {
+                            if (amountController.text.trim().isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('금액과 내역을 입력해 주세요.')),
                               );
@@ -522,7 +546,8 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                         ),
                       ],
                     ),
-                  )
+                  ),
+                  const SizedBox(height:6)
                 ],
               ),
             ),
@@ -540,7 +565,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
         children: [
           SizedBox(
             width: 48,
-            child: Text(label, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            child: Text(label, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           ),
           const SizedBox(width: 12),
           Expanded(child: field),

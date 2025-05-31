@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wonmore_money_book/util/clean_app_data.dart';
 
 class MoreScreen extends StatelessWidget {
   const MoreScreen({super.key});
@@ -12,6 +13,13 @@ class MoreScreen extends StatelessWidget {
       ),
       body: ListView(
         children: [
+          ListTile(
+            leading: const Icon(Icons.person_outline),
+            title: const Text('db삭제 개발용'),
+            onTap: () async {
+              await clearAllAppData(context);
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.person_outline),
             title: const Text('프로필'),

@@ -555,27 +555,12 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
       'name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _balanceMeta =
-      const VerificationMeta('balance');
+  static const VerificationMeta _targetAmountMeta =
+      const VerificationMeta('targetAmount');
   @override
-  late final GeneratedColumn<int> balance = GeneratedColumn<int>(
-      'balance', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _goalAmountMeta =
-      const VerificationMeta('goalAmount');
-  @override
-  late final GeneratedColumn<int> goalAmount = GeneratedColumn<int>(
-      'goal_amount', aliasedName, true,
+  late final GeneratedColumn<int> targetAmount = GeneratedColumn<int>(
+      'target_amount', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
-  static const VerificationMeta _typeMeta = const VerificationMeta('type');
-  @override
-  late final GeneratedColumn<String> type = GeneratedColumn<String>(
-      'type', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('현금'));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -613,9 +598,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
   List<GeneratedColumn> get $columns => [
         id,
         name,
-        balance,
-        goalAmount,
-        type,
+        targetAmount,
         createdAt,
         updatedAt,
         userId,
@@ -641,19 +624,11 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
     } else if (isInserting) {
       context.missing(_nameMeta);
     }
-    if (data.containsKey('balance')) {
-      context.handle(_balanceMeta,
-          balance.isAcceptableOrUnknown(data['balance']!, _balanceMeta));
-    }
-    if (data.containsKey('goal_amount')) {
+    if (data.containsKey('target_amount')) {
       context.handle(
-          _goalAmountMeta,
-          goalAmount.isAcceptableOrUnknown(
-              data['goal_amount']!, _goalAmountMeta));
-    }
-    if (data.containsKey('type')) {
-      context.handle(
-          _typeMeta, type.isAcceptableOrUnknown(data['type']!, _typeMeta));
+          _targetAmountMeta,
+          targetAmount.isAcceptableOrUnknown(
+              data['target_amount']!, _targetAmountMeta));
     }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
@@ -688,12 +663,8 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
           .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
-      balance: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}balance'])!,
-      goalAmount: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}goal_amount']),
-      type: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}type'])!,
+      targetAmount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}target_amount']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -716,9 +687,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
 class Asset extends DataClass implements Insertable<Asset> {
   final int id;
   final String name;
-  final int balance;
-  final int? goalAmount;
-  final String type;
+  final int? targetAmount;
   final DateTime createdAt;
   final DateTime updatedAt;
   final String? userId;
@@ -727,9 +696,7 @@ class Asset extends DataClass implements Insertable<Asset> {
   const Asset(
       {required this.id,
       required this.name,
-      required this.balance,
-      this.goalAmount,
-      required this.type,
+      this.targetAmount,
       required this.createdAt,
       required this.updatedAt,
       this.userId,
@@ -740,11 +707,9 @@ class Asset extends DataClass implements Insertable<Asset> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
-    map['balance'] = Variable<int>(balance);
-    if (!nullToAbsent || goalAmount != null) {
-      map['goal_amount'] = Variable<int>(goalAmount);
+    if (!nullToAbsent || targetAmount != null) {
+      map['target_amount'] = Variable<int>(targetAmount);
     }
-    map['type'] = Variable<String>(type);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     if (!nullToAbsent || userId != null) {
@@ -763,11 +728,9 @@ class Asset extends DataClass implements Insertable<Asset> {
     return AssetsCompanion(
       id: Value(id),
       name: Value(name),
-      balance: Value(balance),
-      goalAmount: goalAmount == null && nullToAbsent
+      targetAmount: targetAmount == null && nullToAbsent
           ? const Value.absent()
-          : Value(goalAmount),
-      type: Value(type),
+          : Value(targetAmount),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       userId:
@@ -787,9 +750,7 @@ class Asset extends DataClass implements Insertable<Asset> {
     return Asset(
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
-      balance: serializer.fromJson<int>(json['balance']),
-      goalAmount: serializer.fromJson<int?>(json['goalAmount']),
-      type: serializer.fromJson<String>(json['type']),
+      targetAmount: serializer.fromJson<int?>(json['targetAmount']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       userId: serializer.fromJson<String?>(json['userId']),
@@ -803,9 +764,7 @@ class Asset extends DataClass implements Insertable<Asset> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
-      'balance': serializer.toJson<int>(balance),
-      'goalAmount': serializer.toJson<int?>(goalAmount),
-      'type': serializer.toJson<String>(type),
+      'targetAmount': serializer.toJson<int?>(targetAmount),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'userId': serializer.toJson<String?>(userId),
@@ -817,9 +776,7 @@ class Asset extends DataClass implements Insertable<Asset> {
   Asset copyWith(
           {int? id,
           String? name,
-          int? balance,
-          Value<int?> goalAmount = const Value.absent(),
-          String? type,
+          Value<int?> targetAmount = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt,
           Value<String?> userId = const Value.absent(),
@@ -828,9 +785,8 @@ class Asset extends DataClass implements Insertable<Asset> {
       Asset(
         id: id ?? this.id,
         name: name ?? this.name,
-        balance: balance ?? this.balance,
-        goalAmount: goalAmount.present ? goalAmount.value : this.goalAmount,
-        type: type ?? this.type,
+        targetAmount:
+            targetAmount.present ? targetAmount.value : this.targetAmount,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
         userId: userId.present ? userId.value : this.userId,
@@ -841,10 +797,9 @@ class Asset extends DataClass implements Insertable<Asset> {
     return Asset(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
-      balance: data.balance.present ? data.balance.value : this.balance,
-      goalAmount:
-          data.goalAmount.present ? data.goalAmount.value : this.goalAmount,
-      type: data.type.present ? data.type.value : this.type,
+      targetAmount: data.targetAmount.present
+          ? data.targetAmount.value
+          : this.targetAmount,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       userId: data.userId.present ? data.userId.value : this.userId,
@@ -858,9 +813,7 @@ class Asset extends DataClass implements Insertable<Asset> {
     return (StringBuffer('Asset(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('balance: $balance, ')
-          ..write('goalAmount: $goalAmount, ')
-          ..write('type: $type, ')
+          ..write('targetAmount: $targetAmount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('userId: $userId, ')
@@ -871,17 +824,15 @@ class Asset extends DataClass implements Insertable<Asset> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, balance, goalAmount, type,
-      createdAt, updatedAt, userId, createdBy, updatedBy);
+  int get hashCode => Object.hash(id, name, targetAmount, createdAt, updatedAt,
+      userId, createdBy, updatedBy);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Asset &&
           other.id == this.id &&
           other.name == this.name &&
-          other.balance == this.balance &&
-          other.goalAmount == this.goalAmount &&
-          other.type == this.type &&
+          other.targetAmount == this.targetAmount &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.userId == this.userId &&
@@ -892,9 +843,7 @@ class Asset extends DataClass implements Insertable<Asset> {
 class AssetsCompanion extends UpdateCompanion<Asset> {
   final Value<int> id;
   final Value<String> name;
-  final Value<int> balance;
-  final Value<int?> goalAmount;
-  final Value<String> type;
+  final Value<int?> targetAmount;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<String?> userId;
@@ -903,9 +852,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
   const AssetsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
-    this.balance = const Value.absent(),
-    this.goalAmount = const Value.absent(),
-    this.type = const Value.absent(),
+    this.targetAmount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.userId = const Value.absent(),
@@ -915,9 +862,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
   AssetsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
-    this.balance = const Value.absent(),
-    this.goalAmount = const Value.absent(),
-    this.type = const Value.absent(),
+    this.targetAmount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.userId = const Value.absent(),
@@ -927,9 +872,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
   static Insertable<Asset> custom({
     Expression<int>? id,
     Expression<String>? name,
-    Expression<int>? balance,
-    Expression<int>? goalAmount,
-    Expression<String>? type,
+    Expression<int>? targetAmount,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<String>? userId,
@@ -939,9 +882,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
-      if (balance != null) 'balance': balance,
-      if (goalAmount != null) 'goal_amount': goalAmount,
-      if (type != null) 'type': type,
+      if (targetAmount != null) 'target_amount': targetAmount,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (userId != null) 'user_id': userId,
@@ -953,9 +894,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
   AssetsCompanion copyWith(
       {Value<int>? id,
       Value<String>? name,
-      Value<int>? balance,
-      Value<int?>? goalAmount,
-      Value<String>? type,
+      Value<int?>? targetAmount,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
       Value<String?>? userId,
@@ -964,9 +903,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     return AssetsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
-      balance: balance ?? this.balance,
-      goalAmount: goalAmount ?? this.goalAmount,
-      type: type ?? this.type,
+      targetAmount: targetAmount ?? this.targetAmount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       userId: userId ?? this.userId,
@@ -984,14 +921,8 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     if (name.present) {
       map['name'] = Variable<String>(name.value);
     }
-    if (balance.present) {
-      map['balance'] = Variable<int>(balance.value);
-    }
-    if (goalAmount.present) {
-      map['goal_amount'] = Variable<int>(goalAmount.value);
-    }
-    if (type.present) {
-      map['type'] = Variable<String>(type.value);
+    if (targetAmount.present) {
+      map['target_amount'] = Variable<int>(targetAmount.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1016,9 +947,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     return (StringBuffer('AssetsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
-          ..write('balance: $balance, ')
-          ..write('goalAmount: $goalAmount, ')
-          ..write('type: $type, ')
+          ..write('targetAmount: $targetAmount, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('userId: $userId, ')
@@ -1066,8 +995,7 @@ class $TransactionsTable extends Transactions
       'category_id', aliasedName, true,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES categories (id)'));
+      $customConstraints: 'NULL REFERENCES categories(id) ON DELETE SET NULL');
   static const VerificationMeta _assetIdMeta =
       const VerificationMeta('assetId');
   @override
@@ -1075,8 +1003,7 @@ class $TransactionsTable extends Transactions
       'asset_id', aliasedName, true,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES assets (id)'));
+      $customConstraints: 'NULL REFERENCES assets(id) ON DELETE SET NULL');
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
@@ -2028,6 +1955,25 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities =>
       [categories, assets, transactions, todos];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
+        [
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('categories',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('transactions', kind: UpdateKind.update),
+            ],
+          ),
+          WritePropagation(
+            on: TableUpdateQuery.onTableName('assets',
+                limitUpdateKind: UpdateKind.delete),
+            result: [
+              TableUpdate('transactions', kind: UpdateKind.update),
+            ],
+          ),
+        ],
+      );
 }
 
 typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
@@ -2372,9 +2318,7 @@ typedef $$CategoriesTableProcessedTableManager = ProcessedTableManager<
 typedef $$AssetsTableCreateCompanionBuilder = AssetsCompanion Function({
   Value<int> id,
   required String name,
-  Value<int> balance,
-  Value<int?> goalAmount,
-  Value<String> type,
+  Value<int?> targetAmount,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<String?> userId,
@@ -2384,9 +2328,7 @@ typedef $$AssetsTableCreateCompanionBuilder = AssetsCompanion Function({
 typedef $$AssetsTableUpdateCompanionBuilder = AssetsCompanion Function({
   Value<int> id,
   Value<String> name,
-  Value<int> balance,
-  Value<int?> goalAmount,
-  Value<String> type,
+  Value<int?> targetAmount,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
   Value<String?> userId,
@@ -2429,14 +2371,8 @@ class $$AssetsTableFilterComposer
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get balance => $composableBuilder(
-      column: $table.balance, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get goalAmount => $composableBuilder(
-      column: $table.goalAmount, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get type => $composableBuilder(
-      column: $table.type, builder: (column) => ColumnFilters(column));
+  ColumnFilters<int> get targetAmount => $composableBuilder(
+      column: $table.targetAmount, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -2490,14 +2426,9 @@ class $$AssetsTableOrderingComposer
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get balance => $composableBuilder(
-      column: $table.balance, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get goalAmount => $composableBuilder(
-      column: $table.goalAmount, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get type => $composableBuilder(
-      column: $table.type, builder: (column) => ColumnOrderings(column));
+  ColumnOrderings<int> get targetAmount => $composableBuilder(
+      column: $table.targetAmount,
+      builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
@@ -2530,14 +2461,8 @@ class $$AssetsTableAnnotationComposer
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
 
-  GeneratedColumn<int> get balance =>
-      $composableBuilder(column: $table.balance, builder: (column) => column);
-
-  GeneratedColumn<int> get goalAmount => $composableBuilder(
-      column: $table.goalAmount, builder: (column) => column);
-
-  GeneratedColumn<String> get type =>
-      $composableBuilder(column: $table.type, builder: (column) => column);
+  GeneratedColumn<int> get targetAmount => $composableBuilder(
+      column: $table.targetAmount, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2601,9 +2526,7 @@ class $$AssetsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<String> name = const Value.absent(),
-            Value<int> balance = const Value.absent(),
-            Value<int?> goalAmount = const Value.absent(),
-            Value<String> type = const Value.absent(),
+            Value<int?> targetAmount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<String?> userId = const Value.absent(),
@@ -2613,9 +2536,7 @@ class $$AssetsTableTableManager extends RootTableManager<
               AssetsCompanion(
             id: id,
             name: name,
-            balance: balance,
-            goalAmount: goalAmount,
-            type: type,
+            targetAmount: targetAmount,
             createdAt: createdAt,
             updatedAt: updatedAt,
             userId: userId,
@@ -2625,9 +2546,7 @@ class $$AssetsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             Value<int> id = const Value.absent(),
             required String name,
-            Value<int> balance = const Value.absent(),
-            Value<int?> goalAmount = const Value.absent(),
-            Value<String> type = const Value.absent(),
+            Value<int?> targetAmount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
             Value<String?> userId = const Value.absent(),
@@ -2637,9 +2556,7 @@ class $$AssetsTableTableManager extends RootTableManager<
               AssetsCompanion.insert(
             id: id,
             name: name,
-            balance: balance,
-            goalAmount: goalAmount,
-            type: type,
+            targetAmount: targetAmount,
             createdAt: createdAt,
             updatedAt: updatedAt,
             userId: userId,

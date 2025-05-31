@@ -43,23 +43,23 @@ class _CalendarWidgetState extends State<CalendarWidget> {
         }
       },
       daysOfWeekStyle: DaysOfWeekStyle(
-        weekdayStyle: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
+        weekdayStyle: TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
       ),
       calendarBuilders: CalendarBuilders(
         dowBuilder: (context, day) {
           if (day.weekday == DateTime.sunday) {
             return Center(
-              child: Text('일', style: TextStyle(color: Colors.red, fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Text('일', style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold)),
             );
           } else if (day.weekday == DateTime.saturday) {
             return Center(
-              child: Text('토', style: TextStyle(color: Colors.blue, fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Text('토', style: TextStyle(color: Colors.blue, fontSize: 14, fontWeight: FontWeight.bold)),
             );
           } else {
             return Center(
               child: Text(
                 _weekdayString(day.weekday),
-                style: TextStyle(color: Colors.black87, fontSize: 16),
+                style: TextStyle(color: Colors.black87, fontSize: 14),
               ),
             );
           }
@@ -103,30 +103,30 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     if (isOutside) bgColor = Colors.transparent;
 
     return Container(
-      margin: const EdgeInsets.all(4),
+      margin: const EdgeInsets.all(2),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(8),
         border: isSelected
-            ? Border.all(color: Colors.amber, width: 2)
+            ? Border.all(color: Colors.amber, width: 1.5)
             : null,
       ),
       alignment: Alignment.topCenter,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('${day.day}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 12)),
+          Text('${day.day}', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 10)),
           SizedBox(height: 2),
           Text(
             income > 0 ? '+${_formatAmount(income)}' : '',
-            style: TextStyle(color: Colors.blue, fontSize: 11),
+            style: TextStyle(color: Colors.blue, fontSize: 10),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             softWrap: false,
           ),
           Text(
             expense > 0 ? '-${_formatAmount(expense)}' : '',
-            style: TextStyle(color: Colors.red, fontSize: 11),
+            style: TextStyle(color: Colors.red, fontSize: 10),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             softWrap: false,

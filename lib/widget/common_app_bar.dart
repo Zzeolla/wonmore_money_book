@@ -20,7 +20,7 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
         builder: (context) {
           return IconButton(
             onPressed: () => Scaffold.of(context).openDrawer(),
-            icon: const Icon(Icons.menu, color: Color(0xFFF2F4F6), size: 36),
+            icon: const Icon(Icons.menu, color: Color(0xFFF2F4F6), size: 30),
           );
         },
       ) : IconButton(
@@ -32,7 +32,7 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
         '원모아 가계부',
         style: TextStyle(
           color: Color(0xFFF2F4F6),
-          fontSize: 24,
+          fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
       ),

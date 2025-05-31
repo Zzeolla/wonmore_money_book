@@ -38,7 +38,6 @@ class _TodoInputDialogState extends State<TodoInputDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     return Dialog(
       backgroundColor: const Color(0xFFF1F1FD),
@@ -81,10 +80,10 @@ class _TodoInputDialogState extends State<TodoInputDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 CustomCircleButton(
-                    icon: Icons.close,
-                    color: Colors.black54,
-                    backgroundColor: const Color(0xFFE5E6EB),
-                    onTap: () => Navigator.pop(context)),
+                  icon: Icons.close,
+                  color: Colors.black54,
+                  backgroundColor: const Color(0xFFE5E6EB),
+                  onTap: () => Navigator.pop(context)),
                 CustomCircleButton(
                   icon: Icons.check,
                   color: Colors.white,

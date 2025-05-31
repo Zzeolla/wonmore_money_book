@@ -29,6 +29,7 @@ dependencies:
   shared_preferences: ^2.2.2
   another_flushbar: ^1.12.30
   google_mobile_ads: ^6.0.0
+  month_picker_dialog: ^6.0.3
 
 dev_dependencies:
   flutter_test:

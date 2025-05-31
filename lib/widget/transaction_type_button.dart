@@ -30,7 +30,7 @@ class TransactionTypeButton extends StatelessWidget {
             backgroundColor: isSelected ? Colors.amber : Colors.grey.shade300,
             foregroundColor: Colors.black,
             minimumSize: const Size.fromHeight(52),
-            textStyle: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
           child: Text(label),

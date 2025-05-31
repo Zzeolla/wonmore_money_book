@@ -1,18 +1,18 @@
-
-// 거래 내역 테이블 (마지막에 정의)
 import 'package:drift/drift.dart';
 import 'package:wonmore_money_book/model/asset.dart';
 import 'package:wonmore_money_book/model/category.dart';
+import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 
-class Transactions extends Table {
+class FavoriteRecords extends Table {
   IntColumn get id => integer().autoIncrement()();
-  DateTimeColumn get date => dateTime()();
   IntColumn get amount => integer()();
   TextColumn get type => textEnum<TransactionType>()();
-  IntColumn get categoryId => integer().nullable().customConstraint('NULL REFERENCES categories(id) ON DELETE SET NULL')();
-  IntColumn get assetId => integer().nullable().customConstraint('NULL REFERENCES assets(id) ON DELETE SET NULL')();
-  TextColumn get title => text().nullable()(); // 거래 내역 (예: 편의점, 택시비 등)
+  TextColumn get period => textEnum<PeriodType>()();
+  DateTimeColumn get baseDate => dateTime().nullable()();
+  IntColumn get categoryId => integer().nullable().references(Categories, #id)();
+  IntColumn get assetId => integer().nullable().references(Assets, #id)();
+  TextColumn get title => text().nullable()();
   TextColumn get memo => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();

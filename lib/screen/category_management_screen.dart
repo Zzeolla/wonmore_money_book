@@ -43,7 +43,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                 context: context,
                 builder: (context) => CategoryInputDialog(type: _selectedType),
               );
-              if (result == true) {
+              if (result) {
                 // 자동 반영되므로 setState 필요 없음
               }
             },
@@ -138,14 +138,25 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                                       category: category,
                                     ),
                                   );
-                                  if (result == true) {
+                                  if (result) {
                                     // 목록은 자동 업데이트됨
                                   }
                                 },
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.grey),
-                                onPressed: () => _confirmDelete(context, category.id),
+                                onPressed: () async {
+                                  final result = await showCustomDeleteDialog(
+                                    context,
+                                    message: '이 카테고리를 정말 삭제할까요?',
+                                  );
+                                  if (result!) {
+                                    await context.read<MoneyProvider>().deleteCategory(category.id);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('삭제되었습니다.')),
+                                    );
+                                  }
+                                }
                               ),
                               ReorderableDragStartListener(
                                 index: index,
@@ -164,15 +175,5 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
         ],
       ),
     );
-  }
-
-  void _confirmDelete(BuildContext context, int id) async {
-    final confirm = await showCustomDeleteDialog(
-      context,
-      message: '이 카테고리를 정말 삭제할까요?',
-    );
-    if (confirm == true) {
-      await context.read<MoneyProvider>().deleteCategory(id);
-    }
   }
 }

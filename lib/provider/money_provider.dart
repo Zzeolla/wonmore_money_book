@@ -6,7 +6,8 @@ import 'package:wonmore_money_book/model/transaction_type.dart';
 class MoneyProvider extends ChangeNotifier {
   final AppDatabase _database;
   String? _currentUserId;
-  DateTime _selectedMonth = DateTime.now();
+  DateTime _focusedDay = DateTime.now();
+  DateTime _selectedDay = DateTime.now();
   int _monthlyIncome = 0;
   int _monthlyExpense = 0;
   int _monthlyBalance = 0;
@@ -25,8 +26,8 @@ class MoneyProvider extends ChangeNotifier {
   List<Category> getTransferCategories() => _categories.where((c) => c.type == TransactionType.transfer).toList();
 
   // 월별 거래내역 상태 관리
-  List<Transaction> _currentMonthTransactions = [];
-  List<Transaction> get currentMonthTransactions => _currentMonthTransactions;
+  List<Transaction> _monthlyTransactions = [];
+  List<Transaction> get monthlyTransactions => _monthlyTransactions;
 
   // 날짜별 수입/지출 합계 상태 관리 추가
   Map<DateTime, Map<String, int>> _dailySummaryMap = {};
@@ -39,7 +40,8 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   // Getters
-  DateTime get selectedMonth => _selectedMonth;
+  DateTime get focusedDay => _focusedDay;
+  DateTime get selectedDay => _selectedDay;
   int get monthlyIncome => _monthlyIncome;
   int get monthlyExpense => _monthlyExpense;
   int get monthlyBalance => _monthlyBalance;
@@ -50,27 +52,27 @@ class MoneyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 월별 거래내역 로드
-  Future<void> loadTransactionsForMonth(DateTime month) async {
-    final startDate = DateTime(month.year, month.month, 1);
-    final endDate = DateTime(month.year, month.month + 1, 1); // 다음 달 1일로 변경
-
-    final query = _database.select(_database.transactions)
-      ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
-      t.date.isSmallerThanValue(endDate)); // isBetweenValues 대신 사용
-    if (_currentUserId != null) {
-      query.where((t) => t.userId.equals(_currentUserId!));
-    }
-
-    _currentMonthTransactions = await query.get();
-    _updateDailySummaryMap();
-    notifyListeners();
-  }
+  // 월별 거래내역 로드        -> 없어도 되는거 아님?
+  // Future<void> loadTransactionsForMonth(DateTime month) async {
+  //   final startDate = DateTime(month.year, month.month, 1);
+  //   final endDate = DateTime(month.year, month.month + 1, 1); // 다음 달 1일로 변경
+  //
+  //   final query = _database.select(_database.transactions)
+  //     ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
+  //     t.date.isSmallerThanValue(endDate)); // isBetweenValues 대신 사용
+  //   if (_currentUserId != null) {
+  //     query.where((t) => t.userId.equals(_currentUserId!));
+  //   }
+  //
+  //   _currentMonthTransactions = await query.get();
+  //   _updateDailySummaryMap();
+  //   notifyListeners();
+  // }
 
   // 날짜별 수입/지출 합계 Map 갱신 함수
   void _updateDailySummaryMap() {
     final Map<DateTime, Map<String, int>> summary = {};
-    for (final tx in _currentMonthTransactions) {
+    for (final tx in _monthlyTransactions) {
       final date = DateTime(tx.date.year, tx.date.month, tx.date.day);
       summary.putIfAbsent(date, () => {'income': 0, 'expense': 0});
       if (tx.type == TransactionType.income) {
@@ -83,17 +85,23 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   // 월 변경 시 거래내역도 새로 로드
-  Future<void> changeMonth(DateTime month) async {
-    _selectedMonth = month;
-    await loadTransactionsForMonth(month);
+  Future<void> changeFocusedDay(DateTime month) async {
+    _focusedDay = month;
+    // await loadTransactionsForMonth(month);
     await _loadMonthlySummary();
+    notifyListeners();
+  }
+
+  void selectDayAndFocus(DateTime day) {
+    _selectedDay = day;
+    _focusedDay = day;
     notifyListeners();
   }
 
   // 월별 요약 데이터 로드
   Future<void> _loadMonthlySummary() async {
-    final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-    final endDate = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 1);
+    final startDate = DateTime(_focusedDay.year, _focusedDay.month, 1);
+    final endDate = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
 
     final query = _database.select(_database.transactions)
       ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
@@ -103,17 +111,19 @@ class MoneyProvider extends ChangeNotifier {
       query.where((t) => t.userId.equals(_currentUserId!));
     }
 
-    final transactions = await query.get();
+    _monthlyTransactions = await query.get();
     
-    _monthlyIncome = transactions
+    _monthlyIncome = _monthlyTransactions
         .where((t) => t.type == TransactionType.income)
         .fold(0, (sum, t) => sum + t.amount);
 
-    _monthlyExpense = transactions
+    _monthlyExpense = _monthlyTransactions
         .where((t) => t.type == TransactionType.expense)
         .fold(0, (sum, t) => sum + t.amount);
 
     _monthlyBalance = _monthlyIncome - _monthlyExpense;
+    _updateDailySummaryMap();
+
   }
 
   // 거래 추가/수정/삭제 시 월별 리스트도 갱신
@@ -125,7 +135,7 @@ class MoneyProvider extends ChangeNotifier {
     );
     final id = await _database.into(_database.transactions).insert(transactionWithUser);
     // 거래 추가 후, 현재 월 거래내역을 DB에서 다시 불러오기!
-    await loadTransactionsForMonth(_selectedMonth);
+    // await loadTransactionsForMonth(_focusedDay);
     await _loadMonthlySummary();
     notifyListeners();
   }
@@ -141,7 +151,7 @@ class MoneyProvider extends ChangeNotifier {
         updatedBy: Value(_currentUserId),
       ));
     // 월이 바뀌었을 수도 있으니 다시 로드
-    await loadTransactionsForMonth(_selectedMonth);
+    // await loadTransactionsForMonth(_focusedDay);
     await _loadMonthlySummary();
     notifyListeners();
   }
@@ -151,7 +161,7 @@ class MoneyProvider extends ChangeNotifier {
       ..where((t) => t.id.equals(id)))
       .go();
     // 삭제 후 다시 로드
-    await loadTransactionsForMonth(_selectedMonth);
+    // await loadTransactionsForMonth(_focusedDay);
     await _loadMonthlySummary();
     notifyListeners();
   }
@@ -168,23 +178,36 @@ class MoneyProvider extends ChangeNotifier {
     return await query.get();
   }
 
-  // 기간별 수입/지출 합계 계산
-  Future<({int income, int expense})> getPeriodSummary(DateTime start, DateTime end) async {
-    final transactions = await getTransactionsByPeriod(start, end);
-    
-    int income = 0;
-    int expense = 0;
-    
-    for (final transaction in transactions) {
-      if (transaction.type == TransactionType.income) {
-        income += transaction.amount;
-      } else if (transaction.type == TransactionType.expense) {
-        expense += transaction.amount;
-      }
-    }
-    
-    return (income: income, expense: expense);
+  // 자산별 월별 수입/지출 합계
+  int getIncomeByAsset(int assetId) {
+    return _monthlyTransactions
+        .where((t) => t.assetId == assetId && t.type == TransactionType.income)
+        .fold(0, (sum, t) => sum + t.amount);
   }
+
+  int getExpenseByAsset(int assetId) {
+    return _monthlyTransactions
+        .where((t) => t.assetId == assetId && t.type == TransactionType.expense)
+        .fold(0, (sum, t) => sum + t.amount);
+  }
+
+  // 기간별 수입/지출 합계 계산
+  // Future<({int income, int expense})> getPeriodSummary(DateTime start, DateTime end) async {
+  //   final transactions = await getTransactionsByPeriod(start, end);
+  //
+  //   int income = 0;
+  //   int expense = 0;
+  //
+  //   for (final transaction in transactions) {
+  //     if (transaction.type == TransactionType.income) {
+  //       income += transaction.amount;
+  //     } else if (transaction.type == TransactionType.expense) {
+  //       expense += transaction.amount;
+  //     }
+  //   }
+  //
+  //   return (income: income, expense: expense);
+  // }
 
   // 카테고리별 기간 내역 조회
   Future<Map<int?, List<Transaction>>> getTransactionsByCategory(DateTime start, DateTime end) async {
@@ -218,25 +241,27 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   // 자산 추가
-  Future<void> addAsset(AssetsCompanion asset) async {
-    final assetWithUser = asset.copyWith(
-      userId: Value(_currentUserId),
-      createdBy: Value(_currentUserId),
-      updatedBy: Value(_currentUserId),
+
+  Future<void> addAsset(String name, int targetAmount) async {
+    final assetWithUser = AssetsCompanion(
+    name: Value(name),
+    targetAmount: Value(targetAmount),
+    userId: Value(_currentUserId),
+    createdBy: Value(_currentUserId),
+    updatedBy: Value(_currentUserId),
     );
     await _database.into(_database.assets).insert(assetWithUser);
     await _loadAllAssets(); // 자산 목록 새로고침
   }
 
+
   // 자산 수정
-  Future<void> updateAsset(Asset asset) async {
+  Future<void> updateAsset(int id, String name, int targetAmount) async {
     await (_database.update(_database.assets)
-      ..where((a) => a.id.equals(asset.id)))
+      ..where((a) => a.id.equals(id)))
       .write(AssetsCompanion(
-        name: Value(asset.name),
-        balance: Value(asset.balance),
-        goalAmount: Value(asset.goalAmount),
-        type: Value(asset.type),
+        name: Value(name),
+        targetAmount: Value(targetAmount),
         updatedAt: Value(DateTime.now()),
         updatedBy: Value(_currentUserId),
       ));
