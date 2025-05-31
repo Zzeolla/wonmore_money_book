@@ -61,8 +61,6 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
   @override
   void initState() {
     super.initState();
-
-    debugPrint("✅ RecordInputDialog initState 진입");
     // 금액 입력 필드 포맷팅을 위한 리스너 추가
     amountController.addListener(_formatAmount);
 

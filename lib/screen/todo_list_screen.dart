@@ -28,44 +28,22 @@ class TodoListScreen extends StatelessWidget {
           children: [
             TextButton(
               onPressed: () async {
-                print("🔔 [내역 추가] 버튼 눌림");
                 await flush.dismiss(); // 💡 Flushbar 먼저 닫기
                 await Future.delayed(const Duration(milliseconds: 150)); // 💡 닫힌 후 약간의 딜레이
-                print("💬 flushbar 닫힘 후 dialog 띄우기 시도");
 
                 if (outerContext.mounted) {
-                  Navigator.of(outerContext, rootNavigator: true).push(
-                    PageRouteBuilder(
-                      opaque: false,
-                      barrierDismissible: true,
-                      barrierColor: Colors.black54,
-                      pageBuilder: (_, __, ___) {
-                        return Center(
-                          child: RecordInputDialog(
-                            initialDate: DateTime.now(),
-                            initialTitle: title,
-                            categories: outerContext.read<MoneyProvider>().categories,
-                            assetList: outerContext.read<MoneyProvider>().assets.map((e) => e.name).toList(),
-                          ),
-                        );
-                      },
-                    ),
+                  showDialog(
+                    context: outerContext,
+                    useRootNavigator: true,
+                    builder: (_) {
+                      return RecordInputDialog(
+                        initialDate: DateTime.now(),
+                        initialTitle: title,
+                        categories: outerContext.read<MoneyProvider>().categories,
+                        assetList: outerContext.read<MoneyProvider>().assets.map((e) => e.name).toList(),
+                      );
+                    },
                   );
-
-                  // print("📦 showDialog 실행 시작");
-                  // showDialog(
-                  //   context: outerContext,
-                  //   useRootNavigator: true,
-                  //   builder: (_) {
-                  //     print("📦 RecordInputDialog 생성됨");
-                  //     return RecordInputDialog(
-                  //       initialDate: DateTime.now(),
-                  //       initialTitle: title,
-                  //       categories: outerContext.read<MoneyProvider>().categories,
-                  //       assetList: outerContext.read<MoneyProvider>().assets.map((e) => e.name).toList(),
-                  //     );
-                  //   },
-                  // );
                 }
               },
               child: const Text('내역 추가', style: TextStyle(color: Colors.white)),
