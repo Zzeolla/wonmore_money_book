@@ -5,18 +5,21 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:wonmore_money_book/model/asset.dart';
 import 'package:wonmore_money_book/model/category.dart';
+import 'package:wonmore_money_book/model/favorite_record.dart';
+import 'package:wonmore_money_book/model/installment.dart';
+import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/model/todo.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Categories, Assets, Transactions, Todos])
+@DriftDatabase(tables: [Categories, Assets, Transactions, Todos, FavoriteRecords, Installments])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -135,11 +138,6 @@ class AppDatabase extends _$AppDatabase {
     ));
   }
 
-  Future<bool> deleteCategory(int id) async {
-    await (delete(categories)..where((c) => c.id.equals(id))).go();
-    return true;
-  }
-
   Future<void> reorderCategories(List<Category> reorderedList) async {
     await batch((batch) {
       for (int i = 0; i < reorderedList.length; i++) {
@@ -159,6 +157,44 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
+  Future<int> getNextCategorySortOrder(TransactionType type) async {
+    final query = await (select(categories)
+      ..where((c) => c.type.equals(type.name))
+      ..orderBy([(c) => OrderingTerm(expression: c.sortOrder, mode: OrderingMode.desc)])
+      ..limit(1))
+        .getSingleOrNull();
+
+    return query?.sortOrder != null ? query!.sortOrder + 1 : 0;
+  }
+
+  Future<int> getNextFavoriteRecordSortOrder(PeriodType period) async {
+    final query = await (select(favoriteRecords)
+      ..where((c) => period == PeriodType.none
+        ? c.period.equals(PeriodType.none.name)
+        : c.period.isNotIn([PeriodType.none.name]))
+      ..orderBy([(c) => OrderingTerm(expression: c.sortOrder, mode: OrderingMode.desc)])
+      ..limit(1))
+        .getSingleOrNull();
+
+    return query?.sortOrder != null ? query!.sortOrder + 1 : 0;
+  }
+
+  Future<void> reorderFavoriteRecords(List<FavoriteRecord> reorderedList) async {
+    await batch((batch) {
+      for (int i = 0; i < reorderedList.length; i++) {
+        batch.update(
+          favoriteRecords,
+          FavoriteRecordsCompanion(sortOrder: Value(i)),
+          where: (c) => c.id.equals(reorderedList[i].id),
+        );
+      }
+    });
+  }
+
+  Future<Installment?> getInstallmentById(int id) {
+    return (select(installments)..where((i) => i.id.equals(id)))
+        .getSingleOrNull();
+  }
 }
 
 LazyDatabase _openConnection() {

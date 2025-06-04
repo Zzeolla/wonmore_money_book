@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
+import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/home_screen_tab.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
@@ -106,9 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Column(
                     children: [
                       /// 연도.월 + 화살표 구현
-                      YearMonthHeader(
-                        backgroundColor: Color(0xFFF1F1FD),
-                      ),
+                      YearMonthHeader(),
                       /// 수입/지출/잔액 정보
                       Padding(
                         padding: const EdgeInsets.all(8.0),
@@ -165,8 +164,6 @@ class _HomeScreenState extends State<HomeScreen> {
                           context: context,
                           builder: (context) => RecordInputDialog(
                             initialDate: DateTime.now(),
-                            categories: provider.categories,
-                            assetList: provider.assets.map((a) => a.name).toList(),
                           ),
                         ).then(
                           (result) {
@@ -239,5 +236,4 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-
 }

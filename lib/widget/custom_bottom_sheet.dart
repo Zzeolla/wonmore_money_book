@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/installment_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
@@ -186,30 +187,36 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                     ),
                   ),
                   child: ListTile(
-                    leading: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircleAvatar(
-                          radius: 14,
-                          backgroundColor: category != null
-                              ? Color(category.colorValue)
-                              : Colors.grey.shade300,
-                          child: Icon(
-                              category != null
-                                  ? getIconData(category.iconName)
-                                  : Icons.category,
-                              color: Colors.white,
-                              size: 16
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    leading: SizedBox(
+                      width: 50,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: category != null
+                                ? Color(category.colorValue)
+                                : Colors.grey.shade300,
+                            child: Icon(
+                                category != null
+                                    ? getIconData(category.iconName)
+                                    : Icons.category,
+                                color: Colors.white,
+                                size: 16
+                            ),
                           ),
-                        ),
-                        Text(
-                          category?.name ?? '미분류',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: category != null ? Colors.black : Colors.grey,
+                          Text(
+                            category?.name ?? '미분류',
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: category != null ? Colors.black : Colors.grey,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                     title: Text(tx.title ?? ''),
                     subtitle: asset != null ? Text(asset.name) : null,
@@ -222,29 +229,53 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                         fontSize: 14,
                       ),
                     ),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (context) =>
-                            RecordInputDialog(
-                              initialDate: tx.date,
-                              categories: provider.categories,
-                              assetList: provider.assets.map((a) => a.name).toList(),
-                              initialTitle: tx.title,
-                              initialAmount: tx.amount,
-                              initialType: tx.type,
-                              initialCategoryId: tx.categoryId,
-                              initialAssetId: tx.assetId,
-                              initialMemo: tx.memo,
-                              transactionId: tx.id,
-                            ),
-                      ).then((result) {
-                        if (result == true) {
+                    onTap: () async {
+                      if (tx.installmentId != null) {
+                        final installment = await provider.database.getInstallmentById(tx.installmentId!);
+
+                        if (installment == null) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('수정되었습니다!')),
+                            SnackBar(content: Text('할부 정보를 찾을 수 없습니다.')),
                           );
+                          return;
                         }
-                      });
+
+                        showDialog(
+                          context: context,
+                          builder: (context) =>
+                            InstallmentInputDialog(
+                              initialDate: installment.date,
+                              initialTotalAmount: installment.totalAmount,
+                              initialTitle: installment.title,
+                              initialMonths: installment.months,
+                              initialCategoryId: installment.categoryId,
+                              initialAssetId: installment.assetId,
+                              initialMemo: installment.memo,
+                              installmentId: installment.id,
+                            ),
+                        );
+                      } else {
+                        showDialog(
+                          context: context,
+                          builder: (context) =>
+                              RecordInputDialog(
+                                initialDate: tx.date,
+                                initialTitle: tx.title,
+                                initialAmount: tx.amount,
+                                initialType: tx.type,
+                                initialCategoryId: tx.categoryId,
+                                initialAssetId: tx.assetId,
+                                initialMemo: tx.memo,
+                                transactionId: tx.id,
+                              ),
+                        ).then((result) {
+                          if (result == true) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('수정되었습니다!')),
+                            );
+                          }
+                        });
+                      }
                     },
                     onLongPress: () async {
                       final result = await showCustomDeleteDialog(
@@ -253,10 +284,16 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                       );
                       if (result!) {
                         // 삭제 실행
-                        await context.read<MoneyProvider>().deleteTransaction(tx.id);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('삭제되었습니다')),
-                        );
+                        if (tx.installmentId != null) {
+
+                        } else {
+                          await (tx.installmentId != null
+                            ? provider.deleteInstallment(tx.installmentId!)
+                            : provider.deleteTransaction(tx.id));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('삭제되었습니다')),
+                          );
+                        }
                       }
                     },
                   ),
@@ -282,8 +319,6 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
             builder: (context) =>
                 RecordInputDialog(
                   initialDate: date,
-                  categories: provider.categories,
-                  assetList: provider.assets.map((a) => a.name).toList(),
                 ),
           ).then((result) {
             if (result == true) {

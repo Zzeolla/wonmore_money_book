@@ -53,7 +53,7 @@ class _TodoInputDialogState extends State<TodoInputDialog> {
                 : const SizedBox(height: 0),
             const Text(
               '할 일 입력',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
             ),
             const SizedBox(height: 24),
 
@@ -145,7 +145,7 @@ class _TodoInputDialogState extends State<TodoInputDialog> {
             Icon(icon, size: 28, color: const Color(0xFFA79BFF)),
             const SizedBox(width: 12),
             Text(isRequired ? '$label *' : label,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
           ],
         ),
         const SizedBox(height: 8),
@@ -154,6 +154,7 @@ class _TodoInputDialogState extends State<TodoInputDialog> {
           maxLines: maxLines,
           decoration: InputDecoration(
             hintText: hintText,
+            hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),

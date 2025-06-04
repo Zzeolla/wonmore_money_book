@@ -23,10 +23,10 @@ void main() async {
 
   // 날짜 포맷 초기화
   await initializeDateFormatting('ko_KR', null);
-  
+
   // 데이터베이스 초기화
   final database = AppDatabase();
-  
+
   runApp(
     MultiProvider(
       providers: [
@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: '원모아 가계부',
       debugShowCheckedModeBanner: false,
-      
+
       // 로컬라이제이션 설정
       locale: const Locale('ko', 'KR'),
       supportedLocales: const [
@@ -59,7 +59,7 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      
+
       // 테마 설정
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -68,7 +68,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
         fontFamily: 'NotoSansKR',
-        
+
         // 카드 테마
         cardTheme: CardTheme(
           elevation: 2,
@@ -76,7 +76,7 @@ class MyApp extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
         ),
-        
+
         // 버튼 테마
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
@@ -86,7 +86,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-        
+
         // 입력 필드 테마
         inputDecorationTheme: InputDecorationTheme(
           border: OutlineInputBorder(
@@ -105,7 +105,7 @@ class MyApp extends StatelessWidget {
           },
         ),
       ),
-      
+
       // 라우팅 설정
       initialRoute: '/',
       routes: {
@@ -116,7 +116,7 @@ class MyApp extends StatelessWidget {
         '/analysis': (context) => const AnalysisScreen(),
         '/more': (context) => const MoreScreen(),
       },
-      
+
 
     );
   }

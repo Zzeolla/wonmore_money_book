@@ -91,7 +91,7 @@ class _AssetInputDialogState extends State<AssetInputDialog> {
                 : const SizedBox(height: 0),
             const Text(
               '할 일 입력',
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black87),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
             ),
             const SizedBox(height: 24),
             // 제목 필드
@@ -107,7 +107,7 @@ class _AssetInputDialogState extends State<AssetInputDialog> {
               controller: _targetAmountController,
               label: '실적 목표',
               icon: Icons.track_changes,
-              hintText: '실적 관리를 위해 목표 금액을 설정하세요',
+              hintText: '목표 금액을 설정하세요',
               type: TextInputType.number,
             ),
             const SizedBox(height: 32),
@@ -121,28 +121,29 @@ class _AssetInputDialogState extends State<AssetInputDialog> {
                     color: Colors.black54,
                     backgroundColor: const Color(0xFFE5E6EB),
                     onTap: () => Navigator.pop(context)),
-                CustomCircleButton(
-                  icon: Icons.delete_outline,
-                  color: Colors.white,
-                  backgroundColor: const Color(0xFFA79BFF),
-                  onTap: () async {
-                    if (widget.assetId == null) {
-                      Navigator.pop(context);
-                    } else {
-                      final result = await showCustomDeleteDialog(
-                        context,
-                        message: '이 자산을 정말 삭제할까요?'
-                      );
-                      if (result!) {
-                        await context.read<MoneyProvider>().deleteAsset(widget.assetId!);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('삭제되었습니다')),
-                        );
+                if (widget.assetId != null)
+                  CustomCircleButton(
+                    icon: Icons.delete_outline,
+                    color: Colors.white,
+                    backgroundColor: const Color(0xFFA79BFF),
+                    onTap: () async {
+                      if (widget.assetId == null) {
                         Navigator.pop(context);
+                      } else {
+                        final result = await showCustomDeleteDialog(
+                          context,
+                          message: '이 자산을 정말 삭제할까요?'
+                        );
+                        if (result!) {
+                          await context.read<MoneyProvider>().deleteAsset(widget.assetId!);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('삭제되었습니다')),
+                          );
+                          Navigator.pop(context);
+                        }
                       }
-                    }
-                  },
-                ),
+                    },
+                  ),
                 CustomCircleButton(
                   icon: Icons.check,
                   color: Colors.white,
@@ -210,7 +211,7 @@ class _AssetInputDialogState extends State<AssetInputDialog> {
             Icon(icon, size: 28, color: const Color(0xFFA79BFF)),
             const SizedBox(width: 12),
             Text(isRequired ? '$label *' : label,
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
           ],
         ),
         const SizedBox(height: 8),
@@ -222,6 +223,7 @@ class _AssetInputDialogState extends State<AssetInputDialog> {
               type == TextInputType.number ? [FilteringTextInputFormatter.digitsOnly] : null,
           decoration: InputDecoration(
             hintText: hintText,
+            hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),

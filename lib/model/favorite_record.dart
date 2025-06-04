@@ -9,9 +9,12 @@ class FavoriteRecords extends Table {
   IntColumn get amount => integer()();
   TextColumn get type => textEnum<TransactionType>()();
   TextColumn get period => textEnum<PeriodType>()();
-  DateTimeColumn get baseDate => dateTime().nullable()();
-  IntColumn get categoryId => integer().nullable().references(Categories, #id)();
-  IntColumn get assetId => integer().nullable().references(Assets, #id)();
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  DateTimeColumn get startDate => dateTime().nullable()();
+  DateTimeColumn get lastGeneratedDate => dateTime().nullable()();
+  IntColumn get originalDay => integer().nullable()(); // 원래 설정된 날짜의 일자
+  IntColumn get categoryId => integer().nullable().customConstraint('NULL REFERENCES categories(id) ON DELETE SET NULL')();
+  IntColumn get assetId => integer().nullable().customConstraint('NULL REFERENCES assets(id) ON DELETE SET NULL')();
   TextColumn get title => text().nullable()();
   TextColumn get memo => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
+import 'package:wonmore_money_book/service/repeat_transaction_service.dart';
 
 class MoneyProvider extends ChangeNotifier {
   final AppDatabase _database;
+  late final RepeatTransactionService repeatTransactionService;
   String? _currentUserId;
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   int _monthlyIncome = 0;
   int _monthlyExpense = 0;
   int _monthlyBalance = 0;
+
+  AppDatabase get database => _database;
   
   // 카테고리 상태 관리 추가
   List<Category> _categories = [];
@@ -19,6 +24,14 @@ class MoneyProvider extends ChangeNotifier {
   // 자산 상태 관리 추가
   List<Asset> _assets = [];
   List<Asset> get assets => _assets;
+
+  // 즐겨찾기 거래내역 상태 관리 추가
+  List<FavoriteRecord> _favoriteRecords = [];
+  List<FavoriteRecord> get favoriteRecords => _favoriteRecords;
+
+  // // 즐겨찾기 거래내역 상태 관리 추가
+  // List<Installment> _installments = [];
+  // List<Installment> get installments => _installments;
   
   // 수입/지출 카테고리 getter
   List<Category> getIncomeCategories() => _categories.where((c) => c.type == TransactionType.income).toList();
@@ -34,9 +47,11 @@ class MoneyProvider extends ChangeNotifier {
   Map<DateTime, Map<String, int>> get dailySummaryMap => _dailySummaryMap;
 
   MoneyProvider(this._database) {
+    repeatTransactionService = RepeatTransactionService(this);
     _loadMonthlySummary();
     _loadAllCategories(); // 앱 시작 시 전체 카테고리 로드
     _loadAllAssets(); // 앱 시작 시 전체 자산 로드
+    loadFavoriteRecords();
   }
 
   // Getters
@@ -123,7 +138,6 @@ class MoneyProvider extends ChangeNotifier {
 
     _monthlyBalance = _monthlyIncome - _monthlyExpense;
     _updateDailySummaryMap();
-
   }
 
   // 거래 추가/수정/삭제 시 월별 리스트도 갱신
@@ -296,7 +310,10 @@ class MoneyProvider extends ChangeNotifier {
 
   // 카테고리 추가
   Future<void> addCategory(CategoriesCompanion category) async {
+    final nextOrder = await _database.getNextCategorySortOrder(category.type.value);
+
     final categoryWithUser = category.copyWith(
+      sortOrder: Value(nextOrder),
       userId: Value(_currentUserId),
       createdBy: Value(_currentUserId),
       updatedBy: Value(_currentUserId),
@@ -321,12 +338,11 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   // 카테고리 삭제
-  Future<bool> deleteCategory(int id) async {
-    final result = await _database.deleteCategory(id);
-    if (result) {
-      await _loadAllCategories(); // 카테고리 목록 새로고침
-    }
-    return result;
+  Future<void> deleteCategory(int id) async {
+    await (_database.delete(_database.categories)
+      ..where((a) => a.id.equals(id)))
+        .go();
+    await _loadAllCategories(); // 카테고리 목록 새로고침
   }
 
   Future<void> reorderCategories(List<Category> reorderedList) async {
@@ -346,4 +362,140 @@ class MoneyProvider extends ChangeNotifier {
     
     return await query.get();
   }
-} 
+
+  // 전체 즐겨찾기 내역 로드
+  Future<void> loadFavoriteRecords() async {
+    final query = _database.select(_database.favoriteRecords)
+    ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]);
+    if (_currentUserId != null) {
+      query.where((a) => a.userId.equals(_currentUserId!));
+    }
+    _favoriteRecords = await query.get();
+    notifyListeners();
+  }
+  
+  Future<void> addFavoriteRecord(FavoriteRecordsCompanion record) async {
+    final nextOrder = await _database.getNextFavoriteRecordSortOrder(record.period.value);
+
+    final favoriteRecordWithUser = record.copyWith(
+      sortOrder: Value(nextOrder),
+      userId: Value(_currentUserId),
+      createdBy: Value(_currentUserId),
+      updatedBy: Value(_currentUserId),
+    );
+    await _database.into(_database.favoriteRecords).insert(favoriteRecordWithUser);
+    await loadFavoriteRecords();
+    await repeatTransactionService.generateTodayRepeatedTransactions();
+  }
+
+  Future<void> updateFavoriteRecord(int id, FavoriteRecordsCompanion favoriteRecord) async {
+    await (_database.update(_database.favoriteRecords)
+      ..where((c) => c.id.equals(id)))
+        .write(favoriteRecord.copyWith(
+      updatedAt: Value(DateTime.now()),
+      updatedBy: Value(_currentUserId),
+    ));
+    await loadFavoriteRecords();
+  }
+
+  Future<void> deleteFavoriteRecord(int id) async {
+    await (_database.delete(_database.favoriteRecords)
+      ..where((t) => t.id.equals(id)))
+        .go();
+
+    await loadFavoriteRecords();
+  }
+
+  Future<void> reorderFavoriteRecords(List<FavoriteRecord> reorderedList) async {
+    await _database.reorderFavoriteRecords(reorderedList); // database.dart의 reorderCategories 사용
+    await loadFavoriteRecords(); // 변경된 순서 반영 후 전체 새로고침
+    notifyListeners();
+  }
+
+
+  Future<void> addInstallment(InstallmentsCompanion installment) async {
+    final installmentWithUser = installment.copyWith(
+      userId: Value(_currentUserId),
+      createdBy: Value(_currentUserId),
+      updatedBy: Value(_currentUserId),
+    );
+
+    final installmentId =
+    await _database.into(_database.installments).insert(installmentWithUser);
+
+    await _createTransactionsFromInstallment(installmentId, installmentWithUser);
+  }
+
+  Future<void> updateInstallment(int id, InstallmentsCompanion installment) async {
+    await _database.delete(_database.transactions)
+      ..where((t) => t.installmentId.equals(id))
+      ..go();
+
+    await (_database.update(_database.installments)
+      ..where((i) => i.id.equals(id)))
+        .write(installment.copyWith(
+      updatedAt: Value(DateTime.now()),
+      updatedBy: Value(_currentUserId),
+    ));
+
+    await _createTransactionsFromInstallment(id, installment);
+  }
+
+  Future<void> deleteInstallment(int id) async {
+    await _database.delete(_database.transactions)
+      ..where((t) => t.installmentId.equals(id))
+      ..go();
+
+    await (_database.delete(_database.installments)
+      ..where((i) => i.id.equals(id)))
+        .go();
+
+    await _loadMonthlySummary();
+    notifyListeners();
+  }
+
+  Future<void> _createTransactionsFromInstallment(int installmentId, InstallmentsCompanion installment) async {
+    final months = installment.months.value;
+    final totalAmount = installment.totalAmount.value;
+    final title = installment.title.value;
+    final startDate = installment.date.value;
+
+    final baseAmount = totalAmount ~/ months;
+    final remainder = totalAmount % months;
+
+    for (int i = 0; i < months; i++) {
+      final amount = i == 0 ? baseAmount + remainder : baseAmount;
+      final date = _calculateInstallmentDate(startDate, i);
+
+      await _database.into(_database.transactions).insert(
+        TransactionsCompanion(
+          date: Value(date),
+          amount: Value(amount),
+          type: Value(TransactionType.expense),
+          categoryId: installment.categoryId,
+          assetId: installment.assetId,
+          title: Value('$title (${i + 1}/$months)'),
+          memo: installment.memo,
+          installmentId: Value(installmentId),
+          createdAt: Value(DateTime.now()),
+          updatedAt: Value(DateTime.now()),
+          userId: Value(_currentUserId),
+          createdBy: Value(_currentUserId),
+          updatedBy: Value(_currentUserId),
+        ),
+      );
+    }
+    await _loadMonthlySummary();
+    notifyListeners();
+  }
+
+  DateTime _calculateInstallmentDate(DateTime baseDate, int offset) {
+    final year = baseDate.year;
+    final month = baseDate.month + offset;
+    final tentative = DateTime(year, month, 1, baseDate.hour, baseDate.minute);
+    final lastDay = DateTime(tentative.year, tentative.month + 1, 0).day;
+    final day = baseDate.day > lastDay ? lastDay : baseDate.day;
+
+    return DateTime(tentative.year, tentative.month, day, baseDate.hour, baseDate.minute);
+  }
+}

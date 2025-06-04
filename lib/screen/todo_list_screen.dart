@@ -4,79 +4,85 @@ import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/todo_input_dialog.dart';
+import 'package:wonmore_money_book/model/home_screen_tab.dart';
+import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
 import 'package:another_flushbar/flushbar.dart';
 
-class TodoListScreen extends StatelessWidget {
+class TodoListScreen extends StatefulWidget {
   final VoidCallback onClose;
 
   const TodoListScreen({super.key, required this.onClose});
 
-  void _showFlushBar(BuildContext outerContext, int todoId, String title) {
-    late Flushbar flush;
+  @override
+  State<TodoListScreen> createState() => _TodoListScreenState();
+}
 
-    flush = Flushbar(
+class _TodoListScreenState extends State<TodoListScreen> {
+  bool _isFlushbar = false;
+
+  void _showFlushBar(BuildContext context, int todoId, String title) {
+    _isFlushbar = true;
+    Flushbar(
       margin: const EdgeInsets.all(12),
       borderRadius: BorderRadius.circular(8),
       messageText: Text('"$title" 처리됨', style: const TextStyle(color: Colors.white)),
       duration: const Duration(seconds: 5),
-      backgroundColor: Colors.black87,
-      mainButton: Builder(
-        builder: (buttonContext) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextButton(
-              onPressed: () async {
-                await flush.dismiss(); // 💡 Flushbar 먼저 닫기
-                await Future.delayed(const Duration(milliseconds: 150)); // 💡 닫힌 후 약간의 딜레이
-
-                if (outerContext.mounted) {
-                  showDialog(
-                    context: outerContext,
-                    useRootNavigator: true,
-                    builder: (_) {
-                      return RecordInputDialog(
-                        initialDate: DateTime.now(),
-                        initialTitle: title,
-                        categories: outerContext.read<MoneyProvider>().categories,
-                        assetList: outerContext.read<MoneyProvider>().assets.map((e) => e.name).toList(),
-                      );
-                    },
-                  );
-                }
-              },
-              child: const Text('내역 추가', style: TextStyle(color: Colors.white)),
-            ),
-            TextButton(
-              onPressed: () {
-                outerContext.read<TodoProvider>().toggleTodo(todoId, false);
-                Navigator.of(outerContext).pop();
-              },
-              child: const Text('되돌리기', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
+      mainButton: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextButton(
+            onPressed: () {
+              showDialog(
+                context: context,
+                useRootNavigator: true,
+                builder: (_) => RecordInputDialog(
+                  initialDate: DateTime.now(),
+                  initialTitle: title,
+                ),
+              );
+            },
+            child: const Text('내역 추가', style: TextStyle(color: Colors.white)),
+          ),
+          TextButton(
+            onPressed: () {
+              context.read<TodoProvider>().toggleTodo(todoId, false);
+              Navigator.of(context).pop();
+            },
+            child: const Text('되돌리기', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
-    );
-
-    flush.show(outerContext); // Flushbar 띄우기
+      backgroundColor: Colors.black87,
+    ).show(context);
   }
 
   @override
   Widget build(BuildContext context) {
     final todos = context.watch<TodoProvider>().todos.where((t) => !t.isDone).toList();
 
+    if (todos.isEmpty && _isFlushbar) {
+      // 5초 후에 한 번만 실행되도록
+      Future.delayed(const Duration(seconds: 5), () {
+        if (mounted) {
+          setState(() {
+            _isFlushbar = false;
+          });
+        }
+      });
+    }
+
     return WillPopScope(
       onWillPop: () {
-        onClose();
+        widget.onClose();
         return Future.value(false);
       },
       child: Scaffold(
         backgroundColor: const Color(0xFFF1F1FD),
         body: Padding(
           padding: const EdgeInsets.only(top: 12),
-          child: todos.isEmpty
+          child: todos.isEmpty && !_isFlushbar
           ? const Center(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 24),
@@ -206,5 +212,10 @@ class TodoListScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _handleFlushbarCleanup() async {
+    await Future.delayed(const Duration(seconds: 5));
+    _isFlushbar = false;
   }
 }

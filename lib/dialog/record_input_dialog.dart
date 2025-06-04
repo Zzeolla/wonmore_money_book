@@ -2,6 +2,9 @@ import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/installment_input_dialog.dart';
+import 'package:wonmore_money_book/dialog/repeat_record_input_dialog.dart';
+import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
@@ -15,8 +18,6 @@ import 'package:wonmore_money_book/widget/transaction_type_button.dart';
 
 class RecordInputDialog extends StatefulWidget {
   final DateTime initialDate;
-  final List<Category> categories;
-  final List<String> assetList;
   final String? initialTitle;
   final int? initialAmount;
   final TransactionType? initialType;
@@ -28,8 +29,6 @@ class RecordInputDialog extends StatefulWidget {
   const RecordInputDialog({
     super.key,
     required this.initialDate,
-    required this.categories,
-    required this.assetList,
     this.initialTitle,
     this.initialAmount,
     this.initialType,
@@ -44,19 +43,22 @@ class RecordInputDialog extends StatefulWidget {
 }
 
 class _RecordInputDialogState extends State<RecordInputDialog> {
+
   late DateTime selectedDate = widget.initialDate;
   TransactionType _selectedType = TransactionType.expense;
 
   final amountController = TextEditingController();
-  final contentController = TextEditingController();
+  final titleController = TextEditingController();
   final memoController = TextEditingController();
 
   // 포커스 노드 추가
   final _amountFocus = FocusNode();
-  final _contentFocus = FocusNode();
+  final _titleFocus = FocusNode();
 
   Category? selectedCategory;
   String? selectedAsset;
+
+  final GlobalKey _menuKey = GlobalKey();
 
   @override
   void initState() {
@@ -66,7 +68,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
 
     // 초기값 설정
     if (widget.initialTitle != null) {
-      contentController.text = widget.initialTitle!;
+      titleController.text = widget.initialTitle!;
     }
     if (widget.initialAmount != null) {
       amountController.text = widget.initialAmount!.toString();
@@ -78,9 +80,9 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
       memoController.text = widget.initialMemo!;
     }
     if (widget.initialCategoryId != null) {
-      selectedCategory = widget.categories.firstWhere(
+      selectedCategory = context.read<MoneyProvider>().categories.firstWhere(
         (c) => c.id == widget.initialCategoryId,
-        orElse: () => widget.categories.first,
+        orElse: () => context.read<MoneyProvider>().categories.first,
       );
     }
     if (widget.initialAssetId != null) {
@@ -96,10 +98,10 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
   void dispose() {
     amountController.removeListener(_formatAmount);
     amountController.dispose();
-    contentController.dispose();
+    titleController.dispose();
     memoController.dispose();
     _amountFocus.dispose();
-    _contentFocus.dispose();
+    _titleFocus.dispose();
     super.dispose();
   }
 
@@ -135,10 +137,6 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
     }
   }
 
-  List<Category> get _filteredCategories {
-    return widget.categories.where((c) => c.type == _selectedType).toList();
-  }
-
   String _iconSubtitleText() {
     return switch (_selectedType) {
       // todo: 반복/할부 기능 구현 필요
@@ -150,6 +148,8 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredCategories = context.watch<MoneyProvider>().categories.where((c) => c.type == _selectedType).toList();
+    final assetList = context.watch<MoneyProvider>().assets.map((e) => e.name).toList();
     final String title = switch (_selectedType) {
       TransactionType.income => '수입내역',
       TransactionType.expense => '지출내역',
@@ -200,16 +200,154 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                         ),
                         Padding(
                           padding: const EdgeInsets.only(right: 4.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.repeat, size: 28, color: Colors.black54),
-                              const SizedBox(height: 2),
-                              Text(
-                                _iconSubtitleText(),
-                                style: const TextStyle(fontSize: 12, color: Colors.grey),
-                              ),
-                            ],
+                          child: GestureDetector(
+                            key: _menuKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.repeat, size: 28, color: Colors.black54),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _iconSubtitleText(),
+                                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                            onTap: () async {
+                              final RenderBox renderBox = _menuKey.currentContext!.findRenderObject() as RenderBox;
+                              final Offset offset = renderBox.localToGlobal(Offset.zero);
+                              final Size size = renderBox.size;
+
+                              if (_selectedType == TransactionType.income || _selectedType == TransactionType.transfer) {
+                                await showDialog(
+                                  context: context,
+                                  builder: (_) {
+                                    final rawAmount = amountController.text.replaceAll(',', '');
+                                    final amount = rawAmount.isEmpty ? null : int.tryParse(rawAmount) ?? 0;
+                                    final title = titleController.text.trim();
+                                    final memo = memoController.text.trim().isEmpty ? null : memoController.text.trim();
+                                    final categoryId = selectedCategory?.id;
+                                    final assetName = selectedAsset;
+                                    final provider = context.read<MoneyProvider>();
+                                    int? assetId;
+                                    if (assetName != null) {
+                                      Asset? asset;
+                                      try {
+                                        asset =
+                                            provider.assets.firstWhere((a) => a.name == assetName);
+                                      } catch (_) {
+                                        asset = null;
+                                      }
+                                      assetId = asset?.id;
+                                    }
+                                    return RepeatRecordInputDialog(
+                                      initialStartDate: selectedDate,
+                                      initialType: _selectedType,
+                                      initialTitle: title,
+                                      initialAmount: amount,
+                                      initialMemo: memo,
+                                      initialCategoryId: categoryId,
+                                      initialAssetId: assetId,
+                                    );
+                                  }
+                                ).then((result) {
+                                  if (result == true) {
+                                    Navigator.pop(context);
+                                  }
+                                });
+                              } else {
+                                final selectedMenu = await showMenu<String>(
+                                  context: context,
+                                  position: RelativeRect.fromLTRB(
+                                    offset.dx,
+                                    offset.dy + size.height,
+                                    offset.dx + size.width,
+                                    offset.dy,
+                                  ),
+                                  items: [
+                                    const PopupMenuItem(value: 'repeat', child: Text('반복')),
+                                    const PopupMenuItem(value: 'installment', child: Text('할부')),
+                                  ],
+                                );
+
+                                if (selectedMenu == null) {
+                                  return;
+                                } else if (selectedMenu == 'repeat') {
+                                  await showDialog(
+                                      context: context,
+                                      builder: (_) {
+                                        final rawAmount = amountController.text.replaceAll(',', '');
+                                        final amount = rawAmount.isEmpty ? null : int.tryParse(rawAmount) ?? 0;
+                                        final title = titleController.text.trim();
+                                        final memo = memoController.text.trim().isEmpty ? null : memoController.text.trim();
+                                        final categoryId = selectedCategory?.id;
+                                        final assetName = selectedAsset;
+                                        final provider = context.read<MoneyProvider>();
+                                        int? assetId;
+                                        if (assetName != null) {
+                                          Asset? asset;
+                                          try {
+                                            asset =
+                                                provider.assets.firstWhere((a) => a.name == assetName);
+                                          } catch (_) {
+                                            asset = null;
+                                          }
+                                          assetId = asset?.id;
+                                        }
+                                        return RepeatRecordInputDialog(
+                                          initialStartDate: selectedDate,
+                                          initialType: _selectedType,
+                                          initialTitle: title,
+                                          initialAmount: amount,
+                                          initialMemo: memo,
+                                          initialCategoryId: categoryId,
+                                          initialAssetId: assetId,
+                                        );
+                                      }
+                                  ).then((result) {
+                                    if (result == true) {
+                                      Navigator.pop(context);
+                                    }
+                                  });
+                                } else {
+                                  await showDialog(
+                                      context: context,
+                                      builder: (_) {
+                                        final rawAmount = amountController.text.replaceAll(',', '');
+                                        final totalAmount = rawAmount.isEmpty ? null : int.tryParse(rawAmount) ?? 0;
+                                        final title = titleController.text.trim();
+                                        final memo = memoController.text.trim().isEmpty ? null : memoController.text.trim();
+                                        final categoryId = selectedCategory?.id;
+                                        final assetName = selectedAsset;
+                                        final provider = context.read<MoneyProvider>();
+                                        int? assetId;
+                                        if (assetName != null) {
+                                          Asset? asset;
+                                          try {
+                                            asset =
+                                                provider.assets.firstWhere((a) => a.name == assetName);
+                                          } catch (_) {
+                                            asset = null;
+                                          }
+                                          assetId = asset?.id;
+                                        }
+                                        return InstallmentInputDialog(
+                                          initialDate: selectedDate,
+                                          initialTitle: title,
+                                          initialTotalAmount: totalAmount,
+                                          initialMemo: memo,
+                                          initialCategoryId: categoryId,
+                                          initialAssetId: assetId,
+                                        );
+                                      }
+                                  ).then((result) {
+                                    if (result == true) {
+                                      Navigator.pop(context);
+                                    }
+                                  });
+                                }
+                              }
+                            }
                           ),
                         ),
                       ],
@@ -277,14 +415,14 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                 amountController,
                                 TextInputType.number,
                                 focusNode: _amountFocus,
-                                onSubmitted: (_) => _contentFocus.requestFocus(),
+                                onSubmitted: (_) => _titleFocus.requestFocus(),
                               )),
                           _buildFieldRow(
                               '내역',
                               _buildTextBox(
-                                contentController,
+                                titleController,
                                 TextInputType.text,
-                                focusNode: _contentFocus,
+                                focusNode: _titleFocus,
                                 textInputAction: TextInputAction.done,
                                 onSubmitted: (_) => FocusScope.of(context).unfocus(),
                               )),
@@ -308,7 +446,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                     ],
                                   ),
                                 ),
-                                ..._filteredCategories.map(
+                                ...filteredCategories.map(
                                   (c) => DropdownMenuItem(
                                     value: c.name,
                                     child: Row(
@@ -367,7 +505,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                     () {
                                       selectedCategory = value == '__none__'
                                           ? null
-                                          : _filteredCategories.firstWhere((c) => c.name == value);
+                                          : filteredCategories.firstWhere((c) => c.name == value);
                                     },
                                   );
                                 }
@@ -383,7 +521,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                   value: null,
                                   child: Text('선택하세요', style: TextStyle(color: Colors.grey)),
                                 ),
-                                ...widget.assetList.map(
+                                ...assetList.map(
                                   (a) => DropdownMenuItem(
                                     value: a,
                                     child: Text(a),
@@ -421,31 +559,54 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                           icon: Icons.star_border_purple500,
                           color: Colors.white,
                           backgroundColor: const Color(0xFFA79BFF),
-                          onTap: () {}, /// TODO: 즐겨찾기 불러오기 기능 수행 필요
-                          ///
-                        ),
-                        CustomCircleButton(
-                          icon: Icons.delete_outline,
-                          color: Colors.white,
-                          backgroundColor: const Color(0xFFA79BFF),
                           onTap: () async {
-                            if (widget.transactionId == null) {
-                              Navigator.pop(context);
-                            } else {
-                              final result = await showCustomDeleteDialog(
-                                  context,
-                                  message: '이 내역을 정말 삭제할까요?'
-                              );
-                              if (result!) {
-                                await context.read<MoneyProvider>().deleteTransaction(widget.transactionId!);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('삭제되었습니다')),
+                            final favoriteRecords = context.read<MoneyProvider>().favoriteRecords
+                                .where((f) => f.period == PeriodType.none).toList();
+                            final selected = await showFavoritePickerDialog(context, favoriteRecords);
+
+                            if (selected != null) {
+                              setState(() {
+                                amountController.text = selected.amount.toString();
+                                titleController.text = selected.title ?? '';
+                                memoController.text = selected.memo ?? '';
+                                _selectedType = selected.type;
+
+                                selectedCategory = context.read<MoneyProvider>().categories.firstWhere(
+                                      (c) => c.id == selected.categoryId,
+                                  orElse: () => context.read<MoneyProvider>().categories.first,
                                 );
-                                Navigator.pop(context);
-                              }
+
+                                selectedAsset = context.read<MoneyProvider>().assets.firstWhere(
+                                      (a) => a.id == selected.assetId,
+                                  orElse: () => context.read<MoneyProvider>().assets.first,
+                                ).name;
+                              });
                             }
                           },
                         ),
+                        if (widget.transactionId != null)
+                          CustomCircleButton(
+                            icon: Icons.delete_outline,
+                            color: Colors.white,
+                            backgroundColor: const Color(0xFFA79BFF),
+                            onTap: () async {
+                              if (widget.transactionId == null) {
+                                Navigator.pop(context);
+                              } else {
+                                final result = await showCustomDeleteDialog(
+                                    context,
+                                    message: '이 내역을 정말 삭제할까요?'
+                                );
+                                if (result!) {
+                                  await context.read<MoneyProvider>().deleteTransaction(widget.transactionId!);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('삭제되었습니다')),
+                                  );
+                                  Navigator.pop(context);
+                                }
+                              }
+                            },
+                          ),
                         CustomCircleButton(
                           icon: Icons.check,
                           color: Colors.white,
@@ -460,7 +621,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                             }
                             final amount =
                                 int.tryParse(amountController.text.replaceAll(',', '')) ?? 0;
-                            final title = contentController.text.trim();
+                            final title = titleController.text.trim();
                             final memo = memoController.text.trim().isEmpty
                                 ? null
                                 : memoController.text.trim();
@@ -673,6 +834,128 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
         child: Text(
           DateFormat('yyyy.MM.dd (E), HH:mm', 'ko_KR').format(selectedDate),
           style: const TextStyle(fontSize: 16),
+        ),
+      ),
+    );
+  }
+
+  Future<FavoriteRecord?> showFavoritePickerDialog(BuildContext context, List<FavoriteRecord> favorites) {
+    return showDialog<FavoriteRecord>(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: const Color(0xFFF1F1FD),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '자주 사용하는 내역',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 400, // 높이 지정 (스크롤 허용)
+                width: double.maxFinite,
+                child: Consumer<MoneyProvider>(
+                  builder: (context, provider, _) {
+                    final categories = provider.categories;
+                    final assets = provider.assets;
+
+                    return ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: favorites.length,
+                      itemBuilder: (_, index) {
+                        final favoriteRecord = favorites[index];
+                        final category = categories.firstWhere(
+                              (c) => c.id == favoriteRecord.categoryId,
+                          orElse: () => categories.first,
+                        );
+                        final asset = assets.firstWhere(
+                              (a) => a.id == favoriteRecord.assetId,
+                          orElse: () => assets.first,
+                        ).name;
+                        return Card(
+                          key: ValueKey(favoriteRecord.id),
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: Colors.amberAccent, width: 1),
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            leading: SizedBox(
+                              width: 50,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: Color(category.colorValue),
+                                    child: Icon(
+                                      getIconData(category.iconName),
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                  Text(
+                                    category.name,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            title: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        favoriteRecord.title ?? '',
+                                        style: const TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        asset,
+                                        style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${favoriteRecord.type == TransactionType.income ? '+' : '-'}${NumberFormat('#,###').format(favoriteRecord.amount)}원',
+                                  style: TextStyle(
+                                    color: favoriteRecord.type == TransactionType.income
+                                        ? Colors.blue
+                                        : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            onTap: () => Navigator.pop(context, favoriteRecord),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

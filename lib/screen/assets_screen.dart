@@ -33,9 +33,7 @@ class AssetsScreen extends StatelessWidget {
       body: Column(
         children: [
           /// 연도.월 + 화살표 구현
-          YearMonthHeader(
-            backgroundColor: Color(0xFFF1F1FD),
-          ),
+          YearMonthHeader(),
           assets.isEmpty
               ? Expanded(
                   child: Center(

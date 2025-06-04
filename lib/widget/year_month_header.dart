@@ -4,12 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
 
 class YearMonthHeader extends StatelessWidget {
-  final Color backgroundColor;
 
-  const YearMonthHeader({
-    super.key,
-    required this.backgroundColor,
-  });
+  const YearMonthHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +14,7 @@ class YearMonthHeader extends StatelessWidget {
     final yearMonthText = '${focusedDay.year}.${focusedDay.month.toString().padLeft(2, '0')}월';
 
     return Container(
-      color: backgroundColor,
+      color: const Color(0xFFF1F1FD),
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: SizedBox(
@@ -65,7 +61,7 @@ class YearMonthHeader extends StatelessWidget {
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: backgroundColor,
+          color: const Color(0xFFF1F1FD),
           shape: BoxShape.circle,
         ),
         child: Icon(
