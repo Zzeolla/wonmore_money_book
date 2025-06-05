@@ -363,6 +363,26 @@ class MoneyProvider extends ChangeNotifier {
     return await query.get();
   }
 
+  Future<List<Map<String, dynamic>>> getTransactionsWithCategory(DateTime start, DateTime end) {
+    final query = _database.select(_database.transactions)
+      ..where((t) => t.date.isBetweenValues(start, end))
+      ..orderBy([(t) => OrderingTerm(expression: t.date)]);
+
+    final joinQuery = query.join([
+      leftOuterJoin(_database.categories, _database.categories.id.equalsExp(_database.transactions.categoryId)),
+    ]);
+
+    return joinQuery.map((row) {
+      final tx = row.readTable(_database.transactions);
+      final category = row.readTableOrNull(_database.categories);
+
+      return {
+        'tx': tx,
+        'categoryName': category?.name ?? '기타',
+      };
+    }).get();
+  }
+
   // 전체 즐겨찾기 내역 로드
   Future<void> loadFavoriteRecords() async {
     final query = _database.select(_database.favoriteRecords)

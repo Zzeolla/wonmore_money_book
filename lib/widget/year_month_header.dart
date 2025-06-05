@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/model/date_period_type.dart';
 import 'package:wonmore_money_book/provider/money_provider.dart';
 
 class YearMonthHeader extends StatelessWidget {
+  final DatePeriodType? datePeriodType;
 
-  const YearMonthHeader({super.key});
+  const YearMonthHeader({
+    super.key,
+    this.datePeriodType,
+  });
 
   @override
   Widget build(BuildContext context) {

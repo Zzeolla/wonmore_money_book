@@ -29,7 +29,7 @@ class TransactionTypeButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: isSelected ? Colors.amber : Colors.grey.shade300,
             foregroundColor: Colors.black,
-            minimumSize: const Size.fromHeight(52),
+            minimumSize: const Size.fromHeight(48),
             textStyle: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
