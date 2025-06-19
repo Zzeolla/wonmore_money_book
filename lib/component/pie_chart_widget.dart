@@ -31,9 +31,17 @@ class _PieChartWidgetState extends State<PieChartWidget> {
                 PieChartData(
                   pieTouchData: PieTouchData(
                     touchCallback: (event, response) {
-                      setState(() {
-                        _touchedIndex = response?.touchedSection?.touchedSectionIndex;
-                      });
+                      // 탭 업일 때만 처리
+                      if (event is FlTapUpEvent) {
+                        setState(() {
+                          final index = response?.touchedSection?.touchedSectionIndex;
+                          if (_touchedIndex == index || index == null) {
+                            _touchedIndex = null; // 해제
+                          } else {
+                            _touchedIndex = index;
+                          }
+                        });
+                      }
                     },
                   ),
                   sections: List.generate(widget.data.length, (i) {
@@ -46,7 +54,9 @@ class _PieChartWidgetState extends State<PieChartWidget> {
                       title: '',
                       color: entry.color,
                       radius: 70,
-                      badgeWidget: _buildBadge(entry.name, percent),
+                      badgeWidget: (_touchedIndex == null || _touchedIndex == i)
+                        ? _buildBadge(entry.name, percent)
+                        : null,
                       badgePositionPercentageOffset: 1.2,
                     );
                   }),
@@ -64,20 +74,38 @@ class _PieChartWidgetState extends State<PieChartWidget> {
             ),
           ],
         ),
-        const SizedBox(height: 20),
-        ...widget.data.map((e) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16),
-          child: Row(
-            children: [
-              Container(width: 12, height: 12, decoration: BoxDecoration(color: e.color, shape: BoxShape.circle)),
-              const SizedBox(width: 8),
-              Expanded(child: Text(e.name)),
-              Text('${(e.amount / total * 100).toStringAsFixed(1)}%'),
-              const SizedBox(width: 12),
-              Text(_formatCurrency(e.amount)),
-            ],
-          ),
-        )),
+        const SizedBox(height: 50),
+        // ✅ 여기가 핵심: 리스트 복사 후 sort
+        ...(() {
+          final sortedData = widget.data.toList()
+            ..sort((a, b) => b.amount.compareTo(a.amount));
+          return sortedData.map((e) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: e.color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${e.name} (${(e.amount / total * 100).toStringAsFixed(1)}%)',
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                Text(
+                  _formatCurrency(e.amount),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          )).toList();
+        })(),
       ],
     );
   }

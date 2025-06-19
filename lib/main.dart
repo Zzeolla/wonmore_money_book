@@ -3,13 +3,17 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/provider/budget_provider.dart';
 import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
-import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/home_screen.dart';
 import 'package:wonmore_money_book/screen/assets_screen.dart';
 import 'package:wonmore_money_book/screen/analysis_screen.dart';
+import 'package:wonmore_money_book/screen/login_screen.dart';
 import 'package:wonmore_money_book/screen/main_screen.dart';
 import 'package:wonmore_money_book/screen/more_screen.dart';
 import 'package:wonmore_money_book/screen/splash_screen.dart';
@@ -27,12 +31,19 @@ void main() async {
   // 데이터베이스 초기화
   final database = AppDatabase();
 
+  await Supabase.initialize(
+    url: 'https://rzauhdeimiizczhnclpw.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6YXVoZGVpbWlpemN6aG5jbHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxNTUxNTksImV4cCI6MjA2NTczMTE1OX0.iZdWkSNqrjKj8E1nFK10kNtwaWY7o-7wPi7lSXSFDWw'
+  );
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => MoneyProvider(database)),
         ChangeNotifierProvider(create: (_) => HomeScreenTabProvider()),
         ChangeNotifierProvider(create: (_) => TodoProvider(database)),
+        ChangeNotifierProvider(create: (_) => UserProvider()),
+        ChangeNotifierProvider(create: (_) => BudgetProvider()),
       ],
       child: const MyApp(),
     ),
@@ -115,6 +126,7 @@ class MyApp extends StatelessWidget {
         '/assets': (context) => AssetsScreen(),
         '/analysis': (context) => const AnalysisScreen(),
         '/more': (context) => const MoreScreen(),
+        '/login': (context) => const LoginScreen(),
       },
 
 

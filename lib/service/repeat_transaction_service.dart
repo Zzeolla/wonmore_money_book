@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:drift/drift.dart';
-import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 
 class RepeatTransactionService {
   final MoneyProvider _provider;

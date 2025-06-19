@@ -1,1 +1,0 @@
-enum DatePeriodType { month, week, custom }

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/component/pie_chart_widget.dart';
 import 'package:wonmore_money_book/model/category_summary.dart';
-import 'package:wonmore_money_book/model/date_period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
-import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/util/analysis_category_color.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/common_drawer.dart';
 import 'package:wonmore_money_book/widget/transaction_type_button.dart';
-import 'package:wonmore_money_book/widget/year_month_header.dart';
+
+enum DatePeriodType { month, week, custom }
 
 class AnalysisScreen extends StatefulWidget {
   const AnalysisScreen({super.key});
@@ -48,6 +50,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final provider = context.watch<MoneyProvider>();
     final assetList = provider.assets.map((e) => e.name).toList();
 
+    final start = _weekDateInfo!.startDate;
+    final end = _weekDateInfo!.endDate;
+
     return Scaffold(
       // todo: 분석 기능 만들기 최대한 간단하게
       appBar: CommonAppBar(actions: [
@@ -60,7 +65,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       body: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          YearMonthHeader(datePeriodType: _datePeriodType),
+          _buildYearMonthHeader(provider, _datePeriodType),
           Padding(
             padding: const EdgeInsets.all(24),
             child: Row(
@@ -97,7 +102,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                       items: ['전체', ...assetList].map((asset) {
                         return DropdownMenuItem<String>(
                           value: asset,
-                          child: Center(child: Text(asset, textAlign: TextAlign.center,)),
+                          child: Center(
+                              child: Text(
+                            asset,
+                            textAlign: TextAlign.center,
+                          )),
                         );
                       }).toList(),
                       onChanged: (value) {
@@ -116,7 +125,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                           borderSide: BorderSide.none,
                         ),
                       ),
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
                     ),
                   ),
                 ),
@@ -124,13 +134,39 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ),
           ),
           const Divider(thickness: 1, height: 1, color: Colors.grey),
-          Padding(
-            padding: const EdgeInsets.only(top: 40),
-            child: PieChartWidget(
-              data: dummyData,
-              transactionType: _selectedType,
+
+          /// ✅ DB에서 불러온 카테고리별 합계 PieChart 표시
+          Expanded(
+            child: FutureBuilder<List<CategorySummary>>(
+              future: provider.getCategorySummariesByPeriod(
+                start: start,
+                end: end,
+                type: _selectedType,
+                selectedAssetName: _selectedAsset,
+              ),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('에러 발생: ${snapshot.error}'));
+                }
+
+                final data = snapshot.data!;
+                if (data.isEmpty) {
+                  return const Center(child: Text('해당 기간의 데이터가 없습니다.'));
+                }
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: 40),
+                  child: PieChartWidget(
+                    data: data,
+                    transactionType: _selectedType,
+                  ),
+                );
+              },
             ),
           ),
+          BannerAdWidget(),
         ],
       ),
     );
@@ -190,6 +226,95 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final beginningNextMonth =
         (date.month == 12) ? DateTime(date.year + 1, 1, 1) : DateTime(date.year, date.month + 1, 1);
     return beginningNextMonth.subtract(const Duration(days: 1));
+  }
+
+  Widget _buildYearMonthHeader(MoneyProvider provider, DatePeriodType periodType) {
+    final focusedDay = provider.focusedDay;
+    final String yearMonthText;
+    switch (periodType) {
+      case DatePeriodType.month:
+        yearMonthText =
+            '${_weekDateInfo!.startDate.year}.${_weekDateInfo!.startDate.month.toString().padLeft(2, '0')}월';
+        break;
+
+      case DatePeriodType.week:
+        yearMonthText =
+            '${_weekDateInfo!.startDate.year.toString().substring(2)}년 W${_weekDateInfo!.weekNumber} '
+            '(${_weekDateInfo!.startDate.month}.${_weekDateInfo!.startDate.day} ~ ${_weekDateInfo!.endDate.month}.${_weekDateInfo!.endDate.day})';
+        break;
+      case DatePeriodType.custom:
+        yearMonthText =
+            '${_weekDateInfo!.startDate.year.toString().substring(2)}.${_weekDateInfo!.startDate.month.toString().padLeft(2, '0')}.${_weekDateInfo!.startDate.day.toString().padLeft(2, '0')}'
+                ' ~ ${_weekDateInfo!.endDate.year.toString().substring(2)}.${_weekDateInfo!.endDate.month.toString().padLeft(2, '0')}.${_weekDateInfo!.endDate.day.toString().padLeft(2, '0')}';
+        break;
+    }
+    // final yearMonthText = '${focusedDay.year}.${focusedDay.month.toString().padLeft(2, '0')}월';
+
+    void _showMonthPickerDialog() async {
+      final picked = await showMonthPicker(
+        context: context,
+        initialDate: focusedDay,
+        firstDate: DateTime(2000),
+        lastDate: DateTime(2100),
+      );
+      if (picked != null) {
+        provider.changeFocusedDay(DateTime(picked.year, picked.month));
+      }
+    }
+
+    Widget _buildCircleArrowButton({required IconData icon, required VoidCallback onTap}) {
+      return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 30,
+          height: 30,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF1F1FD),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, size: 30, color: Color(0xFF5A5A89)),
+        ),
+      );
+    }
+
+    return Container(
+      color: const Color(0xFFF1F1FD),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: SizedBox(
+        height: 40,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (periodType != DatePeriodType.custom)
+              _buildCircleArrowButton(
+                icon: Icons.chevron_left,
+                onTap: () {
+                  final prevMonth = DateTime(focusedDay.year, focusedDay.month - 1);
+                  provider.changeFocusedDay(prevMonth);
+                },
+              ),
+            const SizedBox(width: 16),
+            GestureDetector(
+              onTap: _showMonthPickerDialog,
+              child: Text(
+                yearMonthText,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(width: 16),
+            if (periodType != DatePeriodType.custom)
+              _buildCircleArrowButton(
+                icon: Icons.chevron_right,
+                onTap: () {
+                  final nextMonth = DateTime(focusedDay.year, focusedDay.month + 1);
+                  provider.changeFocusedDay(nextMonth);
+                },
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

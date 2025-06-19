@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
-import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
 import 'package:wonmore_money_book/widget/common_input_field.dart';

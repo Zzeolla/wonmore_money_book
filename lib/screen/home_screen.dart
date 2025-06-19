@@ -8,7 +8,7 @@ import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/home_screen_tab.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
-import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/screen/favorite_screen.dart';
 import 'package:wonmore_money_book/screen/todo_list_screen.dart';
 import 'package:wonmore_money_book/widget/calendar_widget.dart';

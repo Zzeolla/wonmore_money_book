@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
-import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/widget/custom_circle_button.dart';
 
 class AssetInputDialog extends StatefulWidget {

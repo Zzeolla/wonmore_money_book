@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/dialog/asset_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
-import 'package:wonmore_money_book/provider/money_provider.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/common_drawer.dart';
 import 'package:wonmore_money_book/widget/year_month_header.dart';
@@ -68,23 +69,26 @@ class AssetsScreen extends StatelessWidget {
                     ),
                   ),
                 )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildSection(context, '💰 내 자산', [
-                        for (final asset in assets)
-                          _buildCard(
-                            context,
-                            asset.id,
-                            asset.name,
-                            asset.targetAmount,
-                          ),
-                      ]),
-                    ],
+              : Expanded(
+                child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSection(context, '💰 내 자산', [
+                          for (final asset in assets)
+                            _buildCard(
+                              context,
+                              asset.id,
+                              asset.name,
+                              asset.targetAmount,
+                            ),
+                        ]),
+                      ],
+                    ),
                   ),
-                ),
+              ),
+          BannerAdWidget(),
         ],
       ),
     );

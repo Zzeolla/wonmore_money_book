@@ -31,6 +31,7 @@ dependencies:
   google_mobile_ads: ^6.0.0
   month_picker_dialog: ^6.0.3
   fl_chart: ^1.0.0
+  google_sign_in: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -38,7 +39,12 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   drift_dev: ^2.14.1
   build_runner: ^2.4.8
+  flutter_native_splash: ^2.3.5
 
+flutter_native_splash:
+  color: "#A982F1"  # 밝은 보라색 배경
+  image: assets/img/splash_icon.png # 원하면 코인 아이콘 썸네일도 가능
+  android_gravity: center
 
 flutter:
 
