@@ -18,10 +18,7 @@ class FavoriteRecordService {
   }
 
   Future<void> addFavoriteRecord(FavoriteRecordsCompanion record) async {
-    final nextOrder = await _db.getNextFavoriteRecordSortOrder(record.period.value);
-
     final recordWithUser = record.copyWith(
-      sortOrder: Value(nextOrder),
       userId: Value(userId),
       createdBy: Value(userId),
       updatedBy: Value(userId),
@@ -40,9 +37,5 @@ class FavoriteRecordService {
 
   Future<void> deleteFavoriteRecord(int id) async {
     await (_db.delete(_db.favoriteRecords)..where((t) => t.id.equals(id))).go();
-  }
-
-  Future<void> reorderFavoriteRecords(List<FavoriteRecord> reorderedList) async {
-    await _db.reorderFavoriteRecords(reorderedList);
   }
 }

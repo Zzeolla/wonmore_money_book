@@ -7,7 +7,4 @@ class Assets extends Table {
   IntColumn get targetAmount => integer().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  TextColumn get userId => text().nullable()();
-  TextColumn get createdBy => text().nullable()(); // 생성자 ID
-  TextColumn get updatedBy => text().nullable()(); // 수정자 ID
 }

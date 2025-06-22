@@ -144,6 +144,10 @@ class MoneyProvider extends ChangeNotifier {
     _updateDailySummaryMap();
   }
 
+  Future<bool> hasAnyTransactions() async {
+    return await _transactionService.hasAnyTransactions();
+  }
+
   Future<List<Transaction>> getTransactionsByPeriod(DateTime start, DateTime end) async {
     return await _transactionService.getTransactionsByPeriod(start, end);
   }
@@ -320,12 +324,6 @@ class MoneyProvider extends ChangeNotifier {
   Future<void> deleteFavoriteRecord(int id) async {
     await _favoriteRecordService.deleteFavoriteRecord(id);
     await loadFavoriteRecords();
-  }
-
-  Future<void> reorderFavoriteRecords(List<FavoriteRecord> reorderedList) async {
-    await _favoriteRecordService.reorderFavoriteRecords(reorderedList);
-    await loadFavoriteRecords();
-    notifyListeners();
   }
 
   // 할부

@@ -9,6 +9,12 @@ class TransactionService {
 
   TransactionService(this._db, this.userId);
 
+  Future<bool> hasAnyTransactions() async {
+    final query = _db.select(_db.transactions)..limit(1);
+    final result = await query.get();
+    return result.isNotEmpty;
+  }
+
   Future<List<Transaction>> getTransactionsByPeriod(DateTime start, DateTime end) async {
     final query = _db.select(_db.transactions)
       ..where((t) => t.date.isBetweenValues(start, end));

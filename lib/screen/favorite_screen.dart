@@ -85,288 +85,148 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                     //       : record.period == PeriodType.none;
                     // }).toList();
 
-                    return _isRepeat
-                        ? ListView.builder(
-                            itemCount: filtered.length,
-                            itemBuilder: (context, index) {
-                              Category? category;
-                              try {
-                                category = provider.categories
-                                    .firstWhere((c) => c.id == filtered[index].categoryId);
-                              } catch (_) {
-                                category = null;
-                              }
-                              Asset? asset;
-                              try {
-                                asset = provider.assets
-                                    .firstWhere((c) => c.id == filtered[index].assetId);
-                              } catch (_) {
-                                asset = null;
-                              }
-                              final favoriteRecord = filtered[index];
-                              return Card(
-                                key: ValueKey(favoriteRecord.id),
-                                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                color: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: const BorderSide(color: Colors.amberAccent, width: 1),
-                                ),
-                                child: ListTile(
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                                  leading: SizedBox(
-                                    width: 50,
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: category != null
-                                              ? Color(category.colorValue)
-                                              : Colors.grey.shade300,
-                                          child: Icon(
-                                              category != null
-                                                  ? getIconData(category.iconName)
-                                                  : Icons.category,
-                                              color: Colors.white,
-                                              size: 16),
-                                        ),
-                                        Text(
-                                          category?.name ?? '미분류',
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: category != null ? Colors.black : Colors.grey,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                    return ListView.builder(
+                      itemCount: filtered.length,
+                      itemBuilder: (context, index) {
+                        Category? category;
+                        try {
+                          category = provider.categories
+                              .firstWhere((c) => c.id == filtered[index].categoryId);
+                        } catch (_) {
+                          category = null;
+                        }
+                        Asset? asset;
+                        try {
+                          asset = provider.assets
+                              .firstWhere((c) => c.id == filtered[index].assetId);
+                        } catch (_) {
+                          asset = null;
+                        }
+                        final favoriteRecord = filtered[index];
+                        return Card(
+                          key: ValueKey(favoriteRecord.id),
+                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: const BorderSide(color: Colors.amberAccent, width: 1),
+                          ),
+                          child: ListTile(
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                            leading: SizedBox(
+                              width: 50,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: category != null
+                                        ? Color(category.colorValue)
+                                        : Colors.grey.shade300,
+                                    child: Icon(
+                                        category != null
+                                            ? getIconData(category.iconName)
+                                            : Icons.category,
+                                        color: Colors.white,
+                                        size: 16),
                                   ),
-                                  title: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              favoriteRecord.title ?? '',
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 2),
-                                            if (asset != null)
-                                              Text(
-                                                asset.name,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '${favoriteRecord.type == TransactionType.income ? '+' : '-'}${_formatAmount(favoriteRecord.amount)}원',
-                                        style: TextStyle(
-                                          color: favoriteRecord.type == TransactionType.income
-                                              ? Colors.blue
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  // subtitle: asset != null ? Text(asset.name) : null,
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => RepeatRecordInputDialog(
-                                        initialStartDate: favoriteRecord.startDate!,
-                                        initialType: favoriteRecord.type,
-                                        initialTitle: favoriteRecord.title,
-                                        initialAmount: favoriteRecord.amount,
-                                        initialCategoryId: favoriteRecord.categoryId,
-                                        initialAssetId: favoriteRecord.assetId,
-                                        initialMemo: favoriteRecord.memo,
-                                        favoriteRecordId: favoriteRecord.id,
-                                      ),
-                                    ).then((result) {
-                                      if (result == true) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('수정되었습니다')),
-                                        );
-                                      }
-                                    });
-                                  },
-                                  trailing: Text(
-                                    periodTypeToKo(favoriteRecord.period) ?? '',
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey,
-                                    ),
+                                  Text(
+                                    category?.name ?? '미분류',
                                     overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              );
-                            },
-                          )
-                        : ReorderableListView.builder(
-                            itemCount: filtered.length,
-                            onReorder: (oldIndex, newIndex) async {
-                              if (newIndex > oldIndex) newIndex--;
-                              final item = filtered.removeAt(oldIndex);
-                              filtered.insert(newIndex, item);
-
-                              final idOrder = filtered.map((r) => r.id).toList();
-                              final reordered = provider.favoriteRecords
-                                  .where((r) => idOrder.contains(r.id))
-                                  .toList()
-                                ..sort((a, b) =>
-                                    idOrder.indexOf(a.id).compareTo(idOrder.indexOf(b.id)));
-                              await context.read<MoneyProvider>().reorderFavoriteRecords(reordered);
-                            },
-                            itemBuilder: (context, index) {
-                              Category? category;
-                              try {
-                                category = provider.categories
-                                    .firstWhere((c) => c.id == filtered[index].categoryId);
-                              } catch (_) {
-                                category = null;
-                              }
-                              Asset? asset;
-                              try {
-                                asset = provider.assets
-                                    .firstWhere((a) => a.id == filtered[index].assetId);
-                              } catch (_) {
-                                asset = null;
-                              }
-                              final favoriteRecord = filtered[index];
-                              return Card(
-                                key: ValueKey(favoriteRecord.id),
-                                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                                color: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: const BorderSide(color: Colors.amberAccent, width: 1),
-                                ),
-                                child: ListTile(
-                                  contentPadding:
-                                      const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                                  leading: SizedBox(
-                                    width: 50,
-                                    child: Column(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: category != null
-                                              ? Color(category.colorValue)
-                                              : Colors.grey.shade300,
-                                          child: Icon(
-                                              category != null
-                                                  ? getIconData(category.iconName)
-                                                  : Icons.category,
-                                              color: Colors.white,
-                                              size: 16),
-                                        ),
-                                        Text(
-                                          category?.name ?? '미분류',
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: category != null ? Colors.black : Colors.grey,
-                                          ),
-                                        ),
-                                      ],
+                                    maxLines: 1,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: category != null ? Colors.black : Colors.grey,
                                     ),
                                   ),
-                                  title: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                ],
+                              ),
+                            ),
+                            title: Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              favoriteRecord.title ?? '',
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            const SizedBox(height: 2),
-                                            if (asset != null)
-                                              Text(
-                                                asset.name,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey,
-                                                ),
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
                                       Text(
-                                        '${favoriteRecord.type == TransactionType.income ? '+' : '-'}${_formatAmount(favoriteRecord.amount)}원',
-                                        style: TextStyle(
-                                          color: favoriteRecord.type == TransactionType.income
-                                              ? Colors.blue
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
+                                        favoriteRecord.title ?? '',
+                                        style: const TextStyle(
                                           fontSize: 14,
+                                          fontWeight: FontWeight.w600,
                                         ),
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ],
-                                  ),
-                                  // subtitle: asset != null ? Text(asset.name) : null,
-                                  onTap: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => FavoriteRecordInputDialog(
-                                        initialType: favoriteRecord.type,
-                                        initialTitle: favoriteRecord.title,
-                                        initialAmount: favoriteRecord.amount,
-                                        initialCategoryId: favoriteRecord.categoryId,
-                                        initialAssetId: favoriteRecord.assetId,
-                                        initialMemo: favoriteRecord.memo,
-                                        favoriteRecordId: favoriteRecord.id,
-                                      ),
-                                    ).then((result) {
-                                      if (result == true) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text('수정되었습니다')),
-                                        );
-                                      }
-                                    });
-                                  },
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      ReorderableDragStartListener(
-                                        index: index,
-                                        child: const Icon(Icons.drag_handle, color: Colors.grey),
-                                      ),
+                                      const SizedBox(height: 2),
+                                      if (asset != null)
+                                        Text(
+                                          asset.name,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                     ],
                                   ),
                                 ),
-                              );
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${favoriteRecord.type == TransactionType.income ? '+' : '-'}${_formatAmount(favoriteRecord.amount)}원',
+                                  style: TextStyle(
+                                    color: favoriteRecord.type == TransactionType.income
+                                        ? Colors.blue
+                                        : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // subtitle: asset != null ? Text(asset.name) : null,
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: _isRepeat ? (_) => RepeatRecordInputDialog(
+                                  initialStartDate: favoriteRecord.startDate!,
+                                  initialType: favoriteRecord.type,
+                                  initialTitle: favoriteRecord.title,
+                                  initialAmount: favoriteRecord.amount,
+                                  initialCategoryId: favoriteRecord.categoryId,
+                                  initialAssetId: favoriteRecord.assetId,
+                                  initialMemo: favoriteRecord.memo,
+                                  favoriteRecordId: favoriteRecord.id,
+                                ) : (_) => FavoriteRecordInputDialog(
+                                  initialType: favoriteRecord.type,
+                                  initialTitle: favoriteRecord.title,
+                                  initialAmount: favoriteRecord.amount,
+                                  initialCategoryId: favoriteRecord.categoryId,
+                                  initialAssetId: favoriteRecord.assetId,
+                                  initialMemo: favoriteRecord.memo,
+                                  favoriteRecordId: favoriteRecord.id,
+                                ),
+                              ).then((result) {
+                                if (result == true) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('수정되었습니다')),
+                                  );
+                                }
+                              });
                             },
-                          );
+                            trailing: _isRepeat ? Text(
+                              periodTypeToKo(favoriteRecord.period) ?? '',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ) : null
+                          ),
+                        );
+                      },
+                    );
                   },
                 ),
               ),

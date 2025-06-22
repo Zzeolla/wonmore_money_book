@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/login_screen.dart';
 
 class CommonDrawer extends StatefulWidget {
@@ -39,13 +41,17 @@ class _CommonDrawerState extends State<CommonDrawer> {
   }
 
   void handleInviteUser() {
-    // 사용자 초대 로직
+    // 사용자 초대 로직 TODO : 만들어야함
     print('사용자 초대');
   }
 
-  void handleLogout() {
-    // Supabase 로그아웃 처리 + 상태 초기화
-    print('로그아웃');
+  void handleLogout() async {
+    final userProvider = context.read<UserProvider>(); /// TODO: 이거 나중에 provider를 매개변수로 받을지 말지 고민해보자
+    await userProvider.signOut();
+
+    if (context.mounted) {
+      Navigator.pushReplacementNamed(context, '/main');
+    }
   }
 
   void handleBudgetSwitch() {

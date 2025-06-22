@@ -1,43 +1,54 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io' show Platform;
 
-class LoginScreen extends StatelessWidget {
+import 'package:wonmore_money_book/provider/user_provider.dart';
+
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
-  void _signInWithOAuth(BuildContext context, OAuthProvider provider) async {
-    try {
-      await Supabase.instance.client.auth.signInWithOAuth(
-        provider,
-        redirectTo: 'wonmore://login-callback',
-      );
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
 
-      // auth.onAuthStateChange에서 이 이벤트를 감지하도록 설정
-      Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
-        final session = data.session;
-        final user = session?.user;
-        if (user != null) {
-          final exists = await checkUserExists(user.id);
+class _LoginScreenState extends State<LoginScreen> {
+  @override
+  void initState() {
+    super.initState();
 
-          if (!exists) {
-            // 신규 유저라면
-            await createUser(user); // Supabase DB에 사용자 생성
-            // await migrateLocalDataToSupabase(); // 🔁 로컬 데이터를 Supabase로 이전 TODO: 구현 필요
-          } else {
-            // 기존 유저라면
-            // await syncSupabaseDataToLocal(); // 🔁 Supabase 데이터를 로컬 DB로 덮어쓰기 TODO: 구현 필요
-          }
+    // 로그인 후 앱이 다시 열렸을 때 세션 감지
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+      final event = data.event;
+      final Session? session = data.session;
+      final currentUser = session?.user;
 
-          if (context.mounted) {
-            Navigator.pushReplacementNamed(context, '/main');
-          }
+      if (event == AuthChangeEvent.signedIn && currentUser != null) {
+        final userProvider = context.read<UserProvider>();
+        userProvider.justSignedIn = true;
+
+        final response = await Supabase.instance.client
+            .from('users').select().eq('id', currentUser.id).maybeSingle();
+
+        if (response == null) {
+          final email = currentUser.email ?? '';
+          final name = email.contains('@') ? email
+              .split('@')
+              .first : '사용자';
+
+          await Supabase.instance.client.from('users').insert({
+            'id': currentUser.id,
+            'email': email,
+            'name': name,
+          });
+
+
         }
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('로그인 실패: $e')),
-      );
-    }
+        if (mounted) {
+          Navigator.pushReplacementNamed(context, '/main');
+        }
+      }
+    });
   }
 
   @override
@@ -129,25 +140,19 @@ class LoginScreen extends StatelessWidget {
     );
   }
 
-  Future<void> createUser(User user) async {
-    await Supabase.instance.client.from('users').insert({
-      'id': user.id,
-      'email': user.email,
-      'created_at': DateTime.now().toIso8601String(),
-      // 닉네임, 프로필은 설정 화면에서 입력받을 예정
-    });
-  }
-
-  Future<bool> checkUserExists(String userId) async {
-    final response = await Supabase.instance.client
-        .from('users')
-        .select()
-        .eq('id', userId)
-        .maybeSingle();
-    return response != null;
+  void _signInWithOAuth(BuildContext context, OAuthProvider provider) async {
+    try {
+      await Supabase.instance.client.auth.signInWithOAuth(
+        provider,
+        redirectTo: 'wonmore://login-callback',
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('로그인 실패: $e')),
+      );
+    }
   }
 }
-
 
 class _LoginButton extends StatelessWidget {
   final String label;

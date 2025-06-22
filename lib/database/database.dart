@@ -167,30 +167,6 @@ class AppDatabase extends _$AppDatabase {
     return query?.sortOrder != null ? query!.sortOrder + 1 : 0;
   }
 
-  Future<int> getNextFavoriteRecordSortOrder(PeriodType period) async {
-    final query = await (select(favoriteRecords)
-      ..where((c) => period == PeriodType.none
-        ? c.period.equals(PeriodType.none.name)
-        : c.period.isNotIn([PeriodType.none.name]))
-      ..orderBy([(c) => OrderingTerm(expression: c.sortOrder, mode: OrderingMode.desc)])
-      ..limit(1))
-        .getSingleOrNull();
-
-    return query?.sortOrder != null ? query!.sortOrder + 1 : 0;
-  }
-
-  Future<void> reorderFavoriteRecords(List<FavoriteRecord> reorderedList) async {
-    await batch((batch) {
-      for (int i = 0; i < reorderedList.length; i++) {
-        batch.update(
-          favoriteRecords,
-          FavoriteRecordsCompanion(sortOrder: Value(i)),
-          where: (c) => c.id.equals(reorderedList[i].id),
-        );
-      }
-    });
-  }
-
   Future<Installment?> getInstallmentById(int id) {
     return (select(installments)..where((i) => i.id.equals(id)))
         .getSingleOrNull();

@@ -17,7 +17,4 @@ class Transactions extends Table {
   IntColumn get installmentId => integer().nullable().customConstraint('NULL REFERENCES installments(id) ON DELETE CASCADE')();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
-  TextColumn get userId => text().nullable()(); // Supabase 연동 시 사용
-  TextColumn get createdBy => text().nullable()(); // 생성자 ID
-  TextColumn get updatedBy => text().nullable()(); // 수정자 ID
 }
