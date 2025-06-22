@@ -3,6 +3,7 @@
 import 'package:drift/drift.dart';
 import 'package:wonmore_money_book/model/asset.dart';
 import 'package:wonmore_money_book/model/category.dart';
+import 'package:wonmore_money_book/model/installment.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 
 class Transactions extends Table {

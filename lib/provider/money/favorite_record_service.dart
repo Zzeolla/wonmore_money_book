@@ -9,19 +9,18 @@ class FavoriteRecordService {
   FavoriteRecordService(this._db, this.userId);
 
   Future<List<FavoriteRecord>> loadFavoriteRecords() async {
-    final query = _db.select(_db.favoriteRecords)
-      ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]);
-    if (userId != null) {
-      query.where((a) => a.userId.equals(userId!));
-    }
+    final query = _db.select(_db.favoriteRecords);
+    // if (userId != null) {
+    //   query.where((a) => a.userId.equals(userId!));
+    // }
     return await query.get();
   }
 
   Future<void> addFavoriteRecord(FavoriteRecordsCompanion record) async {
     final recordWithUser = record.copyWith(
-      userId: Value(userId),
-      createdBy: Value(userId),
-      updatedBy: Value(userId),
+      // userId: Value(userId),
+      // createdBy: Value(userId),
+      // updatedBy: Value(userId),
     );
 
     await _db.into(_db.favoriteRecords).insert(recordWithUser);
@@ -31,7 +30,7 @@ class FavoriteRecordService {
     await (_db.update(_db.favoriteRecords)..where((c) => c.id.equals(id)))
         .write(record.copyWith(
       updatedAt: Value(DateTime.now()),
-      updatedBy: Value(userId),
+      // updatedBy: Value(userId),
     ));
   }
 

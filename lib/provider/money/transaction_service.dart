@@ -18,26 +18,26 @@ class TransactionService {
   Future<List<Transaction>> getTransactionsByPeriod(DateTime start, DateTime end) async {
     final query = _db.select(_db.transactions)
       ..where((t) => t.date.isBetweenValues(start, end));
-    if (userId != null) {
-      query.where((t) => t.userId.equals(userId!));
-    }
+    // if (userId != null) {
+    //   query.where((t) => t.userId.equals(userId!));
+    // }
     return await query.get();
   }
 
   Future<List<Transaction>> getTransactionsByDate(DateTime date) async {
     final query = _db.select(_db.transactions)
       ..where((t) => t.date.equals(date));
-    if (userId != null) {
-      query.where((t) => t.userId.equals(userId!));
-    }
+    // if (userId != null) {
+    //   query.where((t) => t.userId.equals(userId!));
+    // }
     return await query.get();
   }
 
   Future<int> addTransaction(TransactionsCompanion tx) async {
     final txWithUser = tx.copyWith(
-      userId: Value(userId),
-      createdBy: Value(userId),
-      updatedBy: Value(userId),
+      // userId: Value(userId),
+      // createdBy: Value(userId),
+      // updatedBy: Value(userId),
     );
     return await _db.into(_db.transactions).insert(txWithUser);
   }
@@ -46,7 +46,7 @@ class TransactionService {
     await (_db.update(_db.transactions)..where((t) => t.id.equals(id)))
         .write(tx.copyWith(
       updatedAt: Value(DateTime.now()),
-      updatedBy: Value(userId),
+      // updatedBy: Value(userId),
     ));
   }
 

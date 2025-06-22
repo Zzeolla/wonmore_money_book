@@ -11,9 +11,9 @@ class InstallmentService {
 
   Future<void> addInstallment(InstallmentsCompanion installment) async {
     final installmentWithUser = installment.copyWith(
-      userId: Value(userId),
-      createdBy: Value(userId),
-      updatedBy: Value(userId),
+      // userId: Value(userId),
+      // createdBy: Value(userId),
+      // updatedBy: Value(userId),
     );
 
     final installmentId =
@@ -31,7 +31,7 @@ class InstallmentService {
       ..where((i) => i.id.equals(id)))
         .write(installment.copyWith(
       updatedAt: Value(DateTime.now()),
-      updatedBy: Value(userId),
+      // updatedBy: Value(userId),
     ));
 
     await _createTransactionsFromInstallment(id, installment);
@@ -75,9 +75,9 @@ class InstallmentService {
           installmentId: Value(installmentId),
           createdAt: Value(DateTime.now()),
           updatedAt: Value(DateTime.now()),
-          userId: Value(userId),
-          createdBy: Value(userId),
-          updatedBy: Value(userId),
+          // userId: Value(userId),
+          // createdBy: Value(userId),
+          // updatedBy: Value(userId),
         ),
       );
     }

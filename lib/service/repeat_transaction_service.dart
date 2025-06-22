@@ -60,11 +60,11 @@ class RepeatTransactionService {
           record.assetId == null ? const drift.Value.absent() : drift.Value(record.assetId),
           title: record.title == null ? const drift.Value.absent() : drift.Value(record.title),
           memo: record.memo == null ? const drift.Value.absent() : drift.Value(record.memo),
-          userId: Value(record.userId),
+          // userId: Value(record.userId),
           createdAt: drift.Value(DateTime.now()),
           updatedAt: drift.Value(DateTime.now()),
-          createdBy: Value(record.userId),
-          updatedBy: Value(record.userId),
+          // createdBy: Value(record.userId),
+          // updatedBy: Value(record.userId),
         ));
 
         prevDate = current;

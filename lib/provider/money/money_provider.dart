@@ -126,9 +126,9 @@ class MoneyProvider extends ChangeNotifier {
       ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
       t.date.isSmallerThanValue(endDate));
     
-    if (_currentUserId != null) {
-      query.where((t) => t.userId.equals(_currentUserId!));
-    }
+    // if (_currentUserId != null) {
+    //   query.where((t) => t.userId.equals(_currentUserId!));
+    // }
 
     _monthlyTransactions = await query.get();
     
@@ -275,9 +275,9 @@ class MoneyProvider extends ChangeNotifier {
       ..where(_database.transactions.date.isBetweenValues(start, end))
       ..where(_database.transactions.type.equals(type.name)); // enum일 경우 꼭! .name 해주자
 
-    if (_currentUserId != null) {
-      query.where(_database.transactions.userId.equals(_currentUserId!));
-    }
+    // if (_currentUserId != null) {
+    //   query.where(_database.transactions.userId.equals(_currentUserId!));
+    // }
 
     if (assetId != null) {
       query.where(_database.transactions.assetId.equals(assetId));

@@ -10,9 +10,9 @@ class AssetService {
 
   Future<List<Asset>> getAssets() async {
     final query = _db.select(_db.assets);
-    if (userId != null) {
-      query.where((a) => a.userId.equals(userId!));
-    }
+    // if (userId != null) {
+    //   query.where((a) => a.userId.equals(userId!));
+    // }
     return await query.get();
   }
 
@@ -20,9 +20,9 @@ class AssetService {
     final assetWithUser = AssetsCompanion(
       name: Value(name),
       targetAmount: Value(targetAmount),
-      userId: Value(userId),
-      createdBy: Value(userId),
-      updatedBy: Value(userId),
+      // userId: Value(userId),
+      // createdBy: Value(userId),
+      // updatedBy: Value(userId),
     );
     await _db.into(_db.assets).insert(assetWithUser);
   }
@@ -33,7 +33,7 @@ class AssetService {
         name: Value(name),
         targetAmount: Value(targetAmount),
         updatedAt: Value(DateTime.now()),
-        updatedBy: Value(userId),
+        // updatedBy: Value(userId),
       ),
     );
   }

@@ -12,9 +12,9 @@ class CategoryService {
   Future<List<Category>> getAllCategories() async {
     final query = _db.select(_db.categories)
       ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]);
-    if (userId != null) {
-      query.where((c) => c.userId.equals(userId!));
-    }
+    // if (userId != null) {
+    //   query.where((c) => c.userId.equals(userId!));
+    // }
     return await query.get();
   }
 
@@ -28,7 +28,7 @@ class CategoryService {
     final nextOrder = await _db.getNextCategorySortOrder(category.type.value);
     final categoryWithUser = category.copyWith(
       sortOrder: Value(nextOrder),
-      userId: Value(userId),
+      // userId: Value(userId),
       createdBy: Value(userId),
       updatedBy: Value(userId),
     );

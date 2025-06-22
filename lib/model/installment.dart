@@ -1,4 +1,6 @@
 import 'package:drift/drift.dart';
+import 'package:wonmore_money_book/model/asset.dart';
+import 'package:wonmore_money_book/model/category.dart';
 
 class Installments extends Table {
   IntColumn get id => integer().autoIncrement()();
