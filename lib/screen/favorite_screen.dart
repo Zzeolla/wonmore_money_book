@@ -5,6 +5,8 @@ import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/favorite_record_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/repeat_record_input_dialog.dart';
+import 'package:wonmore_money_book/model/asset_model.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
@@ -88,14 +90,14 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
                     return ListView.builder(
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
-                        Category? category;
+                        CategoryModel? category;
                         try {
                           category = provider.categories
                               .firstWhere((c) => c.id == filtered[index].categoryId);
                         } catch (_) {
                           category = null;
                         }
-                        Asset? asset;
+                        AssetModel? asset;
                         try {
                           asset = provider.assets
                               .firstWhere((c) => c.id == filtered[index].assetId);

@@ -151,7 +151,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                                     message: '이 카테고리를 정말 삭제할까요?',
                                   );
                                   if (result!) {
-                                    await context.read<MoneyProvider>().deleteCategory(category.id);
+                                    await context.read<MoneyProvider>().deleteCategory(category.id!);
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(content: Text('삭제되었습니다.')),
                                     );

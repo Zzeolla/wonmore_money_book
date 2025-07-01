@@ -22,7 +22,7 @@ class TodoListScreen extends StatefulWidget {
 class _TodoListScreenState extends State<TodoListScreen> {
   bool _isFlushbar = false;
 
-  void _showFlushBar(BuildContext context, int todoId, String title) {
+  void _showFlushBar(BuildContext context, String todoId, String title) {
     _isFlushbar = true;
     Flushbar(
       margin: const EdgeInsets.all(12),
@@ -60,7 +60,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final todos = context.watch<TodoProvider>().todos.where((t) => !t.isDone).toList();
+    final todos = context.watch<TodoProvider>().todos.where((t) => !t.isDone!).toList();
 
     if (todos.isEmpty && _isFlushbar) {
       // 5초 후에 한 번만 실행되도록
@@ -122,8 +122,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
                 key: ValueKey(todo.id),
                 direction: DismissDirection.startToEnd,
                 onDismissed: (_) {
-                  context.read<TodoProvider>().toggleTodo(todo.id, true);
-                  _showFlushBar(context, todo.id, todo.title);
+                  context.read<TodoProvider>().toggleTodo(todo.id!, true);
+                  _showFlushBar(context, todo.id!, todo.title);
                 },
                 background: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -148,7 +148,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                         message: '이 할 일을 정말 삭제할까요?',
                       );
                       if (result!) {
-                        await context.read<TodoProvider>().deleteTodo(todo.id);
+                        await context.read<TodoProvider>().deleteTodo(todo.id!);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text('삭제되었습니다.')),
                         );
@@ -188,8 +188,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
                           IconButton(
                             icon: const Icon(Icons.radio_button_unchecked, color: Colors.deepPurpleAccent),
                             onPressed: () {
-                              context.read<TodoProvider>().toggleTodo(todo.id, true);
-                              _showFlushBar(context, todo.id, todo.title);
+                              context.read<TodoProvider>().toggleTodo(todo.id!, true);
+                              _showFlushBar(context, todo.id!, todo.title);
                             },
                           ),
                         ],

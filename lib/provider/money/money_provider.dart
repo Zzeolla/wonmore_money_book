@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:drift/drift.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/model/asset_model.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/category_summary.dart';
+import 'package:wonmore_money_book/model/favorite_record_model.dart';
+import 'package:wonmore_money_book/model/installment_model.dart';
+import 'package:wonmore_money_book/model/transaction_model.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/asset_service.dart';
 import 'package:wonmore_money_book/provider/money/category_service.dart';
@@ -12,13 +18,15 @@ import 'package:wonmore_money_book/service/repeat_transaction_service.dart';
 
 class MoneyProvider extends ChangeNotifier {
   final AppDatabase _database;
-  late final RepeatTransactionService repeatTransactionService;
+  late RepeatTransactionService repeatTransactionService;
   late TransactionService _transactionService;
   late CategoryService _categoryService;
   late AssetService _assetService;
   late FavoriteRecordService _favoriteRecordService;
   late InstallmentService _installmentService;
   String? _currentUserId;
+  String? _ownerId;
+  String? _budgetId;
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   int _monthlyIncome = 0;
@@ -28,46 +36,46 @@ class MoneyProvider extends ChangeNotifier {
   AppDatabase get database => _database;
   
   // 카테고리 상태 관리 추가
-  List<Category> _categories = [];
-  List<Category> get categories => _categories;
+  List<CategoryModel> _categories = [];
+  List<CategoryModel> get categories => _categories;
   
   // 자산 상태 관리 추가
-  List<Asset> _assets = [];
-  List<Asset> get assets => _assets;
+  List<AssetModel> _assets = [];
+  List<AssetModel> get assets => _assets;
 
   // 즐겨찾기 거래내역 상태 관리 추가
-  List<FavoriteRecord> _favoriteRecords = [];
-  List<FavoriteRecord> get favoriteRecords => _favoriteRecords;
+  List<FavoriteRecordModel> _favoriteRecords = [];
+  List<FavoriteRecordModel> get favoriteRecords => _favoriteRecords;
 
   // // 즐겨찾기 거래내역 상태 관리 추가
   // List<Installment> _installments = [];
   // List<Installment> get installments => _installments;
   
   // 수입/지출 카테고리 getter
-  List<Category> getIncomeCategories() => _categories.where((c) => c.type == TransactionType.income).toList();
-  List<Category> getExpenseCategories() => _categories.where((c) => c.type == TransactionType.expense).toList();
-  List<Category> getTransferCategories() => _categories.where((c) => c.type == TransactionType.transfer).toList();
+  List<CategoryModel> getIncomeCategories() => _categories.where((c) => c.type == TransactionType.income).toList();
+  List<CategoryModel> getExpenseCategories() => _categories.where((c) => c.type == TransactionType.expense).toList();
+  List<CategoryModel> getTransferCategories() => _categories.where((c) => c.type == TransactionType.transfer).toList();
 
   // 월별 거래내역 상태 관리
-  List<Transaction> _monthlyTransactions = [];
-  List<Transaction> get monthlyTransactions => _monthlyTransactions;
+  List<TransactionModel> _monthlyTransactions = [];
+  List<TransactionModel> get monthlyTransactions => _monthlyTransactions;
 
   // 날짜별 수입/지출 합계 상태 관리 추가
   Map<DateTime, Map<String, int>> _dailySummaryMap = {};
   Map<DateTime, Map<String, int>> get dailySummaryMap => _dailySummaryMap;
 
   MoneyProvider(this._database) {
-    _transactionService = TransactionService(_database, _currentUserId);
-    _categoryService = CategoryService(_database, _currentUserId);
-    _assetService = AssetService(_database, _currentUserId);
-    _favoriteRecordService = FavoriteRecordService(_database, _currentUserId);
-    _installmentService = InstallmentService(_database, _currentUserId);
-    repeatTransactionService = RepeatTransactionService(this);
-
-    _loadMonthlySummary();
-    _loadAllCategories(); // 앱 시작 시 전체 카테고리 로드
-    _loadAllAssets(); // 앱 시작 시 전체 자산 로드
-    loadFavoriteRecords();
+    // _transactionService = TransactionService(_database, _currentUserId, _ownerId);
+    // _categoryService = CategoryService(_database, _currentUserId, _ownerId);
+    // _assetService = AssetService(_database, _currentUserId, _ownerId);
+    // _favoriteRecordService = FavoriteRecordService(_database, _currentUserId, _ownerId);
+    // _installmentService = InstallmentService(_database, _currentUserId, _ownerId);
+    // repeatTransactionService = RepeatTransactionService(this);
+    //
+    // _loadMonthlySummary();
+    // _loadAllCategories(); // 앱 시작 시 전체 카테고리 로드
+    // _loadAllAssets(); // 앱 시작 시 전체 자산 로드
+    // loadFavoriteRecords();
   }
 
   // Getters
@@ -78,14 +86,78 @@ class MoneyProvider extends ChangeNotifier {
   int get monthlyBalance => _monthlyBalance;
 
   // 사용자 ID 설정
-  void setUserId(String userId) {
+  Future<void> setInitialUserId(String? userId, String? ownerId, String? budgetId) async {
     _currentUserId = userId;
-    _transactionService = TransactionService(_database, _currentUserId);
-    _categoryService = CategoryService(_database, _currentUserId);
-    _assetService = AssetService(_database, _currentUserId);
-    _favoriteRecordService = FavoriteRecordService(_database, _currentUserId);
-    _installmentService = InstallmentService(_database, _currentUserId);
+    _ownerId = ownerId;
+    _budgetId = budgetId;
+    _assetService = AssetService(_database, _currentUserId, _ownerId);
+    _categoryService = CategoryService(_database, _currentUserId, _ownerId);
+    _transactionService = TransactionService(_database, _currentUserId, _ownerId, _budgetId);
+    _favoriteRecordService = FavoriteRecordService(_database, _currentUserId, _ownerId, _budgetId);
+    _installmentService = InstallmentService(_database, _currentUserId, _ownerId, _budgetId);
+
+    // _categoryService.listenToCategoryChanges(() async {
+    //   await _categoryService.reloadCategoriesFromSupabase();
+    //   _loadAllCategories();
+    // });
+
+    repeatTransactionService = RepeatTransactionService(this);
+
+    await _loadMonthlySummary();
+    await _loadAllCategories(); // 앱 시작 시 전체 카테고리 로드
+    await _loadAllAssets(); // 앱 시작 시 전체 자산 로드
+    await loadFavoriteRecords();
     notifyListeners();
+  }
+
+  Future<void> setOwnerId(String newOwnerId, String newBudgetId) async {
+    _ownerId = newOwnerId;
+    _budgetId = newBudgetId;
+    _assetService = AssetService(_database, _currentUserId, _ownerId);
+    _categoryService = CategoryService(_database, _currentUserId, _ownerId);
+    _transactionService = TransactionService(_database, _currentUserId, _ownerId, _budgetId);
+    _favoriteRecordService = FavoriteRecordService(_database, _currentUserId, _ownerId, _budgetId);
+    _installmentService = InstallmentService(_database, _currentUserId, _ownerId, _budgetId);
+
+    // 데이터 다시 로드
+    await _loadAllAssets();
+    await _loadAllCategories();
+    await _loadMonthlySummary();
+    await loadFavoriteRecords();
+    notifyListeners();
+  }
+
+  Future<void> setBudgetId(String newBudgetId) async {
+    _budgetId = newBudgetId;
+    _transactionService = TransactionService(_database, _currentUserId, _ownerId, _budgetId);
+    _favoriteRecordService = FavoriteRecordService(_database, _currentUserId, _ownerId, _budgetId);
+    _installmentService = InstallmentService(_database, _currentUserId, _ownerId, _budgetId);
+
+    // 데이터 다시 로드
+    await _loadMonthlySummary();
+    await loadFavoriteRecords();
+    notifyListeners();
+  }
+
+  Future<void> syncAllLocalDataToSupabase() async {
+    await _assetService.syncAssets();
+    await _loadAllAssets();
+    await _categoryService.syncCategories();
+    await _loadAllCategories();
+    await _installmentService.syncInstallments();
+    await _favoriteRecordService.syncFavoriteRecords();
+    await loadFavoriteRecords();
+    await _transactionService.syncTransactions();
+    await _loadMonthlySummary();
+    await _clearLocalDatabase();
+  }
+
+  Future<void> _clearLocalDatabase() async {
+    await _database.delete(_database.assets).go();
+    // await _database.delete(_database.categories).go();
+    await _database.delete(_database.installments).go();
+    await _database.delete(_database.favoriteRecords).go();
+    await _database.delete(_database.transactions).go();
   }
 
   // 날짜별 수입/지출 합계 Map 갱신 함수
@@ -122,15 +194,30 @@ class MoneyProvider extends ChangeNotifier {
     final startDate = DateTime(_focusedDay.year, _focusedDay.month, 1);
     final endDate = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
 
-    final query = _database.select(_database.transactions)
-      ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
-      t.date.isSmallerThanValue(endDate));
-    
-    // if (_currentUserId != null) {
-    //   query.where((t) => t.userId.equals(_currentUserId!));
-    // }
+    if (_currentUserId == null) {
+      final query = _database.select(_database.transactions)
+        ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
+        t.date.isSmallerThanValue(endDate));
 
-    _monthlyTransactions = await query.get();
+      // _monthlyTransactions = await query.get();
+      final localTransactions = await query.get();
+
+      // _monthlyTransactions = TransactionModel.fromDriftRow(localTransactions);
+      _monthlyTransactions = localTransactions.map(TransactionModel.fromDriftRow).toList();
+
+    } else {
+      final response = await Supabase.instance.client
+          .from('transactions')
+          .select()
+          .eq('budget_id', _budgetId!)
+          .gte('date', startDate.toIso8601String())
+          .lt('date', endDate.toIso8601String());
+
+      final supabaseTransactions = response
+        .map(TransactionModel.fromJson).toList();
+
+      _monthlyTransactions = supabaseTransactions;
+    }
     
     _monthlyIncome = _monthlyTransactions
         .where((t) => t.type == TransactionType.income)
@@ -148,78 +235,78 @@ class MoneyProvider extends ChangeNotifier {
     return await _transactionService.hasAnyTransactions();
   }
 
-  Future<List<Transaction>> getTransactionsByPeriod(DateTime start, DateTime end) async {
+  Future<List<TransactionModel>> getTransactionsByPeriod(DateTime start, DateTime end) async {
     return await _transactionService.getTransactionsByPeriod(start, end);
   }
 
-  Future<void> addTransaction(TransactionsCompanion transaction) async {
-    await _transactionService.addTransaction(transaction);
+  Future<void> addTransaction(TransactionModel model) async {
+    await _transactionService.addTransaction(model);
     await _loadMonthlySummary();
     notifyListeners();
   }
 
-  Future<void> updateTransaction(int id, TransactionsCompanion transaction) async {
+  Future<void> updateTransaction(String id, TransactionModel transaction) async {
     await _transactionService.updateTransaction(id, transaction);
     await _loadMonthlySummary();
     notifyListeners();
   }
 
-  Future<void> deleteTransaction(int id) async {
+  Future<void> deleteTransaction(String id) async {
     await _transactionService.deleteTransaction(id);
     await _loadMonthlySummary();
     notifyListeners();
   }
 
   // 자산별 월별 수입/지출 합계
-  int getIncomeByAsset(int assetId) {
+  int getIncomeByAsset(String assetId) {
     return _monthlyTransactions
         .where((t) => t.assetId == assetId && t.type == TransactionType.income)
         .fold(0, (sum, t) => sum + t.amount);
   }
 
-  int getExpenseByAsset(int assetId) {
+  int getExpenseByAsset(String assetId) {
     return _monthlyTransactions
         .where((t) => t.assetId == assetId && t.type == TransactionType.expense)
         .fold(0, (sum, t) => sum + t.amount);
   }
 
-  // 카테고리별 기간 내역 조회
-  Future<Map<int?, List<Transaction>>> getTransactionsByCategory(DateTime start, DateTime end) async {
-    final transactions = await getTransactionsByPeriod(start, end);
-    final Map<int?, List<Transaction>> categoryTransactions = {};
-    
-    for (final transaction in transactions) {
-      categoryTransactions.putIfAbsent(transaction.categoryId, () => []).add(transaction);
-    }
-    
-    return categoryTransactions;
-  }
+  // // 카테고리별 기간 내역 조회
+  // Future<Map<String?, List<Transaction>>> getTransactionsByCategory(DateTime start, DateTime end) async {
+  //   final transactions = await getTransactionsByPeriod(start, end);
+  //   final Map<String?, List<Transaction>> categoryTransactions = {};
+  //
+  //   for (final transaction in transactions) {
+  //     categoryTransactions.putIfAbsent(transaction.categoryId, () => []).add(transaction);
+  //   }
+  //
+  //   return categoryTransactions;
+  // }
 
   Future<void> _loadAllCategories() async {
     _categories = await _categoryService.getAllCategories();
     notifyListeners();
   }
 
-  Future<List<Category>> getMainCategories(TransactionType type) async {
+  Future<List<CategoryModel>> getMainCategories(TransactionType type) async {
     return await _categoryService.getMainCategories(type);
   }
 
-  Future<void> addCategory(CategoriesCompanion category) async {
+  Future<void> addCategory(CategoryModel category) async {
     await _categoryService.addCategory(category);
     await _loadAllCategories();
   }
 
-  Future<void> updateCategory(Category category) async {
+  Future<void> updateCategory(CategoryModel category) async {
     await _categoryService.updateCategory(category);
     await _loadAllCategories();
   }
 
-  Future<void> deleteCategory(int id) async {
+  Future<void> deleteCategory(String id) async {
     await _categoryService.deleteCategory(id);
     await _loadAllCategories();
   }
 
-  Future<void> reorderCategories(List<Category> reorderedList) async {
+  Future<void> reorderCategories(List<CategoryModel> reorderedList) async {
     await _categoryService.reorderCategories(reorderedList);
     await _loadAllCategories();
     notifyListeners();
@@ -238,25 +325,25 @@ class MoneyProvider extends ChangeNotifier {
   }
 
   // 자산 수정
-  Future<void> updateAsset(int id, String name, int targetAmount) async {
+  Future<void> updateAsset(String id, String name, int targetAmount) async {
     await _assetService.updateAsset(id, name, targetAmount);
     await _loadAllAssets();
   }
 
   // 자산 삭제
-  Future<void> deleteAsset(int id) async {
+  Future<void> deleteAsset(String id) async {
     await _assetService.deleteAsset(id);
     await _loadAllAssets();
   }
 
-  Future<List<CategorySummary>> getCategorySummariesByPeriod({
+  Future<List<CategorySummary>> getCategorySummariesByPeriod({   /// TODO: 추후 supabase 로그인 시 사용할 수 있도록 수정 필요
     required DateTime start,
     required DateTime end,
     required TransactionType type,
     required String selectedAssetName,
   }) async {
     // 자산 ID 찾기 (전체가 아닌 경우)
-    int? assetId;
+    String? assetId;
     if (selectedAssetName != '전체') {
       final asset = _assets.firstWhere(
             (a) => a.name == selectedAssetName,
@@ -310,38 +397,49 @@ class MoneyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addFavoriteRecord(FavoriteRecordsCompanion record) async {
-    await _favoriteRecordService.addFavoriteRecord(record);
+  Future<void> addFavoriteRecord(FavoriteRecordModel record) async {
+    final favoriteRecordNewId = await _favoriteRecordService.addFavoriteRecord(record);
+    final modelWithId = record.copyWith(id: favoriteRecordNewId);
+    await repeatTransactionService.generateTodayRepeatedTransactions(
+      favoriteRecordModel: modelWithId,
+    ); // 필요시 유지
     await loadFavoriteRecords();
-    await repeatTransactionService.generateTodayRepeatedTransactions(); // 필요시 유지
+    await _loadMonthlySummary();
+    notifyListeners();
   }
 
-  Future<void> updateFavoriteRecord(int id, FavoriteRecordsCompanion record) async {
+  Future<void> updateFavoriteRecord(String id, FavoriteRecordModel record) async {
     await _favoriteRecordService.updateFavoriteRecord(id, record);
     await loadFavoriteRecords();
   }
 
-  Future<void> deleteFavoriteRecord(int id) async {
+  Future<void> deleteFavoriteRecord(String id) async {
     await _favoriteRecordService.deleteFavoriteRecord(id);
     await loadFavoriteRecords();
   }
 
   // 할부
-  Future<void> addInstallment(InstallmentsCompanion installment) async {
+  Future<void> addInstallment(InstallmentModel installment) async {
     await _installmentService.addInstallment(installment);
     await _loadMonthlySummary();
     notifyListeners();
   }
 
-  Future<void> updateInstallment(int id, InstallmentsCompanion installment) async {
+  Future<void> updateInstallment(String id, InstallmentModel installment) async {
     await _installmentService.updateInstallment(id, installment);
     await _loadMonthlySummary();
     notifyListeners();
   }
 
-  Future<void> deleteInstallment(int id) async {
+  Future<void> deleteInstallment(String id) async {
     await _installmentService.deleteInstallment(id);
     await _loadMonthlySummary();
     notifyListeners();
   }
+
+  // @override
+  // void dispose() {
+  //   _categoryService.disposeRealtime();
+  //   super.dispose();
+  // }
 }

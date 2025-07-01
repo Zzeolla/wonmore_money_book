@@ -5,7 +5,6 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wonmore_money_book/database/database.dart';
-import 'package:wonmore_money_book/provider/budget_provider.dart';
 import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
@@ -43,7 +42,6 @@ void main() async {
         ChangeNotifierProvider(create: (_) => HomeScreenTabProvider()),
         ChangeNotifierProvider(create: (_) => TodoProvider(database)),
         ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => BudgetProvider()),
       ],
       child: const MyApp(),
     ),
@@ -128,8 +126,6 @@ class MyApp extends StatelessWidget {
         '/more': (context) => const MoreScreen(),
         '/login': (context) => const LoginScreen(),
       },
-
-
     );
   }
 }

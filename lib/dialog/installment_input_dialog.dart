@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/model/asset_model.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
+import 'package:wonmore_money_book/model/installment_model.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
@@ -15,10 +18,10 @@ class InstallmentInputDialog extends StatefulWidget {
   final String? initialTitle;
   final int? initialTotalAmount;
   final int? initialMonths;
-  final int? initialCategoryId;
-  final int? initialAssetId;
+  final String? initialCategoryId;
+  final String? initialAssetId;
   final String? initialMemo;
-  final int? installmentId; // 수정할 거래 내역의 ID
+  final String? installmentId; // 수정할 거래 내역의 ID
 
   const InstallmentInputDialog({
     super.key,
@@ -49,7 +52,7 @@ class _InstallmentInputDialogState extends State<InstallmentInputDialog> {
   final _totalAmountFocus = FocusNode();
   final _titleFocus = FocusNode();
 
-  Category? selectedCategory;
+  CategoryModel? selectedCategory;
   String? selectedAsset;
 
   @override
@@ -411,9 +414,9 @@ class _InstallmentInputDialogState extends State<InstallmentInputDialog> {
                             final categoryId = selectedCategory?.id;
                             final assetName = selectedAsset;
                             final provider = context.read<MoneyProvider>();
-                            int? assetId;
+                            String? assetId;
                             if (assetName != null) {
-                              Asset? asset;
+                              AssetModel? asset;
                               try {
                                 asset = provider.assets.firstWhere((a) => a.name == assetName);
                               } catch (_) {
@@ -435,21 +438,14 @@ class _InstallmentInputDialogState extends State<InstallmentInputDialog> {
                                 if (hasChanges) {
                                   await provider.updateInstallment(
                                     widget.installmentId!,
-                                    InstallmentsCompanion(
-                                      date: drift.Value(selectedDate),
-                                      totalAmount: drift.Value(totalAmount),
-                                      months: drift.Value(months),
-                                      categoryId: categoryId == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(categoryId),
-                                      assetId: assetId == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(assetId),
-                                      title: drift.Value(title),
-                                      memo: memo == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(memo),
-                                      updatedAt: drift.Value(DateTime.now()),
+                                    InstallmentModel(
+                                      date: selectedDate,
+                                      totalAmount: totalAmount,
+                                      months: months,
+                                      categoryId: categoryId,
+                                      assetId: assetId,
+                                      title: title,
+                                      memo: memo,
                                     ),
                                   );
                                   Navigator.pop(context, true);
@@ -459,22 +455,14 @@ class _InstallmentInputDialogState extends State<InstallmentInputDialog> {
                               } else {
                                 // 새로운 거래내역 추가
                                 await provider.addInstallment(
-                                  InstallmentsCompanion(
-                                    date: drift.Value(selectedDate),
-                                    totalAmount: drift.Value(totalAmount),
-                                    months: drift.Value(months),
-                                    categoryId: categoryId == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(categoryId),
-                                    assetId: assetId == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(assetId),
-                                    title: drift.Value(title),
-                                    memo: memo == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(memo),
-                                    createdAt: drift.Value(DateTime.now()),
-                                    updatedAt: drift.Value(DateTime.now()),
+                                  InstallmentModel(
+                                    date: selectedDate,
+                                    totalAmount: totalAmount,
+                                    months: months,
+                                    categoryId: categoryId,
+                                    assetId: assetId,
+                                    title: title,
+                                    memo: memo,
                                   ),
                                 );
                                 Navigator.pop(context, true);

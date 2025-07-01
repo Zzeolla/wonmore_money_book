@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
+import 'package:wonmore_money_book/model/asset_model.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
+import 'package:wonmore_money_book/model/favorite_record_model.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
@@ -17,10 +20,10 @@ class FavoriteRecordInputDialog extends StatefulWidget {
   final TransactionType? initialType;
   final String? initialTitle;
   final int? initialAmount;
-  final int? initialCategoryId;
-  final int? initialAssetId;
+  final String? initialCategoryId;
+  final String? initialAssetId;
   final String? initialMemo;
-  final int? favoriteRecordId;
+  final String? favoriteRecordId;
 
   const FavoriteRecordInputDialog({
     super.key,
@@ -48,7 +51,7 @@ class _FavoriteRecordInputDialogState extends State<FavoriteRecordInputDialog> {
   final _amountFocus = FocusNode();
   final _titleFocus = FocusNode();
 
-  Category? selectedCategory;
+  CategoryModel? selectedCategory;
   String? selectedAsset;
 
   @override
@@ -110,6 +113,7 @@ class _FavoriteRecordInputDialogState extends State<FavoriteRecordInputDialog> {
     super.dispose();
   }
 
+  @override
   Widget build(BuildContext context) {
     final filteredCategories = context
         .watch<MoneyProvider>()
@@ -430,9 +434,9 @@ class _FavoriteRecordInputDialogState extends State<FavoriteRecordInputDialog> {
                             final categoryId = selectedCategory?.id;
                             final assetName = selectedAsset;
                             final provider = context.read<MoneyProvider>();
-                            int? assetId;
+                            String? assetId;
                             if (assetName != null) {
-                              Asset? asset;
+                              AssetModel? asset;
                               try {
                                 asset = provider.assets.firstWhere((a) => a.name == assetName);
                               } catch (_) {
@@ -454,19 +458,14 @@ class _FavoriteRecordInputDialogState extends State<FavoriteRecordInputDialog> {
                                 if (hasChanges) {
                                   await provider.updateFavoriteRecord(
                                     widget.favoriteRecordId!,
-                                    FavoriteRecordsCompanion(
-                                      amount: drift.Value(amount),
-                                      type: drift.Value(_selectedType),
-                                      categoryId: categoryId == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(categoryId),
-                                      assetId: assetId == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(assetId),
-                                      title: drift.Value(title),
-                                      memo: memo == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(memo),
+                                    FavoriteRecordModel(
+                                      amount: amount,
+                                      type: _selectedType,
+                                      period: PeriodType.none,
+                                      categoryId: categoryId,
+                                      assetId: assetId,
+                                      title: title,
+                                      memo: memo,
                                     ),
                                   );
                                   Navigator.pop(context, true);
@@ -476,22 +475,14 @@ class _FavoriteRecordInputDialogState extends State<FavoriteRecordInputDialog> {
                               } else {
                                 // 새로운 거래내역 추가
                                 await provider.addFavoriteRecord(
-                                  FavoriteRecordsCompanion(
-                                    amount: drift.Value(amount),
-                                    type: drift.Value(_selectedType),
-                                    period: drift.Value(PeriodType.none),
-                                    categoryId: categoryId == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(categoryId),
-                                    assetId: assetId == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(assetId),
-                                    title: drift.Value(title),
-                                    memo: memo == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(memo),
-                                    createdAt: drift.Value(DateTime.now()),
-                                    updatedAt: drift.Value(DateTime.now()),
+                                  FavoriteRecordModel(
+                                    amount: amount,
+                                    type: _selectedType,
+                                    period: PeriodType.none,
+                                    categoryId: categoryId,
+                                    assetId: assetId,
+                                    title: title,
+                                    memo: memo,
                                   ),
                                 );
                                 Navigator.pop(context, true);

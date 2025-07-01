@@ -1,7 +1,13 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:wonmore_money_book/model/budget_model.dart';
+import 'package:wonmore_money_book/model/user_model.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/provider/todo_provider.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/no_internet_screen.dart';
 import 'package:wonmore_money_book/service/repeat_transaction_service.dart';
 
@@ -18,6 +24,11 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final supabaseUser = Supabase.instance.client.auth.currentUser;
+      final userProvider = context.read<UserProvider>();
+      final moneyProvider = context.read<MoneyProvider>();
+      final todoProvider = context.read<TodoProvider>();
+
       // 1. 인터넷 체크
       final connectivity = await Connectivity().checkConnectivity();
       if (connectivity == ConnectivityResult.none) {
@@ -29,15 +40,91 @@ class _SplashScreenState extends State<SplashScreen> {
         }
         return;
       }
+      // 2. 로그인 id 확인
+      if (supabaseUser != null) {
+        userProvider.setUser(supabaseUser);
+        final user = userProvider.currentUser;
+        final response = await Supabase.instance.client
+            .from('users').select().eq('id', user!.id).maybeSingle();
 
-      // 2. 반복 거래 처리
-      final provider = context.read<MoneyProvider>();
-      await provider.loadFavoriteRecords();
-      final repeatService = RepeatTransactionService(provider);
+        if (response == null) {
+          final email = user.email ?? '';
+          final name = email.contains('@') ? email
+              .split('@')
+              .first : '사용자';
+          final profileImageUrl = Supabase.instance.client.storage
+              .from('avatars')
+              .getPublicUrl('${user.id}/profile.png');
+          final newUser = UserModel(
+            id: user.id,
+            email: email,
+            name: name,
+            groupName: '$name의 그룹',
+            lastOwnerId: user.id,
+            profileUrl: profileImageUrl,
+          );
+
+          await Supabase.instance.client.from('users').insert(newUser.toMap());
+
+          final newBudgetId = const Uuid().v4();
+          await Supabase.instance.client.from('budgets').insert({
+            'id': newBudgetId,
+            'owner_id': user.id,
+            'name': '주 가계부',
+            'updated_by': user.id,
+            'is_main': true
+          });
+          await userProvider.setOwnerId(user.id);
+        } else {
+          final lastOwnerResponse = await Supabase.instance.client
+              .from('users')
+              .select('last_owner_id')
+              .eq('id', user.id)
+              .maybeSingle();
+          await userProvider.setOwnerId(lastOwnerResponse?['last_owner_id']);
+        }
+
+
+        await userProvider.initializeUserProvider();
+        final ownerId = userProvider.ownerId;
+        final budgetId = userProvider.budgetId;
+
+        //
+        // print('userId : ${userProvider.ownerId}');
+        // print('userId : ${userProvider.budgetId}');
+
+        if (budgetId != null) {
+          await moneyProvider.setInitialUserId(user.id, ownerId, budgetId);
+        } else {
+          final response = await Supabase.instance.client
+              .from('budgets')
+              .select('*')
+              .eq('owner_id', ownerId!)
+              .eq('is_main', true)
+              .maybeSingle();
+
+          final mainBudgetId = response?['id'] as String?;
+          if (mainBudgetId != null) {
+            await userProvider.setBudgetId(mainBudgetId);
+            await moneyProvider.setInitialUserId(user.id, ownerId, mainBudgetId);
+          }
+        }
+        await todoProvider.setUserId(user.id, ownerId);
+      } else {
+        await userProvider.initializeUserProvider();
+        await moneyProvider.setInitialUserId(null, null, null);
+        await todoProvider.setUserId(null, null);
+      }
+      //
+      // print('userId : ${user!.id}');
+      // print('userId : ${userProvider.ownerId}');
+      // print('userId : ${userProvider.budgetId}');
+
+      // 3. 반복 거래 처리
+      final repeatService = RepeatTransactionService(moneyProvider);
       // 반복 거래 생성 실행
       await repeatService.generateTodayRepeatedTransactions();
-
-      // 3. 다음 화면 이동
+      // 4. 다음 화면 이동
       await Future.delayed(const Duration(milliseconds: 500));
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/main');

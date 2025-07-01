@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import 'package:uuid/uuid.dart';
 import 'package:wonmore_money_book/model/asset.dart';
 import 'package:wonmore_money_book/model/category.dart';
 import 'package:wonmore_money_book/model/favorite_record.dart';
@@ -157,17 +158,17 @@ class AppDatabase extends _$AppDatabase {
         .get();
   }
 
-  Future<int> getNextCategorySortOrder(TransactionType type) async {
+  Future<int> getMaxSortOrderByType(TransactionType type) async {
     final query = await (select(categories)
       ..where((c) => c.type.equals(type.name))
       ..orderBy([(c) => OrderingTerm(expression: c.sortOrder, mode: OrderingMode.desc)])
       ..limit(1))
         .getSingleOrNull();
 
-    return query?.sortOrder != null ? query!.sortOrder + 1 : 0;
+    return query?.sortOrder ?? -1 ;
   }
 
-  Future<Installment?> getInstallmentById(int id) {
+  Future<Installment?> getInstallmentById(String id) {
     return (select(installments)..where((i) => i.id.equals(id)))
         .getSingleOrNull();
   }

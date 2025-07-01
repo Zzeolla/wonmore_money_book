@@ -1,60 +1,182 @@
 // lib/service/category_service.dart
 import 'package:drift/drift.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 
 class CategoryService {
   final AppDatabase _db;
   final String? userId;
+  final String? ownerId;
+  final SupabaseClient supabase = Supabase.instance.client;
 
-  CategoryService(this._db, this.userId);
+  RealtimeChannel? _realtimeChannel;
 
-  Future<List<Category>> getAllCategories() async {
-    final query = _db.select(_db.categories)
-      ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]);
-    // if (userId != null) {
-    //   query.where((c) => c.userId.equals(userId!));
-    // }
-    return await query.get();
+  CategoryService(this._db, this.userId, this.ownerId);
+
+  Future<List<CategoryModel>> getAllCategories() async {
+    if (userId == null) {
+      final query = _db.select(_db.categories)
+        ..orderBy([(c) => OrderingTerm(expression: c.sortOrder)]);
+      final localCategory = await query.get();
+      return localCategory.map(CategoryModel.fromDriftRow).toList();
+    } else {
+      final response = await supabase.from('categories').select().eq('owner_id', ownerId!)
+          .order('sort_order', ascending: true);
+      return response.map(CategoryModel.fromJson).toList();
+    }
   }
 
-  Future<List<Category>> getMainCategories(TransactionType type) async {
-    final query = _db.select(_db.categories)
-      ..where((c) => c.type.equals(type.name));
-    return await query.get();
+  Future<List<CategoryModel>> getMainCategories(TransactionType type) async {
+    if (userId == null) {
+      final query = _db.select(_db.categories)..where((c) => c.type.equals(type.name));
+      final localCategory = await query.get();
+      return localCategory.map(CategoryModel.fromDriftRow).toList();
+    } else {
+      final response = await supabase.from('categories').select().eq('owner_id', ownerId!)
+          .eq('type', type.name).order('sort_order', ascending: true);
+      return response.map(CategoryModel.fromJson).toList();
+    }
   }
 
-  Future<void> addCategory(CategoriesCompanion category) async {
-    final nextOrder = await _db.getNextCategorySortOrder(category.type.value);
-    final categoryWithUser = category.copyWith(
-      sortOrder: Value(nextOrder),
-      // userId: Value(userId),
-      createdBy: Value(userId),
-      updatedBy: Value(userId),
+  Future<void> addCategory(CategoryModel model) async {
+    final newId = model.id ?? const Uuid().v4();
+    final nextOrder = await getNextCategorySortOrder(model.type);
+    final modelWithId = model.id == null ? model.copyWith(
+      id: newId,
+      sortOrder: nextOrder,
+      ownerId: ownerId,
+    ) : model;
+
+    if (userId == null) {
+      await _db.into(_db.categories).insert(modelWithId.toCompanion());
+    } else {
+      await supabase.from('categories').insert(modelWithId.toMap());
+    }
+  }
+
+  Future<void> updateCategory(CategoryModel model) async {
+    final updatedModel = model.copyWith(
+      ownerId: ownerId,
+      updatedAt: DateTime.now(),
     );
-    await _db.into(_db.categories).insert(categoryWithUser);
+
+    if (userId == null) {
+      await (_db.update(_db.categories)..where((c) => c.id.equals(model.id!)))
+          .write(updatedModel.toCompanion());
+    } else {
+      await supabase.from('categories').update(updatedModel.toMap()).eq('id', model.id!);
+    }
   }
 
-  Future<void> updateCategory(Category category) async {
-    await (_db.update(_db.categories)
-      ..where((c) => c.id.equals(category.id)))
-        .write(CategoriesCompanion(
-      name: Value(category.name),
-      type: Value(category.type),
-      iconName: Value(category.iconName),
-      colorValue: Value(category.colorValue),
-      updatedAt: Value(DateTime.now()),
-      updatedBy: Value(userId),
-    ));
+  Future<void> deleteCategory(String id) async {
+    await (_db.delete(_db.categories)..where((c) => c.id.equals(id))).go();
+
+    if (userId != null) {
+      await supabase.from('categories').delete().eq('id', id);
+    }
   }
 
-  Future<void> deleteCategory(int id) async {
-    await (_db.delete(_db.categories)
-      ..where((c) => c.id.equals(id)))
-        .go();
+  Future<void> reorderCategories(List<CategoryModel> reorderedList) async {
+    if (userId == null) {
+      // 로컬 DB에 반영
+      await _db.batch((batch) {
+        for (int i = 0; i < reorderedList.length; i++) {
+          final updatedModel = reorderedList[i].copyWith(
+            sortOrder: i,
+            updatedAt: DateTime.now(),
+          );
+          batch.update(
+            _db.categories,
+            updatedModel.toCompanion(),
+            where: (c) => c.id.equals(updatedModel.id!),
+          );
+        }
+      });
+    } else {
+      // Supabase에 반영
+      for (int i = 0; i < reorderedList.length; i++) {
+        final model = reorderedList[i];
+        await supabase
+            .from('categories')
+            .update({'sort_order': i})
+            .eq('id', model.id!)
+            .eq('owner_id', ownerId!);
+      }
+    }
   }
 
-  Future<void> reorderCategories(List<Category> reorderedList) async {
-    await _db.reorderCategories(reorderedList);
+  Future<void> syncCategories() async {
+    final localData = await _db.select(_db.categories).get();
+    final response = await supabase.from('categories').select().eq('owner_id', ownerId!);
+    final supabaseNames = response.map((item) => CategoryModel.fromJson(item).name).toSet();
+    final modelsToUpload = localData
+        .where((a) => !supabaseNames.contains(a.name))
+        .map((a) => CategoryModel.fromDriftRow(a))
+        .toList();
+
+
+    for (final model in modelsToUpload) {
+      final uploadModel = model.copyWith(
+        ownerId: ownerId,
+      );
+      await supabase.from('categories').insert(uploadModel.toMap());
+    }
   }
+
+  Future<int> getNextCategorySortOrder(TransactionType type) async {
+    if (userId == null) {
+      final maxOrder = await _db.getMaxSortOrderByType(type);
+      return maxOrder + 1;
+    } else {
+      final response = await supabase.from('categories').select('sort_order')
+          .eq('type', type.name).eq('owner_id', ownerId!).order('sort_order', ascending: false)
+          .limit(1);
+      final map = response.map(CategoryModel.fromJson).toList();
+      return map.first.sortOrder! + 1;
+    }
+  }
+
+  // void listenToCategoryChanges(Function onChanged) {
+  //   if (ownerId == null) return;
+  //
+  //   _realtimeChannel?.unsubscribe();
+  //
+  //   _realtimeChannel = supabase.channel('public:categories');
+  //   _realtimeChannel!.onPostgresChanges(
+  //     event: PostgresChangeEvent.all,
+  //     schema: 'public',
+  //     table: 'categories',
+  //     filter: PostgresChangeFilter(
+  //       type: PostgresChangeFilterType.eq,
+  //       column: 'owner_id',
+  //       value: ownerId!,
+  //     ),
+  //     callback: (payload) => onChanged(),
+  //   )
+  //   .subscribe();
+  // }
+  //
+  // void disposeRealtime() {
+  //   _realtimeChannel?.unsubscribe();
+  //   _realtimeChannel = null;
+  // }
+  //
+  // Future<void> reloadCategoriesFromSupabase() async {
+  //   if (ownerId == null) return;
+  //
+  //   final response = await supabase.from('categories').select().eq('owner_id', ownerId!) as List;
+  //
+  //   final serverCategories =
+  //       response.map((json) => CategoryModel.fromJson(json as Map<String, dynamic>)).toList();
+  //
+  //   await _db.transaction(() async {
+  //     await _db.delete(_db.categories).go();
+  //     for (final category in serverCategories) {
+  //       await _db.into(_db.categories).insert(category.toCompanion());
+  //     }
+  //   });
+  // }
 }

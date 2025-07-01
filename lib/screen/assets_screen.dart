@@ -79,7 +79,7 @@ class AssetsScreen extends StatelessWidget {
                           for (final asset in assets)
                             _buildCard(
                               context,
-                              asset.id,
+                              asset.id!,
                               asset.name,
                               asset.targetAmount,
                             ),
@@ -114,7 +114,7 @@ class AssetsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCard(BuildContext context, int id, String name, targetAmount) {
+  Widget _buildCard(BuildContext context, String id, String name, targetAmount) {
     final income = context.read<MoneyProvider>().getIncomeByAsset(id);
     final expense = context.read<MoneyProvider>().getExpenseByAsset(id);
     final progress = (targetAmount > 0) ? (expense / targetAmount).clamp(0.0, 1.0) : 0.0;

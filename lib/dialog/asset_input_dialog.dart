@@ -9,7 +9,7 @@ import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/widget/custom_circle_button.dart';
 
 class AssetInputDialog extends StatefulWidget {
-  final int? assetId;
+  final String? assetId;
   final String? initialName;
   final int? initialTargetAmount;
 

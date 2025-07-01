@@ -4,7 +4,7 @@ import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/widget/custom_circle_button.dart';
 
 class TodoInputDialog extends StatefulWidget {
-  final int? todoId;
+  final String? todoId;
   final String? initialTitle;
   final String? initialMemo;
 

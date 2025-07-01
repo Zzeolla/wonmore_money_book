@@ -5,6 +5,9 @@ import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/installment_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
+import 'package:wonmore_money_book/model/asset_model.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
+import 'package:wonmore_money_book/model/transaction_model.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
@@ -45,7 +48,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
     // 현재 보여지는 날짜 계산
     final currentDate = _baseDay.add(Duration(days: _currentPageIndex - initialPage));
     // 해당 날짜의 거래만 필터링
-    List<Transaction> txList = provider.monthlyTransactions.where((tx) =>
+    List<TransactionModel> txList = provider.monthlyTransactions.where((tx) =>
     tx.date.year == currentDate.year &&
         tx.date.month == currentDate.month &&
         tx.date.day == currentDate.day
@@ -150,7 +153,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
         itemBuilder: (context, pageIndex) {
           final date = _baseDay.add(Duration(days: pageIndex - initialPage));
           // 해당 날짜의 거래만 필터링
-          List<Transaction> txList = provider.monthlyTransactions.where((tx) =>
+          List<TransactionModel> txList = provider.monthlyTransactions.where((tx) =>
           tx.date.year == date.year &&
               tx.date.month == date.month &&
               tx.date.day == date.day
@@ -162,14 +165,14 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               itemCount: txList.length,
               itemBuilder: (context, index) {
-                Category? category;
+                CategoryModel? category;
                 try {
                   category =
                       provider.categories.firstWhere((c) => c.id == txList[index].categoryId);
                 } catch (_) {
                   category = null;
                 }
-                Asset? asset;
+                AssetModel? asset;
                 try {
                   asset = provider.assets.firstWhere((a) => a.id == txList[index].assetId);
                 } catch (_) {
@@ -289,7 +292,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                         } else {
                           await (tx.installmentId != null
                             ? provider.deleteInstallment(tx.installmentId!)
-                            : provider.deleteTransaction(tx.id));
+                            : provider.deleteTransaction(tx.id!));
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('삭제되었습니다')),
                           );

@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/model/asset_model.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
+import 'package:wonmore_money_book/model/favorite_record_model.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
@@ -20,10 +23,10 @@ class RepeatRecordInputDialog extends StatefulWidget {
   final PeriodType? initialPeriod;
   final String? initialTitle;
   final int? initialAmount;
-  final int? initialCategoryId;
-  final int? initialAssetId;
+  final String? initialCategoryId;
+  final String? initialAssetId;
   final String? initialMemo;
-  final int? favoriteRecordId;
+  final String? favoriteRecordId;
 
   const RepeatRecordInputDialog({
     super.key,
@@ -55,7 +58,7 @@ class _RepeatRecordInputDialogState extends State<RepeatRecordInputDialog> {
   final _amountFocus = FocusNode();
   final _titleFocus = FocusNode();
 
-  Category? selectedCategory;
+  CategoryModel? selectedCategory;
   String? selectedAsset;
   PeriodType selectedPeriod = PeriodType.everyMonth;
 
@@ -418,9 +421,9 @@ class _RepeatRecordInputDialogState extends State<RepeatRecordInputDialog> {
                               final categoryId = selectedCategory?.id;
                               final assetName = selectedAsset;
                               final provider = context.read<MoneyProvider>();
-                              int? assetId;
+                              String? assetId;
                               if (assetName != null) {
-                                Asset? asset;
+                                AssetModel? asset;
                                 try {
                                   asset = provider.assets.firstWhere((a) => a.name == assetName);
                                 } catch (_) {
@@ -442,20 +445,14 @@ class _RepeatRecordInputDialogState extends State<RepeatRecordInputDialog> {
                                   if (hasChanges) {
                                     await provider.updateFavoriteRecord(
                                       widget.favoriteRecordId!,
-                                      FavoriteRecordsCompanion(
-                                        amount: drift.Value(amount),
-                                        type: drift.Value(_selectedType),
-                                        period: drift.Value(selectedPeriod),
-                                        categoryId: categoryId == null
-                                            ? const drift.Value.absent()
-                                            : drift.Value(categoryId),
-                                        assetId: assetId == null
-                                            ? const drift.Value.absent()
-                                            : drift.Value(assetId),
-                                        title: drift.Value(title),
-                                        memo: memo == null
-                                            ? const drift.Value.absent()
-                                            : drift.Value(memo),
+                                      FavoriteRecordModel(
+                                        amount: amount,
+                                        type: _selectedType,
+                                        period: selectedPeriod,
+                                        categoryId: categoryId,
+                                        assetId: assetId,
+                                        title: title,
+                                        memo: memo,
                                       ),
                                     );
                                     Navigator.pop(context, true);
@@ -465,23 +462,15 @@ class _RepeatRecordInputDialogState extends State<RepeatRecordInputDialog> {
                                 } else {
                                   // 새로운 거래내역 추가
                                   await provider.addFavoriteRecord(
-                                    FavoriteRecordsCompanion(
-                                      startDate: drift.Value(selectedDate),
-                                      amount: drift.Value(amount),
-                                      type: drift.Value(_selectedType),
-                                      period: drift.Value(selectedPeriod),
-                                      categoryId: categoryId == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(categoryId),
-                                      assetId: assetId == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(assetId),
-                                      title: drift.Value(title),
-                                      memo: memo == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(memo),
-                                      createdAt: drift.Value(DateTime.now()),
-                                      updatedAt: drift.Value(DateTime.now()),
+                                    FavoriteRecordModel( ///TODO: 이거 제한이 필요할듯? 과거 한달 전부터만 입력 가능하도록
+                                      startDate: selectedDate,
+                                      amount: amount,
+                                      type: _selectedType,
+                                      period: selectedPeriod,
+                                      categoryId: categoryId,
+                                      assetId: assetId,
+                                      title: title,
+                                      memo: memo,
                                     ),
                                   );
                                   Navigator.pop(context, true);

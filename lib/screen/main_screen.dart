@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/model/home_screen_tab.dart';
 import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/analysis_screen.dart';
 import 'package:wonmore_money_book/screen/assets_screen.dart';
@@ -33,13 +34,18 @@ class _MainScreenState extends State<MainScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final userProvider = context.read<UserProvider>();
       final moneyProvider = context.read<MoneyProvider>();
+      final todoProvider = context.read<TodoProvider>();
 
-      if (userProvider.justSignedIn) {
+      if (userProvider.justSignedIn && userProvider.userId != null) {
         userProvider.justSignedIn = false; // 이후 재호출 방지
-        final hasLocalRecords = await moneyProvider.hasAnyTransactions();
-        if (hasLocalRecords && context.mounted) {
-          _showSyncDialog();
-        }
+        _showSyncDialog();
+        await todoProvider.syncTodoLocalDataToSupabase();
+        await moneyProvider.syncAllLocalDataToSupabase();
+
+        // final hasLocalRecords = await moneyProvider.hasAnyTransactions();
+        // if (hasLocalRecords && context.mounted) {
+        //   _showSyncDialog();
+        // }
       }
     });
   }
@@ -82,27 +88,16 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("기록 동기화"),
-        content: const Text("기존 로컬 기록이 있습니다.\n서버에 동기화할까요?"),
+        content: const Text("기존 로컬 기록을 업로드 중입니다.\n데이터양에 따라 시간이 걸릴 수 있습니다."),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
+              Navigator.of(context).pop();
             },
-            child: const Text("아니오"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              final provider = context.read<MoneyProvider>();
-              // await provider.uploadLocalRecordsToSupabase();  TODO: 추후 추가 필요
-              // await provider.clearLocalTransactions(); TODO: 추후 추가 필요
-            },
-            child: const Text("동기화"),
+            child: const Text("확인"),
           ),
         ],
       ),
     );
   }
 }
-
-

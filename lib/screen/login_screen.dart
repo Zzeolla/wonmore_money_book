@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import 'dart:io' show Platform;
 
 import 'package:wonmore_money_book/provider/user_provider.dart';
@@ -25,27 +26,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (event == AuthChangeEvent.signedIn && currentUser != null) {
         final userProvider = context.read<UserProvider>();
+        await userProvider.setUser(currentUser);
         userProvider.justSignedIn = true;
 
-        final response = await Supabase.instance.client
-            .from('users').select().eq('id', currentUser.id).maybeSingle();
-
-        if (response == null) {
-          final email = currentUser.email ?? '';
-          final name = email.contains('@') ? email
-              .split('@')
-              .first : '사용자';
-
-          await Supabase.instance.client.from('users').insert({
-            'id': currentUser.id,
-            'email': email,
-            'name': name,
-          });
-
-
-        }
         if (mounted) {
-          Navigator.pushReplacementNamed(context, '/main');
+          Navigator.pushReplacementNamed(context, '/');
         }
       }
     });

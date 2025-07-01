@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
 import 'package:wonmore_money_book/util/color_palette.dart';
@@ -9,7 +10,7 @@ import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/database/database.dart';
 
 class CategoryInputDialog extends StatefulWidget {
-  final Category? category;
+  final CategoryModel? category;
   final TransactionType type;
 
   const CategoryInputDialog({
@@ -24,6 +25,7 @@ class CategoryInputDialog extends StatefulWidget {
 
 class _CategoryInputDialogState extends State<CategoryInputDialog> {
   final _nameController = TextEditingController();
+  String? _selectedId;
   String? _selectedIconName;
   Color? _selectedColor;
 
@@ -32,6 +34,7 @@ class _CategoryInputDialogState extends State<CategoryInputDialog> {
     super.initState();
     if (widget.category != null) {
       _nameController.text = widget.category!.name;
+      _selectedId = widget.category!.id;
       _selectedIconName = widget.category!.iconName;
       _selectedColor = Color(widget.category!.colorValue);
     }
@@ -229,10 +232,10 @@ class _CategoryInputDialogState extends State<CategoryInputDialog> {
 
     if (widget.category == null) {
       await provider.addCategory(
-        CategoriesCompanion.insert(
+        CategoryModel(
           name: name,
-          iconName: drift.Value(_selectedIconName!),
-          colorValue: drift.Value(_selectedColor!.value),
+          iconName: _selectedIconName!,
+          colorValue: _selectedColor!.value,
           type: widget.type,
         ),
       );
@@ -244,8 +247,9 @@ class _CategoryInputDialogState extends State<CategoryInputDialog> {
       if (hasChanged) {
         await provider.updateCategory(
           widget.category!.copyWith(
+            id: _selectedId,
             name: name,
-            iconName: _selectedIconName!,
+            iconName: _selectedIconName,
             colorValue: _selectedColor!.value,
           ),
         );

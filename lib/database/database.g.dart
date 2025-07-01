@@ -11,18 +11,11 @@ class $CategoriesTable extends Categories
   $CategoriesTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
-  static const VerificationMeta _uidMeta = const VerificationMeta('uid');
-  @override
-  late final GeneratedColumn<String> uid = GeneratedColumn<String>(
-      'uid', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
+      clientDefault: () => const Uuid().v4());
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -94,7 +87,6 @@ class $CategoriesTable extends Categories
   @override
   List<GeneratedColumn> get $columns => [
         id,
-        uid,
         name,
         type,
         sortOrder,
@@ -118,10 +110,6 @@ class $CategoriesTable extends Categories
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('uid')) {
-      context.handle(
-          _uidMeta, uid.isAcceptableOrUnknown(data['uid']!, _uidMeta));
     }
     if (data.containsKey('name')) {
       context.handle(
@@ -173,9 +161,7 @@ class $CategoriesTable extends Categories
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Category(
       id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
-      uid: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}uid']),
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       type: $CategoriesTable.$convertertype.fromSql(attachedDatabase.typeMapping
@@ -209,8 +195,7 @@ class $CategoriesTable extends Categories
 }
 
 class Category extends DataClass implements Insertable<Category> {
-  final int id;
-  final String? uid;
+  final String id;
   final String name;
   final TransactionType type;
   final int sortOrder;
@@ -223,7 +208,6 @@ class Category extends DataClass implements Insertable<Category> {
   final DateTime updatedAt;
   const Category(
       {required this.id,
-      this.uid,
       required this.name,
       required this.type,
       required this.sortOrder,
@@ -237,10 +221,7 @@ class Category extends DataClass implements Insertable<Category> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    if (!nullToAbsent || uid != null) {
-      map['uid'] = Variable<String>(uid);
-    }
+    map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     {
       map['type'] =
@@ -266,7 +247,6 @@ class Category extends DataClass implements Insertable<Category> {
   CategoriesCompanion toCompanion(bool nullToAbsent) {
     return CategoriesCompanion(
       id: Value(id),
-      uid: uid == null && nullToAbsent ? const Value.absent() : Value(uid),
       name: Value(name),
       type: Value(type),
       sortOrder: Value(sortOrder),
@@ -290,8 +270,7 @@ class Category extends DataClass implements Insertable<Category> {
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Category(
-      id: serializer.fromJson<int>(json['id']),
-      uid: serializer.fromJson<String?>(json['uid']),
+      id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       type: $CategoriesTable.$convertertype
           .fromJson(serializer.fromJson<String>(json['type'])),
@@ -309,8 +288,7 @@ class Category extends DataClass implements Insertable<Category> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'uid': serializer.toJson<String?>(uid),
+      'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'type': serializer
           .toJson<String>($CategoriesTable.$convertertype.toJson(type)),
@@ -326,8 +304,7 @@ class Category extends DataClass implements Insertable<Category> {
   }
 
   Category copyWith(
-          {int? id,
-          Value<String?> uid = const Value.absent(),
+          {String? id,
           String? name,
           TransactionType? type,
           int? sortOrder,
@@ -340,7 +317,6 @@ class Category extends DataClass implements Insertable<Category> {
           DateTime? updatedAt}) =>
       Category(
         id: id ?? this.id,
-        uid: uid.present ? uid.value : this.uid,
         name: name ?? this.name,
         type: type ?? this.type,
         sortOrder: sortOrder ?? this.sortOrder,
@@ -355,7 +331,6 @@ class Category extends DataClass implements Insertable<Category> {
   Category copyWithCompanion(CategoriesCompanion data) {
     return Category(
       id: data.id.present ? data.id.value : this.id,
-      uid: data.uid.present ? data.uid.value : this.uid,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
@@ -374,7 +349,6 @@ class Category extends DataClass implements Insertable<Category> {
   String toString() {
     return (StringBuffer('Category(')
           ..write('id: $id, ')
-          ..write('uid: $uid, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('sortOrder: $sortOrder, ')
@@ -390,14 +364,13 @@ class Category extends DataClass implements Insertable<Category> {
   }
 
   @override
-  int get hashCode => Object.hash(id, uid, name, type, sortOrder, iconName,
+  int get hashCode => Object.hash(id, name, type, sortOrder, iconName,
       colorValue, ownerId, createdBy, createdAt, updatedBy, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Category &&
           other.id == this.id &&
-          other.uid == this.uid &&
           other.name == this.name &&
           other.type == this.type &&
           other.sortOrder == this.sortOrder &&
@@ -411,8 +384,7 @@ class Category extends DataClass implements Insertable<Category> {
 }
 
 class CategoriesCompanion extends UpdateCompanion<Category> {
-  final Value<int> id;
-  final Value<String?> uid;
+  final Value<String> id;
   final Value<String> name;
   final Value<TransactionType> type;
   final Value<int> sortOrder;
@@ -423,9 +395,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   final Value<DateTime> createdAt;
   final Value<String?> updatedBy;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const CategoriesCompanion({
     this.id = const Value.absent(),
-    this.uid = const Value.absent(),
     this.name = const Value.absent(),
     this.type = const Value.absent(),
     this.sortOrder = const Value.absent(),
@@ -436,10 +408,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.createdAt = const Value.absent(),
     this.updatedBy = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   CategoriesCompanion.insert({
     this.id = const Value.absent(),
-    this.uid = const Value.absent(),
     required String name,
     required TransactionType type,
     this.sortOrder = const Value.absent(),
@@ -450,11 +422,11 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     this.createdAt = const Value.absent(),
     this.updatedBy = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   })  : name = Value(name),
         type = Value(type);
   static Insertable<Category> custom({
-    Expression<int>? id,
-    Expression<String>? uid,
+    Expression<String>? id,
     Expression<String>? name,
     Expression<String>? type,
     Expression<int>? sortOrder,
@@ -465,10 +437,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     Expression<DateTime>? createdAt,
     Expression<String>? updatedBy,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (uid != null) 'uid': uid,
       if (name != null) 'name': name,
       if (type != null) 'type': type,
       if (sortOrder != null) 'sort_order': sortOrder,
@@ -479,12 +451,12 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       if (createdAt != null) 'created_at': createdAt,
       if (updatedBy != null) 'updated_by': updatedBy,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   CategoriesCompanion copyWith(
-      {Value<int>? id,
-      Value<String?>? uid,
+      {Value<String>? id,
       Value<String>? name,
       Value<TransactionType>? type,
       Value<int>? sortOrder,
@@ -494,10 +466,10 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       Value<String?>? createdBy,
       Value<DateTime>? createdAt,
       Value<String?>? updatedBy,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
     return CategoriesCompanion(
       id: id ?? this.id,
-      uid: uid ?? this.uid,
       name: name ?? this.name,
       type: type ?? this.type,
       sortOrder: sortOrder ?? this.sortOrder,
@@ -508,6 +480,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
       createdAt: createdAt ?? this.createdAt,
       updatedBy: updatedBy ?? this.updatedBy,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -515,10 +488,7 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (uid.present) {
-      map['uid'] = Variable<String>(uid.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -551,6 +521,9 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
     return map;
   }
 
@@ -558,7 +531,6 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
   String toString() {
     return (StringBuffer('CategoriesCompanion(')
           ..write('id: $id, ')
-          ..write('uid: $uid, ')
           ..write('name: $name, ')
           ..write('type: $type, ')
           ..write('sortOrder: $sortOrder, ')
@@ -568,7 +540,8 @@ class CategoriesCompanion extends UpdateCompanion<Category> {
           ..write('createdBy: $createdBy, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedBy: $updatedBy, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -581,13 +554,11 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
   $AssetsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+      clientDefault: () => const Uuid().v4());
   static const VerificationMeta _nameMeta = const VerificationMeta('name');
   @override
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
@@ -599,6 +570,12 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
   late final GeneratedColumn<int> targetAmount = GeneratedColumn<int>(
       'target_amount', aliasedName, true,
       type: DriftSqlType.int, requiredDuringInsert: false);
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -617,7 +594,7 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
       defaultValue: currentDateAndTime);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, name, targetAmount, createdAt, updatedAt];
+      [id, name, targetAmount, ownerId, createdAt, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -643,6 +620,10 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
           targetAmount.isAcceptableOrUnknown(
               data['target_amount']!, _targetAmountMeta));
     }
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -661,11 +642,13 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Asset(
       id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
       targetAmount: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}target_amount']),
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -680,24 +663,29 @@ class $AssetsTable extends Assets with TableInfo<$AssetsTable, Asset> {
 }
 
 class Asset extends DataClass implements Insertable<Asset> {
-  final int id;
+  final String id;
   final String name;
   final int? targetAmount;
+  final String? ownerId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Asset(
       {required this.id,
       required this.name,
       this.targetAmount,
+      this.ownerId,
       required this.createdAt,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || targetAmount != null) {
       map['target_amount'] = Variable<int>(targetAmount);
+    }
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<String>(ownerId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -711,6 +699,9 @@ class Asset extends DataClass implements Insertable<Asset> {
       targetAmount: targetAmount == null && nullToAbsent
           ? const Value.absent()
           : Value(targetAmount),
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -720,9 +711,10 @@ class Asset extends DataClass implements Insertable<Asset> {
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Asset(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       targetAmount: serializer.fromJson<int?>(json['targetAmount']),
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -731,18 +723,20 @@ class Asset extends DataClass implements Insertable<Asset> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'targetAmount': serializer.toJson<int?>(targetAmount),
+      'ownerId': serializer.toJson<String?>(ownerId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   Asset copyWith(
-          {int? id,
+          {String? id,
           String? name,
           Value<int?> targetAmount = const Value.absent(),
+          Value<String?> ownerId = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       Asset(
@@ -750,6 +744,7 @@ class Asset extends DataClass implements Insertable<Asset> {
         name: name ?? this.name,
         targetAmount:
             targetAmount.present ? targetAmount.value : this.targetAmount,
+        ownerId: ownerId.present ? ownerId.value : this.ownerId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -760,6 +755,7 @@ class Asset extends DataClass implements Insertable<Asset> {
       targetAmount: data.targetAmount.present
           ? data.targetAmount.value
           : this.targetAmount,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -771,6 +767,7 @@ class Asset extends DataClass implements Insertable<Asset> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('targetAmount: $targetAmount, ')
+          ..write('ownerId: $ownerId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -778,7 +775,8 @@ class Asset extends DataClass implements Insertable<Asset> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, targetAmount, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(id, name, targetAmount, ownerId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -786,58 +784,73 @@ class Asset extends DataClass implements Insertable<Asset> {
           other.id == this.id &&
           other.name == this.name &&
           other.targetAmount == this.targetAmount &&
+          other.ownerId == this.ownerId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
 class AssetsCompanion extends UpdateCompanion<Asset> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<String> name;
   final Value<int?> targetAmount;
+  final Value<String?> ownerId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const AssetsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.targetAmount = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   AssetsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     this.targetAmount = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Asset> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<String>? name,
     Expression<int>? targetAmount,
+    Expression<String>? ownerId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (targetAmount != null) 'target_amount': targetAmount,
+      if (ownerId != null) 'owner_id': ownerId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   AssetsCompanion copyWith(
-      {Value<int>? id,
+      {Value<String>? id,
       Value<String>? name,
       Value<int?>? targetAmount,
+      Value<String?>? ownerId,
       Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
     return AssetsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       targetAmount: targetAmount ?? this.targetAmount,
+      ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -845,7 +858,7 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
@@ -853,11 +866,17 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
     if (targetAmount.present) {
       map['target_amount'] = Variable<int>(targetAmount.value);
     }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -868,8 +887,10 @@ class AssetsCompanion extends UpdateCompanion<Asset> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('targetAmount: $targetAmount, ')
+          ..write('ownerId: $ownerId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -883,13 +904,11 @@ class $InstallmentsTable extends Installments
   $InstallmentsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+      clientDefault: () => const Uuid().v4());
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
@@ -909,17 +928,17 @@ class $InstallmentsTable extends Installments
   static const VerificationMeta _categoryIdMeta =
       const VerificationMeta('categoryId');
   @override
-  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
       'category_id', aliasedName, true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
       $customConstraints: 'NULL REFERENCES categories(id) ON DELETE SET NULL');
   static const VerificationMeta _assetIdMeta =
       const VerificationMeta('assetId');
   @override
-  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
       'asset_id', aliasedName, true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
       $customConstraints: 'NULL REFERENCES assets(id) ON DELETE SET NULL');
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
@@ -931,6 +950,18 @@ class $InstallmentsTable extends Installments
   @override
   late final GeneratedColumn<String> memo = GeneratedColumn<String>(
       'memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _budgetIdMeta =
+      const VerificationMeta('budgetId');
+  @override
+  late final GeneratedColumn<String> budgetId = GeneratedColumn<String>(
+      'budget_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
@@ -958,6 +989,8 @@ class $InstallmentsTable extends Installments
         assetId,
         title,
         memo,
+        ownerId,
+        budgetId,
         createdAt,
         updatedAt
       ];
@@ -1012,6 +1045,14 @@ class $InstallmentsTable extends Installments
       context.handle(
           _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
     }
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
+    }
+    if (data.containsKey('budget_id')) {
+      context.handle(_budgetIdMeta,
+          budgetId.isAcceptableOrUnknown(data['budget_id']!, _budgetIdMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1030,7 +1071,7 @@ class $InstallmentsTable extends Installments
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Installment(
       id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       date: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       totalAmount: attachedDatabase.typeMapping
@@ -1038,13 +1079,17 @@ class $InstallmentsTable extends Installments
       months: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}months'])!,
       categoryId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}category_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}category_id']),
       assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}asset_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}asset_id']),
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title']),
       memo: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id']),
+      budgetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}budget_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1059,14 +1104,16 @@ class $InstallmentsTable extends Installments
 }
 
 class Installment extends DataClass implements Insertable<Installment> {
-  final int id;
+  final String id;
   final DateTime date;
   final int totalAmount;
   final int months;
-  final int? categoryId;
-  final int? assetId;
+  final String? categoryId;
+  final String? assetId;
   final String? title;
   final String? memo;
+  final String? ownerId;
+  final String? budgetId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Installment(
@@ -1078,26 +1125,34 @@ class Installment extends DataClass implements Insertable<Installment> {
       this.assetId,
       this.title,
       this.memo,
+      this.ownerId,
+      this.budgetId,
       required this.createdAt,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['date'] = Variable<DateTime>(date);
     map['total_amount'] = Variable<int>(totalAmount);
     map['months'] = Variable<int>(months);
     if (!nullToAbsent || categoryId != null) {
-      map['category_id'] = Variable<int>(categoryId);
+      map['category_id'] = Variable<String>(categoryId);
     }
     if (!nullToAbsent || assetId != null) {
-      map['asset_id'] = Variable<int>(assetId);
+      map['asset_id'] = Variable<String>(assetId);
     }
     if (!nullToAbsent || title != null) {
       map['title'] = Variable<String>(title);
     }
     if (!nullToAbsent || memo != null) {
       map['memo'] = Variable<String>(memo);
+    }
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<String>(ownerId);
+    }
+    if (!nullToAbsent || budgetId != null) {
+      map['budget_id'] = Variable<String>(budgetId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1119,6 +1174,12 @@ class Installment extends DataClass implements Insertable<Installment> {
       title:
           title == null && nullToAbsent ? const Value.absent() : Value(title),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
+      budgetId: budgetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(budgetId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1128,14 +1189,16 @@ class Installment extends DataClass implements Insertable<Installment> {
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Installment(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       date: serializer.fromJson<DateTime>(json['date']),
       totalAmount: serializer.fromJson<int>(json['totalAmount']),
       months: serializer.fromJson<int>(json['months']),
-      categoryId: serializer.fromJson<int?>(json['categoryId']),
-      assetId: serializer.fromJson<int?>(json['assetId']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
+      assetId: serializer.fromJson<String?>(json['assetId']),
       title: serializer.fromJson<String?>(json['title']),
       memo: serializer.fromJson<String?>(json['memo']),
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
+      budgetId: serializer.fromJson<String?>(json['budgetId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1144,28 +1207,32 @@ class Installment extends DataClass implements Insertable<Installment> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'date': serializer.toJson<DateTime>(date),
       'totalAmount': serializer.toJson<int>(totalAmount),
       'months': serializer.toJson<int>(months),
-      'categoryId': serializer.toJson<int?>(categoryId),
-      'assetId': serializer.toJson<int?>(assetId),
+      'categoryId': serializer.toJson<String?>(categoryId),
+      'assetId': serializer.toJson<String?>(assetId),
       'title': serializer.toJson<String?>(title),
       'memo': serializer.toJson<String?>(memo),
+      'ownerId': serializer.toJson<String?>(ownerId),
+      'budgetId': serializer.toJson<String?>(budgetId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   Installment copyWith(
-          {int? id,
+          {String? id,
           DateTime? date,
           int? totalAmount,
           int? months,
-          Value<int?> categoryId = const Value.absent(),
-          Value<int?> assetId = const Value.absent(),
+          Value<String?> categoryId = const Value.absent(),
+          Value<String?> assetId = const Value.absent(),
           Value<String?> title = const Value.absent(),
           Value<String?> memo = const Value.absent(),
+          Value<String?> ownerId = const Value.absent(),
+          Value<String?> budgetId = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       Installment(
@@ -1177,6 +1244,8 @@ class Installment extends DataClass implements Insertable<Installment> {
         assetId: assetId.present ? assetId.value : this.assetId,
         title: title.present ? title.value : this.title,
         memo: memo.present ? memo.value : this.memo,
+        ownerId: ownerId.present ? ownerId.value : this.ownerId,
+        budgetId: budgetId.present ? budgetId.value : this.budgetId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1192,6 +1261,8 @@ class Installment extends DataClass implements Insertable<Installment> {
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
       title: data.title.present ? data.title.value : this.title,
       memo: data.memo.present ? data.memo.value : this.memo,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      budgetId: data.budgetId.present ? data.budgetId.value : this.budgetId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1208,6 +1279,8 @@ class Installment extends DataClass implements Insertable<Installment> {
           ..write('assetId: $assetId, ')
           ..write('title: $title, ')
           ..write('memo: $memo, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('budgetId: $budgetId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1216,7 +1289,7 @@ class Installment extends DataClass implements Insertable<Installment> {
 
   @override
   int get hashCode => Object.hash(id, date, totalAmount, months, categoryId,
-      assetId, title, memo, createdAt, updatedAt);
+      assetId, title, memo, ownerId, budgetId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1229,21 +1302,26 @@ class Installment extends DataClass implements Insertable<Installment> {
           other.assetId == this.assetId &&
           other.title == this.title &&
           other.memo == this.memo &&
+          other.ownerId == this.ownerId &&
+          other.budgetId == this.budgetId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
 class InstallmentsCompanion extends UpdateCompanion<Installment> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<DateTime> date;
   final Value<int> totalAmount;
   final Value<int> months;
-  final Value<int?> categoryId;
-  final Value<int?> assetId;
+  final Value<String?> categoryId;
+  final Value<String?> assetId;
   final Value<String?> title;
   final Value<String?> memo;
+  final Value<String?> ownerId;
+  final Value<String?> budgetId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const InstallmentsCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
@@ -1253,8 +1331,11 @@ class InstallmentsCompanion extends UpdateCompanion<Installment> {
     this.assetId = const Value.absent(),
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.budgetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   InstallmentsCompanion.insert({
     this.id = const Value.absent(),
@@ -1265,22 +1346,28 @@ class InstallmentsCompanion extends UpdateCompanion<Installment> {
     this.assetId = const Value.absent(),
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.budgetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   })  : date = Value(date),
         totalAmount = Value(totalAmount),
         months = Value(months);
   static Insertable<Installment> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<DateTime>? date,
     Expression<int>? totalAmount,
     Expression<int>? months,
-    Expression<int>? categoryId,
-    Expression<int>? assetId,
+    Expression<String>? categoryId,
+    Expression<String>? assetId,
     Expression<String>? title,
     Expression<String>? memo,
+    Expression<String>? ownerId,
+    Expression<String>? budgetId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1291,22 +1378,28 @@ class InstallmentsCompanion extends UpdateCompanion<Installment> {
       if (assetId != null) 'asset_id': assetId,
       if (title != null) 'title': title,
       if (memo != null) 'memo': memo,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (budgetId != null) 'budget_id': budgetId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   InstallmentsCompanion copyWith(
-      {Value<int>? id,
+      {Value<String>? id,
       Value<DateTime>? date,
       Value<int>? totalAmount,
       Value<int>? months,
-      Value<int?>? categoryId,
-      Value<int?>? assetId,
+      Value<String?>? categoryId,
+      Value<String?>? assetId,
       Value<String?>? title,
       Value<String?>? memo,
+      Value<String?>? ownerId,
+      Value<String?>? budgetId,
       Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
     return InstallmentsCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
@@ -1316,8 +1409,11 @@ class InstallmentsCompanion extends UpdateCompanion<Installment> {
       assetId: assetId ?? this.assetId,
       title: title ?? this.title,
       memo: memo ?? this.memo,
+      ownerId: ownerId ?? this.ownerId,
+      budgetId: budgetId ?? this.budgetId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -1325,7 +1421,7 @@ class InstallmentsCompanion extends UpdateCompanion<Installment> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
@@ -1337,10 +1433,10 @@ class InstallmentsCompanion extends UpdateCompanion<Installment> {
       map['months'] = Variable<int>(months.value);
     }
     if (categoryId.present) {
-      map['category_id'] = Variable<int>(categoryId.value);
+      map['category_id'] = Variable<String>(categoryId.value);
     }
     if (assetId.present) {
-      map['asset_id'] = Variable<int>(assetId.value);
+      map['asset_id'] = Variable<String>(assetId.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -1348,11 +1444,20 @@ class InstallmentsCompanion extends UpdateCompanion<Installment> {
     if (memo.present) {
       map['memo'] = Variable<String>(memo.value);
     }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (budgetId.present) {
+      map['budget_id'] = Variable<String>(budgetId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -1368,8 +1473,11 @@ class InstallmentsCompanion extends UpdateCompanion<Installment> {
           ..write('assetId: $assetId, ')
           ..write('title: $title, ')
           ..write('memo: $memo, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('budgetId: $budgetId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1383,13 +1491,11 @@ class $TransactionsTable extends Transactions
   $TransactionsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+      clientDefault: () => const Uuid().v4());
   static const VerificationMeta _dateMeta = const VerificationMeta('date');
   @override
   late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
@@ -1408,17 +1514,17 @@ class $TransactionsTable extends Transactions
   static const VerificationMeta _categoryIdMeta =
       const VerificationMeta('categoryId');
   @override
-  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
       'category_id', aliasedName, true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
       $customConstraints: 'NULL REFERENCES categories(id) ON DELETE SET NULL');
   static const VerificationMeta _assetIdMeta =
       const VerificationMeta('assetId');
   @override
-  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
       'asset_id', aliasedName, true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
       $customConstraints: 'NULL REFERENCES assets(id) ON DELETE SET NULL');
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
@@ -1434,11 +1540,23 @@ class $TransactionsTable extends Transactions
   static const VerificationMeta _installmentIdMeta =
       const VerificationMeta('installmentId');
   @override
-  late final GeneratedColumn<int> installmentId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> installmentId = GeneratedColumn<String>(
       'installment_id', aliasedName, true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
       $customConstraints: 'NULL REFERENCES installments(id) ON DELETE CASCADE');
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _budgetIdMeta =
+      const VerificationMeta('budgetId');
+  @override
+  late final GeneratedColumn<String> budgetId = GeneratedColumn<String>(
+      'budget_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -1466,6 +1584,8 @@ class $TransactionsTable extends Transactions
         title,
         memo,
         installmentId,
+        ownerId,
+        budgetId,
         createdAt,
         updatedAt
       ];
@@ -1518,6 +1638,14 @@ class $TransactionsTable extends Transactions
           installmentId.isAcceptableOrUnknown(
               data['installment_id']!, _installmentIdMeta));
     }
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
+    }
+    if (data.containsKey('budget_id')) {
+      context.handle(_budgetIdMeta,
+          budgetId.isAcceptableOrUnknown(data['budget_id']!, _budgetIdMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -1536,7 +1664,7 @@ class $TransactionsTable extends Transactions
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Transaction(
       id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       date: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}date'])!,
       amount: attachedDatabase.typeMapping
@@ -1545,15 +1673,19 @@ class $TransactionsTable extends Transactions
           .typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}type'])!),
       categoryId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}category_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}category_id']),
       assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}asset_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}asset_id']),
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title']),
       memo: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
       installmentId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}installment_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}installment_id']),
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id']),
+      budgetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}budget_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -1571,15 +1703,17 @@ class $TransactionsTable extends Transactions
 }
 
 class Transaction extends DataClass implements Insertable<Transaction> {
-  final int id;
+  final String id;
   final DateTime date;
   final int amount;
   final TransactionType type;
-  final int? categoryId;
-  final int? assetId;
+  final String? categoryId;
+  final String? assetId;
   final String? title;
   final String? memo;
-  final int? installmentId;
+  final String? installmentId;
+  final String? ownerId;
+  final String? budgetId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Transaction(
@@ -1592,12 +1726,14 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       this.title,
       this.memo,
       this.installmentId,
+      this.ownerId,
+      this.budgetId,
       required this.createdAt,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['date'] = Variable<DateTime>(date);
     map['amount'] = Variable<int>(amount);
     {
@@ -1605,10 +1741,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           Variable<String>($TransactionsTable.$convertertype.toSql(type));
     }
     if (!nullToAbsent || categoryId != null) {
-      map['category_id'] = Variable<int>(categoryId);
+      map['category_id'] = Variable<String>(categoryId);
     }
     if (!nullToAbsent || assetId != null) {
-      map['asset_id'] = Variable<int>(assetId);
+      map['asset_id'] = Variable<String>(assetId);
     }
     if (!nullToAbsent || title != null) {
       map['title'] = Variable<String>(title);
@@ -1617,7 +1753,13 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       map['memo'] = Variable<String>(memo);
     }
     if (!nullToAbsent || installmentId != null) {
-      map['installment_id'] = Variable<int>(installmentId);
+      map['installment_id'] = Variable<String>(installmentId);
+    }
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<String>(ownerId);
+    }
+    if (!nullToAbsent || budgetId != null) {
+      map['budget_id'] = Variable<String>(budgetId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1642,6 +1784,12 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       installmentId: installmentId == null && nullToAbsent
           ? const Value.absent()
           : Value(installmentId),
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
+      budgetId: budgetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(budgetId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1651,16 +1799,18 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Transaction(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       date: serializer.fromJson<DateTime>(json['date']),
       amount: serializer.fromJson<int>(json['amount']),
       type: $TransactionsTable.$convertertype
           .fromJson(serializer.fromJson<String>(json['type'])),
-      categoryId: serializer.fromJson<int?>(json['categoryId']),
-      assetId: serializer.fromJson<int?>(json['assetId']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
+      assetId: serializer.fromJson<String?>(json['assetId']),
       title: serializer.fromJson<String?>(json['title']),
       memo: serializer.fromJson<String?>(json['memo']),
-      installmentId: serializer.fromJson<int?>(json['installmentId']),
+      installmentId: serializer.fromJson<String?>(json['installmentId']),
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
+      budgetId: serializer.fromJson<String?>(json['budgetId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1669,31 +1819,35 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'date': serializer.toJson<DateTime>(date),
       'amount': serializer.toJson<int>(amount),
       'type': serializer
           .toJson<String>($TransactionsTable.$convertertype.toJson(type)),
-      'categoryId': serializer.toJson<int?>(categoryId),
-      'assetId': serializer.toJson<int?>(assetId),
+      'categoryId': serializer.toJson<String?>(categoryId),
+      'assetId': serializer.toJson<String?>(assetId),
       'title': serializer.toJson<String?>(title),
       'memo': serializer.toJson<String?>(memo),
-      'installmentId': serializer.toJson<int?>(installmentId),
+      'installmentId': serializer.toJson<String?>(installmentId),
+      'ownerId': serializer.toJson<String?>(ownerId),
+      'budgetId': serializer.toJson<String?>(budgetId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   Transaction copyWith(
-          {int? id,
+          {String? id,
           DateTime? date,
           int? amount,
           TransactionType? type,
-          Value<int?> categoryId = const Value.absent(),
-          Value<int?> assetId = const Value.absent(),
+          Value<String?> categoryId = const Value.absent(),
+          Value<String?> assetId = const Value.absent(),
           Value<String?> title = const Value.absent(),
           Value<String?> memo = const Value.absent(),
-          Value<int?> installmentId = const Value.absent(),
+          Value<String?> installmentId = const Value.absent(),
+          Value<String?> ownerId = const Value.absent(),
+          Value<String?> budgetId = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       Transaction(
@@ -1707,6 +1861,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         memo: memo.present ? memo.value : this.memo,
         installmentId:
             installmentId.present ? installmentId.value : this.installmentId,
+        ownerId: ownerId.present ? ownerId.value : this.ownerId,
+        budgetId: budgetId.present ? budgetId.value : this.budgetId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -1724,6 +1880,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       installmentId: data.installmentId.present
           ? data.installmentId.value
           : this.installmentId,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      budgetId: data.budgetId.present ? data.budgetId.value : this.budgetId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1741,6 +1899,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('title: $title, ')
           ..write('memo: $memo, ')
           ..write('installmentId: $installmentId, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('budgetId: $budgetId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1749,7 +1909,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
 
   @override
   int get hashCode => Object.hash(id, date, amount, type, categoryId, assetId,
-      title, memo, installmentId, createdAt, updatedAt);
+      title, memo, installmentId, ownerId, budgetId, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1763,22 +1923,27 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.title == this.title &&
           other.memo == this.memo &&
           other.installmentId == this.installmentId &&
+          other.ownerId == this.ownerId &&
+          other.budgetId == this.budgetId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<DateTime> date;
   final Value<int> amount;
   final Value<TransactionType> type;
-  final Value<int?> categoryId;
-  final Value<int?> assetId;
+  final Value<String?> categoryId;
+  final Value<String?> assetId;
   final Value<String?> title;
   final Value<String?> memo;
-  final Value<int?> installmentId;
+  final Value<String?> installmentId;
+  final Value<String?> ownerId;
+  final Value<String?> budgetId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
     this.date = const Value.absent(),
@@ -1789,8 +1954,11 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
     this.installmentId = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.budgetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
     this.id = const Value.absent(),
@@ -1802,23 +1970,29 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
     this.installmentId = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.budgetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   })  : date = Value(date),
         amount = Value(amount),
         type = Value(type);
   static Insertable<Transaction> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<DateTime>? date,
     Expression<int>? amount,
     Expression<String>? type,
-    Expression<int>? categoryId,
-    Expression<int>? assetId,
+    Expression<String>? categoryId,
+    Expression<String>? assetId,
     Expression<String>? title,
     Expression<String>? memo,
-    Expression<int>? installmentId,
+    Expression<String>? installmentId,
+    Expression<String>? ownerId,
+    Expression<String>? budgetId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1830,23 +2004,29 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (title != null) 'title': title,
       if (memo != null) 'memo': memo,
       if (installmentId != null) 'installment_id': installmentId,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (budgetId != null) 'budget_id': budgetId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   TransactionsCompanion copyWith(
-      {Value<int>? id,
+      {Value<String>? id,
       Value<DateTime>? date,
       Value<int>? amount,
       Value<TransactionType>? type,
-      Value<int?>? categoryId,
-      Value<int?>? assetId,
+      Value<String?>? categoryId,
+      Value<String?>? assetId,
       Value<String?>? title,
       Value<String?>? memo,
-      Value<int?>? installmentId,
+      Value<String?>? installmentId,
+      Value<String?>? ownerId,
+      Value<String?>? budgetId,
       Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
     return TransactionsCompanion(
       id: id ?? this.id,
       date: date ?? this.date,
@@ -1857,8 +2037,11 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       title: title ?? this.title,
       memo: memo ?? this.memo,
       installmentId: installmentId ?? this.installmentId,
+      ownerId: ownerId ?? this.ownerId,
+      budgetId: budgetId ?? this.budgetId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -1866,7 +2049,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
@@ -1879,10 +2062,10 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           Variable<String>($TransactionsTable.$convertertype.toSql(type.value));
     }
     if (categoryId.present) {
-      map['category_id'] = Variable<int>(categoryId.value);
+      map['category_id'] = Variable<String>(categoryId.value);
     }
     if (assetId.present) {
-      map['asset_id'] = Variable<int>(assetId.value);
+      map['asset_id'] = Variable<String>(assetId.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -1891,13 +2074,22 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       map['memo'] = Variable<String>(memo.value);
     }
     if (installmentId.present) {
-      map['installment_id'] = Variable<int>(installmentId.value);
+      map['installment_id'] = Variable<String>(installmentId.value);
+    }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (budgetId.present) {
+      map['budget_id'] = Variable<String>(budgetId.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -1914,8 +2106,11 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('title: $title, ')
           ..write('memo: $memo, ')
           ..write('installmentId: $installmentId, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('budgetId: $budgetId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1928,13 +2123,11 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
   $TodosTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+      clientDefault: () => const Uuid().v4());
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
   @override
   late final GeneratedColumn<String> title = GeneratedColumn<String>(
@@ -1954,6 +2147,12 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
       defaultConstraints:
           GeneratedColumn.constraintIsAlways('CHECK ("is_done" IN (0, 1))'),
       defaultValue: const Constant(false));
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _remindAtMeta =
       const VerificationMeta('remindAt');
   @override
@@ -1978,7 +2177,7 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
       defaultValue: currentDateAndTime);
   @override
   List<GeneratedColumn> get $columns =>
-      [id, title, memo, isDone, remindAt, createdAt, updatedAt];
+      [id, title, memo, isDone, ownerId, remindAt, createdAt, updatedAt];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2006,6 +2205,10 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
       context.handle(_isDoneMeta,
           isDone.isAcceptableOrUnknown(data['is_done']!, _isDoneMeta));
     }
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
+    }
     if (data.containsKey('remind_at')) {
       context.handle(_remindAtMeta,
           remindAt.isAcceptableOrUnknown(data['remind_at']!, _remindAtMeta));
@@ -2028,13 +2231,15 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return Todo(
       id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title'])!,
       memo: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
       isDone: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_done'])!,
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id']),
       remindAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}remind_at']),
       createdAt: attachedDatabase.typeMapping
@@ -2051,10 +2256,11 @@ class $TodosTable extends Todos with TableInfo<$TodosTable, Todo> {
 }
 
 class Todo extends DataClass implements Insertable<Todo> {
-  final int id;
+  final String id;
   final String title;
   final String? memo;
   final bool isDone;
+  final String? ownerId;
   final DateTime? remindAt;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2063,18 +2269,22 @@ class Todo extends DataClass implements Insertable<Todo> {
       required this.title,
       this.memo,
       required this.isDone,
+      this.ownerId,
       this.remindAt,
       required this.createdAt,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     if (!nullToAbsent || memo != null) {
       map['memo'] = Variable<String>(memo);
     }
     map['is_done'] = Variable<bool>(isDone);
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<String>(ownerId);
+    }
     if (!nullToAbsent || remindAt != null) {
       map['remind_at'] = Variable<DateTime>(remindAt);
     }
@@ -2089,6 +2299,9 @@ class Todo extends DataClass implements Insertable<Todo> {
       title: Value(title),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
       isDone: Value(isDone),
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
       remindAt: remindAt == null && nullToAbsent
           ? const Value.absent()
           : Value(remindAt),
@@ -2101,10 +2314,11 @@ class Todo extends DataClass implements Insertable<Todo> {
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Todo(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       memo: serializer.fromJson<String?>(json['memo']),
       isDone: serializer.fromJson<bool>(json['isDone']),
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
       remindAt: serializer.fromJson<DateTime?>(json['remindAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2114,10 +2328,11 @@ class Todo extends DataClass implements Insertable<Todo> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'memo': serializer.toJson<String?>(memo),
       'isDone': serializer.toJson<bool>(isDone),
+      'ownerId': serializer.toJson<String?>(ownerId),
       'remindAt': serializer.toJson<DateTime?>(remindAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2125,10 +2340,11 @@ class Todo extends DataClass implements Insertable<Todo> {
   }
 
   Todo copyWith(
-          {int? id,
+          {String? id,
           String? title,
           Value<String?> memo = const Value.absent(),
           bool? isDone,
+          Value<String?> ownerId = const Value.absent(),
           Value<DateTime?> remindAt = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
@@ -2137,6 +2353,7 @@ class Todo extends DataClass implements Insertable<Todo> {
         title: title ?? this.title,
         memo: memo.present ? memo.value : this.memo,
         isDone: isDone ?? this.isDone,
+        ownerId: ownerId.present ? ownerId.value : this.ownerId,
         remindAt: remindAt.present ? remindAt.value : this.remindAt,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -2147,6 +2364,7 @@ class Todo extends DataClass implements Insertable<Todo> {
       title: data.title.present ? data.title.value : this.title,
       memo: data.memo.present ? data.memo.value : this.memo,
       isDone: data.isDone.present ? data.isDone.value : this.isDone,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
       remindAt: data.remindAt.present ? data.remindAt.value : this.remindAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2160,6 +2378,7 @@ class Todo extends DataClass implements Insertable<Todo> {
           ..write('title: $title, ')
           ..write('memo: $memo, ')
           ..write('isDone: $isDone, ')
+          ..write('ownerId: $ownerId, ')
           ..write('remindAt: $remindAt, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2168,8 +2387,8 @@ class Todo extends DataClass implements Insertable<Todo> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, title, memo, isDone, remindAt, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      id, title, memo, isDone, ownerId, remindAt, createdAt, updatedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2178,73 +2397,88 @@ class Todo extends DataClass implements Insertable<Todo> {
           other.title == this.title &&
           other.memo == this.memo &&
           other.isDone == this.isDone &&
+          other.ownerId == this.ownerId &&
           other.remindAt == this.remindAt &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
 class TodosCompanion extends UpdateCompanion<Todo> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<String> title;
   final Value<String?> memo;
   final Value<bool> isDone;
+  final Value<String?> ownerId;
   final Value<DateTime?> remindAt;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const TodosCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
     this.isDone = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.remindAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   TodosCompanion.insert({
     this.id = const Value.absent(),
     required String title,
     this.memo = const Value.absent(),
     this.isDone = const Value.absent(),
+    this.ownerId = const Value.absent(),
     this.remindAt = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   }) : title = Value(title);
   static Insertable<Todo> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<String>? title,
     Expression<String>? memo,
     Expression<bool>? isDone,
+    Expression<String>? ownerId,
     Expression<DateTime>? remindAt,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (memo != null) 'memo': memo,
       if (isDone != null) 'is_done': isDone,
+      if (ownerId != null) 'owner_id': ownerId,
       if (remindAt != null) 'remind_at': remindAt,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   TodosCompanion copyWith(
-      {Value<int>? id,
+      {Value<String>? id,
       Value<String>? title,
       Value<String?>? memo,
       Value<bool>? isDone,
+      Value<String?>? ownerId,
       Value<DateTime?>? remindAt,
       Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
     return TodosCompanion(
       id: id ?? this.id,
       title: title ?? this.title,
       memo: memo ?? this.memo,
       isDone: isDone ?? this.isDone,
+      ownerId: ownerId ?? this.ownerId,
       remindAt: remindAt ?? this.remindAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -2252,7 +2486,7 @@ class TodosCompanion extends UpdateCompanion<Todo> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -2263,6 +2497,9 @@ class TodosCompanion extends UpdateCompanion<Todo> {
     if (isDone.present) {
       map['is_done'] = Variable<bool>(isDone.value);
     }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
     if (remindAt.present) {
       map['remind_at'] = Variable<DateTime>(remindAt.value);
     }
@@ -2271,6 +2508,9 @@ class TodosCompanion extends UpdateCompanion<Todo> {
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -2282,9 +2522,11 @@ class TodosCompanion extends UpdateCompanion<Todo> {
           ..write('title: $title, ')
           ..write('memo: $memo, ')
           ..write('isDone: $isDone, ')
+          ..write('ownerId: $ownerId, ')
           ..write('remindAt: $remindAt, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2298,13 +2540,11 @@ class $FavoriteRecordsTable extends FavoriteRecords
   $FavoriteRecordsTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
       'id', aliasedName, false,
-      hasAutoIncrement: true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('PRIMARY KEY AUTOINCREMENT'));
+      clientDefault: () => const Uuid().v4());
   static const VerificationMeta _amountMeta = const VerificationMeta('amount');
   @override
   late final GeneratedColumn<int> amount = GeneratedColumn<int>(
@@ -2335,17 +2575,17 @@ class $FavoriteRecordsTable extends FavoriteRecords
   static const VerificationMeta _categoryIdMeta =
       const VerificationMeta('categoryId');
   @override
-  late final GeneratedColumn<int> categoryId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> categoryId = GeneratedColumn<String>(
       'category_id', aliasedName, true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
       $customConstraints: 'NULL REFERENCES categories(id) ON DELETE SET NULL');
   static const VerificationMeta _assetIdMeta =
       const VerificationMeta('assetId');
   @override
-  late final GeneratedColumn<int> assetId = GeneratedColumn<int>(
+  late final GeneratedColumn<String> assetId = GeneratedColumn<String>(
       'asset_id', aliasedName, true,
-      type: DriftSqlType.int,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
       $customConstraints: 'NULL REFERENCES assets(id) ON DELETE SET NULL');
   static const VerificationMeta _titleMeta = const VerificationMeta('title');
@@ -2357,6 +2597,18 @@ class $FavoriteRecordsTable extends FavoriteRecords
   @override
   late final GeneratedColumn<String> memo = GeneratedColumn<String>(
       'memo', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _ownerIdMeta =
+      const VerificationMeta('ownerId');
+  @override
+  late final GeneratedColumn<String> ownerId = GeneratedColumn<String>(
+      'owner_id', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _budgetIdMeta =
+      const VerificationMeta('budgetId');
+  @override
+  late final GeneratedColumn<String> budgetId = GeneratedColumn<String>(
+      'budget_id', aliasedName, true,
       type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
@@ -2386,6 +2638,8 @@ class $FavoriteRecordsTable extends FavoriteRecords
         assetId,
         title,
         memo,
+        ownerId,
+        budgetId,
         createdAt,
         updatedAt
       ];
@@ -2436,6 +2690,14 @@ class $FavoriteRecordsTable extends FavoriteRecords
       context.handle(
           _memoMeta, memo.isAcceptableOrUnknown(data['memo']!, _memoMeta));
     }
+    if (data.containsKey('owner_id')) {
+      context.handle(_ownerIdMeta,
+          ownerId.isAcceptableOrUnknown(data['owner_id']!, _ownerIdMeta));
+    }
+    if (data.containsKey('budget_id')) {
+      context.handle(_budgetIdMeta,
+          budgetId.isAcceptableOrUnknown(data['budget_id']!, _budgetIdMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -2454,7 +2716,7 @@ class $FavoriteRecordsTable extends FavoriteRecords
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return FavoriteRecord(
       id: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}id'])!,
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       amount: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}amount'])!,
       type: $FavoriteRecordsTable.$convertertype.fromSql(attachedDatabase
@@ -2468,13 +2730,17 @@ class $FavoriteRecordsTable extends FavoriteRecords
       lastGeneratedDate: attachedDatabase.typeMapping.read(
           DriftSqlType.dateTime, data['${effectivePrefix}last_generated_date']),
       categoryId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}category_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}category_id']),
       assetId: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}asset_id']),
+          .read(DriftSqlType.string, data['${effectivePrefix}asset_id']),
       title: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}title']),
       memo: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}memo']),
+      ownerId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}owner_id']),
+      budgetId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}budget_id']),
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
@@ -2494,16 +2760,18 @@ class $FavoriteRecordsTable extends FavoriteRecords
 }
 
 class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
-  final int id;
+  final String id;
   final int amount;
   final TransactionType type;
   final PeriodType period;
   final DateTime? startDate;
   final DateTime? lastGeneratedDate;
-  final int? categoryId;
-  final int? assetId;
+  final String? categoryId;
+  final String? assetId;
   final String? title;
   final String? memo;
+  final String? ownerId;
+  final String? budgetId;
   final DateTime createdAt;
   final DateTime updatedAt;
   const FavoriteRecord(
@@ -2517,12 +2785,14 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
       this.assetId,
       this.title,
       this.memo,
+      this.ownerId,
+      this.budgetId,
       required this.createdAt,
       required this.updatedAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
+    map['id'] = Variable<String>(id);
     map['amount'] = Variable<int>(amount);
     {
       map['type'] =
@@ -2539,16 +2809,22 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
       map['last_generated_date'] = Variable<DateTime>(lastGeneratedDate);
     }
     if (!nullToAbsent || categoryId != null) {
-      map['category_id'] = Variable<int>(categoryId);
+      map['category_id'] = Variable<String>(categoryId);
     }
     if (!nullToAbsent || assetId != null) {
-      map['asset_id'] = Variable<int>(assetId);
+      map['asset_id'] = Variable<String>(assetId);
     }
     if (!nullToAbsent || title != null) {
       map['title'] = Variable<String>(title);
     }
     if (!nullToAbsent || memo != null) {
       map['memo'] = Variable<String>(memo);
+    }
+    if (!nullToAbsent || ownerId != null) {
+      map['owner_id'] = Variable<String>(ownerId);
+    }
+    if (!nullToAbsent || budgetId != null) {
+      map['budget_id'] = Variable<String>(budgetId);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2576,6 +2852,12 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
       title:
           title == null && nullToAbsent ? const Value.absent() : Value(title),
       memo: memo == null && nullToAbsent ? const Value.absent() : Value(memo),
+      ownerId: ownerId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownerId),
+      budgetId: budgetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(budgetId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2585,7 +2867,7 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
       {ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return FavoriteRecord(
-      id: serializer.fromJson<int>(json['id']),
+      id: serializer.fromJson<String>(json['id']),
       amount: serializer.fromJson<int>(json['amount']),
       type: $FavoriteRecordsTable.$convertertype
           .fromJson(serializer.fromJson<String>(json['type'])),
@@ -2594,10 +2876,12 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
       startDate: serializer.fromJson<DateTime?>(json['startDate']),
       lastGeneratedDate:
           serializer.fromJson<DateTime?>(json['lastGeneratedDate']),
-      categoryId: serializer.fromJson<int?>(json['categoryId']),
-      assetId: serializer.fromJson<int?>(json['assetId']),
+      categoryId: serializer.fromJson<String?>(json['categoryId']),
+      assetId: serializer.fromJson<String?>(json['assetId']),
       title: serializer.fromJson<String?>(json['title']),
       memo: serializer.fromJson<String?>(json['memo']),
+      ownerId: serializer.fromJson<String?>(json['ownerId']),
+      budgetId: serializer.fromJson<String?>(json['budgetId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2606,7 +2890,7 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
+      'id': serializer.toJson<String>(id),
       'amount': serializer.toJson<int>(amount),
       'type': serializer
           .toJson<String>($FavoriteRecordsTable.$convertertype.toJson(type)),
@@ -2614,26 +2898,30 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
           $FavoriteRecordsTable.$converterperiod.toJson(period)),
       'startDate': serializer.toJson<DateTime?>(startDate),
       'lastGeneratedDate': serializer.toJson<DateTime?>(lastGeneratedDate),
-      'categoryId': serializer.toJson<int?>(categoryId),
-      'assetId': serializer.toJson<int?>(assetId),
+      'categoryId': serializer.toJson<String?>(categoryId),
+      'assetId': serializer.toJson<String?>(assetId),
       'title': serializer.toJson<String?>(title),
       'memo': serializer.toJson<String?>(memo),
+      'ownerId': serializer.toJson<String?>(ownerId),
+      'budgetId': serializer.toJson<String?>(budgetId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
   }
 
   FavoriteRecord copyWith(
-          {int? id,
+          {String? id,
           int? amount,
           TransactionType? type,
           PeriodType? period,
           Value<DateTime?> startDate = const Value.absent(),
           Value<DateTime?> lastGeneratedDate = const Value.absent(),
-          Value<int?> categoryId = const Value.absent(),
-          Value<int?> assetId = const Value.absent(),
+          Value<String?> categoryId = const Value.absent(),
+          Value<String?> assetId = const Value.absent(),
           Value<String?> title = const Value.absent(),
           Value<String?> memo = const Value.absent(),
+          Value<String?> ownerId = const Value.absent(),
+          Value<String?> budgetId = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
       FavoriteRecord(
@@ -2649,6 +2937,8 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
         assetId: assetId.present ? assetId.value : this.assetId,
         title: title.present ? title.value : this.title,
         memo: memo.present ? memo.value : this.memo,
+        ownerId: ownerId.present ? ownerId.value : this.ownerId,
+        budgetId: budgetId.present ? budgetId.value : this.budgetId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
       );
@@ -2667,6 +2957,8 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
       assetId: data.assetId.present ? data.assetId.value : this.assetId,
       title: data.title.present ? data.title.value : this.title,
       memo: data.memo.present ? data.memo.value : this.memo,
+      ownerId: data.ownerId.present ? data.ownerId.value : this.ownerId,
+      budgetId: data.budgetId.present ? data.budgetId.value : this.budgetId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2685,6 +2977,8 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
           ..write('assetId: $assetId, ')
           ..write('title: $title, ')
           ..write('memo: $memo, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('budgetId: $budgetId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2703,6 +2997,8 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
       assetId,
       title,
       memo,
+      ownerId,
+      budgetId,
       createdAt,
       updatedAt);
   @override
@@ -2719,23 +3015,28 @@ class FavoriteRecord extends DataClass implements Insertable<FavoriteRecord> {
           other.assetId == this.assetId &&
           other.title == this.title &&
           other.memo == this.memo &&
+          other.ownerId == this.ownerId &&
+          other.budgetId == this.budgetId &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
 
 class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
-  final Value<int> id;
+  final Value<String> id;
   final Value<int> amount;
   final Value<TransactionType> type;
   final Value<PeriodType> period;
   final Value<DateTime?> startDate;
   final Value<DateTime?> lastGeneratedDate;
-  final Value<int?> categoryId;
-  final Value<int?> assetId;
+  final Value<String?> categoryId;
+  final Value<String?> assetId;
   final Value<String?> title;
   final Value<String?> memo;
+  final Value<String?> ownerId;
+  final Value<String?> budgetId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<int> rowid;
   const FavoriteRecordsCompanion({
     this.id = const Value.absent(),
     this.amount = const Value.absent(),
@@ -2747,8 +3048,11 @@ class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
     this.assetId = const Value.absent(),
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.budgetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   });
   FavoriteRecordsCompanion.insert({
     this.id = const Value.absent(),
@@ -2761,24 +3065,30 @@ class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
     this.assetId = const Value.absent(),
     this.title = const Value.absent(),
     this.memo = const Value.absent(),
+    this.ownerId = const Value.absent(),
+    this.budgetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
   })  : amount = Value(amount),
         type = Value(type),
         period = Value(period);
   static Insertable<FavoriteRecord> custom({
-    Expression<int>? id,
+    Expression<String>? id,
     Expression<int>? amount,
     Expression<String>? type,
     Expression<String>? period,
     Expression<DateTime>? startDate,
     Expression<DateTime>? lastGeneratedDate,
-    Expression<int>? categoryId,
-    Expression<int>? assetId,
+    Expression<String>? categoryId,
+    Expression<String>? assetId,
     Expression<String>? title,
     Expression<String>? memo,
+    Expression<String>? ownerId,
+    Expression<String>? budgetId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -2791,24 +3101,30 @@ class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
       if (assetId != null) 'asset_id': assetId,
       if (title != null) 'title': title,
       if (memo != null) 'memo': memo,
+      if (ownerId != null) 'owner_id': ownerId,
+      if (budgetId != null) 'budget_id': budgetId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
     });
   }
 
   FavoriteRecordsCompanion copyWith(
-      {Value<int>? id,
+      {Value<String>? id,
       Value<int>? amount,
       Value<TransactionType>? type,
       Value<PeriodType>? period,
       Value<DateTime?>? startDate,
       Value<DateTime?>? lastGeneratedDate,
-      Value<int?>? categoryId,
-      Value<int?>? assetId,
+      Value<String?>? categoryId,
+      Value<String?>? assetId,
       Value<String?>? title,
       Value<String?>? memo,
+      Value<String?>? ownerId,
+      Value<String?>? budgetId,
       Value<DateTime>? createdAt,
-      Value<DateTime>? updatedAt}) {
+      Value<DateTime>? updatedAt,
+      Value<int>? rowid}) {
     return FavoriteRecordsCompanion(
       id: id ?? this.id,
       amount: amount ?? this.amount,
@@ -2820,8 +3136,11 @@ class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
       assetId: assetId ?? this.assetId,
       title: title ?? this.title,
       memo: memo ?? this.memo,
+      ownerId: ownerId ?? this.ownerId,
+      budgetId: budgetId ?? this.budgetId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
     );
   }
 
@@ -2829,7 +3148,7 @@ class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     if (id.present) {
-      map['id'] = Variable<int>(id.value);
+      map['id'] = Variable<String>(id.value);
     }
     if (amount.present) {
       map['amount'] = Variable<int>(amount.value);
@@ -2849,10 +3168,10 @@ class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
       map['last_generated_date'] = Variable<DateTime>(lastGeneratedDate.value);
     }
     if (categoryId.present) {
-      map['category_id'] = Variable<int>(categoryId.value);
+      map['category_id'] = Variable<String>(categoryId.value);
     }
     if (assetId.present) {
-      map['asset_id'] = Variable<int>(assetId.value);
+      map['asset_id'] = Variable<String>(assetId.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -2860,11 +3179,20 @@ class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
     if (memo.present) {
       map['memo'] = Variable<String>(memo.value);
     }
+    if (ownerId.present) {
+      map['owner_id'] = Variable<String>(ownerId.value);
+    }
+    if (budgetId.present) {
+      map['budget_id'] = Variable<String>(budgetId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
     }
     return map;
   }
@@ -2882,8 +3210,11 @@ class FavoriteRecordsCompanion extends UpdateCompanion<FavoriteRecord> {
           ..write('assetId: $assetId, ')
           ..write('title: $title, ')
           ..write('memo: $memo, ')
+          ..write('ownerId: $ownerId, ')
+          ..write('budgetId: $budgetId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2962,8 +3293,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
 }
 
 typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
-  Value<int> id,
-  Value<String?> uid,
+  Value<String> id,
   required String name,
   required TransactionType type,
   Value<int> sortOrder,
@@ -2974,10 +3304,10 @@ typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
   Value<DateTime> createdAt,
   Value<String?> updatedBy,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
-  Value<int> id,
-  Value<String?> uid,
+  Value<String> id,
   Value<String> name,
   Value<TransactionType> type,
   Value<int> sortOrder,
@@ -2988,6 +3318,7 @@ typedef $$CategoriesTableUpdateCompanionBuilder = CategoriesCompanion Function({
   Value<DateTime> createdAt,
   Value<String?> updatedBy,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 
 final class $$CategoriesTableReferences
@@ -3002,7 +3333,7 @@ final class $$CategoriesTableReferences
 
   $$InstallmentsTableProcessedTableManager get installmentsRefs {
     final manager = $$InstallmentsTableTableManager($_db, $_db.installments)
-        .filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+        .filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_installmentsRefsTable($_db));
     return ProcessedTableManager(
@@ -3017,7 +3348,7 @@ final class $$CategoriesTableReferences
 
   $$TransactionsTableProcessedTableManager get transactionsRefs {
     final manager = $$TransactionsTableTableManager($_db, $_db.transactions)
-        .filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+        .filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
     return ProcessedTableManager(
@@ -3031,9 +3362,9 @@ final class $$CategoriesTableReferences
                   db.categories.id, db.favoriteRecords.categoryId));
 
   $$FavoriteRecordsTableProcessedTableManager get favoriteRecordsRefs {
-    final manager =
-        $$FavoriteRecordsTableTableManager($_db, $_db.favoriteRecords)
-            .filter((f) => f.categoryId.id.sqlEquals($_itemColumn<int>('id')!));
+    final manager = $$FavoriteRecordsTableTableManager(
+            $_db, $_db.favoriteRecords)
+        .filter((f) => f.categoryId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache =
         $_typedResult.readTableOrNull(_favoriteRecordsRefsTable($_db));
@@ -3051,11 +3382,8 @@ class $$CategoriesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get uid => $composableBuilder(
-      column: $table.uid, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
@@ -3162,11 +3490,8 @@ class $$CategoriesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get uid => $composableBuilder(
-      column: $table.uid, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
@@ -3208,11 +3533,8 @@ class $$CategoriesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get uid =>
-      $composableBuilder(column: $table.uid, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -3334,8 +3656,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
           createComputedFieldComposer: () =>
               $$CategoriesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String?> uid = const Value.absent(),
+            Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<TransactionType> type = const Value.absent(),
             Value<int> sortOrder = const Value.absent(),
@@ -3346,10 +3667,10 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<String?> updatedBy = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               CategoriesCompanion(
             id: id,
-            uid: uid,
             name: name,
             type: type,
             sortOrder: sortOrder,
@@ -3360,10 +3681,10 @@ class $$CategoriesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedBy: updatedBy,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String?> uid = const Value.absent(),
+            Value<String> id = const Value.absent(),
             required String name,
             required TransactionType type,
             Value<int> sortOrder = const Value.absent(),
@@ -3374,10 +3695,10 @@ class $$CategoriesTableTableManager extends RootTableManager<
             Value<DateTime> createdAt = const Value.absent(),
             Value<String?> updatedBy = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               CategoriesCompanion.insert(
             id: id,
-            uid: uid,
             name: name,
             type: type,
             sortOrder: sortOrder,
@@ -3388,6 +3709,7 @@ class $$CategoriesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             updatedBy: updatedBy,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -3471,18 +3793,22 @@ typedef $$CategoriesTableProcessedTableManager = ProcessedTableManager<
         bool transactionsRefs,
         bool favoriteRecordsRefs})>;
 typedef $$AssetsTableCreateCompanionBuilder = AssetsCompanion Function({
-  Value<int> id,
+  Value<String> id,
   required String name,
   Value<int?> targetAmount,
+  Value<String?> ownerId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 typedef $$AssetsTableUpdateCompanionBuilder = AssetsCompanion Function({
-  Value<int> id,
+  Value<String> id,
   Value<String> name,
   Value<int?> targetAmount,
+  Value<String?> ownerId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 
 final class $$AssetsTableReferences
@@ -3497,7 +3823,7 @@ final class $$AssetsTableReferences
 
   $$InstallmentsTableProcessedTableManager get installmentsRefs {
     final manager = $$InstallmentsTableTableManager($_db, $_db.installments)
-        .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+        .filter((f) => f.assetId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_installmentsRefsTable($_db));
     return ProcessedTableManager(
@@ -3512,7 +3838,7 @@ final class $$AssetsTableReferences
 
   $$TransactionsTableProcessedTableManager get transactionsRefs {
     final manager = $$TransactionsTableTableManager($_db, $_db.transactions)
-        .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+        .filter((f) => f.assetId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
     return ProcessedTableManager(
@@ -3528,7 +3854,7 @@ final class $$AssetsTableReferences
   $$FavoriteRecordsTableProcessedTableManager get favoriteRecordsRefs {
     final manager =
         $$FavoriteRecordsTableTableManager($_db, $_db.favoriteRecords)
-            .filter((f) => f.assetId.id.sqlEquals($_itemColumn<int>('id')!));
+            .filter((f) => f.assetId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache =
         $_typedResult.readTableOrNull(_favoriteRecordsRefsTable($_db));
@@ -3546,7 +3872,7 @@ class $$AssetsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get name => $composableBuilder(
@@ -3554,6 +3880,9 @@ class $$AssetsTableFilterComposer
 
   ColumnFilters<int> get targetAmount => $composableBuilder(
       column: $table.targetAmount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -3634,7 +3963,7 @@ class $$AssetsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get name => $composableBuilder(
@@ -3643,6 +3972,9 @@ class $$AssetsTableOrderingComposer
   ColumnOrderings<int> get targetAmount => $composableBuilder(
       column: $table.targetAmount,
       builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
@@ -3660,7 +3992,7 @@ class $$AssetsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get name =>
@@ -3668,6 +4000,9 @@ class $$AssetsTableAnnotationComposer
 
   GeneratedColumn<int> get targetAmount => $composableBuilder(
       column: $table.targetAmount, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3765,32 +4100,40 @@ class $$AssetsTableTableManager extends RootTableManager<
           createComputedFieldComposer: () =>
               $$AssetsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
             Value<int?> targetAmount = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               AssetsCompanion(
             id: id,
             name: name,
             targetAmount: targetAmount,
+            ownerId: ownerId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             required String name,
             Value<int?> targetAmount = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               AssetsCompanion.insert(
             id: id,
             name: name,
             targetAmount: targetAmount,
+            ownerId: ownerId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) =>
@@ -3871,29 +4214,35 @@ typedef $$AssetsTableProcessedTableManager = ProcessedTableManager<
         bool favoriteRecordsRefs})>;
 typedef $$InstallmentsTableCreateCompanionBuilder = InstallmentsCompanion
     Function({
-  Value<int> id,
+  Value<String> id,
   required DateTime date,
   required int totalAmount,
   required int months,
-  Value<int?> categoryId,
-  Value<int?> assetId,
+  Value<String?> categoryId,
+  Value<String?> assetId,
   Value<String?> title,
   Value<String?> memo,
+  Value<String?> ownerId,
+  Value<String?> budgetId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 typedef $$InstallmentsTableUpdateCompanionBuilder = InstallmentsCompanion
     Function({
-  Value<int> id,
+  Value<String> id,
   Value<DateTime> date,
   Value<int> totalAmount,
   Value<int> months,
-  Value<int?> categoryId,
-  Value<int?> assetId,
+  Value<String?> categoryId,
+  Value<String?> assetId,
   Value<String?> title,
   Value<String?> memo,
+  Value<String?> ownerId,
+  Value<String?> budgetId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 
 final class $$InstallmentsTableReferences
@@ -3905,7 +4254,7 @@ final class $$InstallmentsTableReferences
           $_aliasNameGenerator(db.installments.categoryId, db.categories.id));
 
   $$CategoriesTableProcessedTableManager? get categoryId {
-    final $_column = $_itemColumn<int>('category_id');
+    final $_column = $_itemColumn<String>('category_id');
     if ($_column == null) return null;
     final manager = $$CategoriesTableTableManager($_db, $_db.categories)
         .filter((f) => f.id.sqlEquals($_column));
@@ -3919,7 +4268,7 @@ final class $$InstallmentsTableReferences
       .createAlias($_aliasNameGenerator(db.installments.assetId, db.assets.id));
 
   $$AssetsTableProcessedTableManager? get assetId {
-    final $_column = $_itemColumn<int>('asset_id');
+    final $_column = $_itemColumn<String>('asset_id');
     if ($_column == null) return null;
     final manager = $$AssetsTableTableManager($_db, $_db.assets)
         .filter((f) => f.id.sqlEquals($_column));
@@ -3937,7 +4286,8 @@ final class $$InstallmentsTableReferences
 
   $$TransactionsTableProcessedTableManager get transactionsRefs {
     final manager = $$TransactionsTableTableManager($_db, $_db.transactions)
-        .filter((f) => f.installmentId.id.sqlEquals($_itemColumn<int>('id')!));
+        .filter(
+            (f) => f.installmentId.id.sqlEquals($_itemColumn<String>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_transactionsRefsTable($_db));
     return ProcessedTableManager(
@@ -3954,7 +4304,7 @@ class $$InstallmentsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get date => $composableBuilder(
@@ -3971,6 +4321,12 @@ class $$InstallmentsTableFilterComposer
 
   ColumnFilters<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get budgetId => $composableBuilder(
+      column: $table.budgetId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4049,7 +4405,7 @@ class $$InstallmentsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get date => $composableBuilder(
@@ -4066,6 +4422,12 @@ class $$InstallmentsTableOrderingComposer
 
   ColumnOrderings<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get budgetId => $composableBuilder(
+      column: $table.budgetId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
@@ -4123,7 +4485,7 @@ class $$InstallmentsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<DateTime> get date =>
@@ -4140,6 +4502,12 @@ class $$InstallmentsTableAnnotationComposer
 
   GeneratedColumn<String> get memo =>
       $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get budgetId =>
+      $composableBuilder(column: $table.budgetId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4233,16 +4601,19 @@ class $$InstallmentsTableTableManager extends RootTableManager<
           createComputedFieldComposer: () =>
               $$InstallmentsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<int> totalAmount = const Value.absent(),
             Value<int> months = const Value.absent(),
-            Value<int?> categoryId = const Value.absent(),
-            Value<int?> assetId = const Value.absent(),
+            Value<String?> categoryId = const Value.absent(),
+            Value<String?> assetId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
+            Value<String?> budgetId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               InstallmentsCompanion(
             id: id,
@@ -4253,20 +4624,26 @@ class $$InstallmentsTableTableManager extends RootTableManager<
             assetId: assetId,
             title: title,
             memo: memo,
+            ownerId: ownerId,
+            budgetId: budgetId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             required DateTime date,
             required int totalAmount,
             required int months,
-            Value<int?> categoryId = const Value.absent(),
-            Value<int?> assetId = const Value.absent(),
+            Value<String?> categoryId = const Value.absent(),
+            Value<String?> assetId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
+            Value<String?> budgetId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               InstallmentsCompanion.insert(
             id: id,
@@ -4277,8 +4654,11 @@ class $$InstallmentsTableTableManager extends RootTableManager<
             assetId: assetId,
             title: title,
             memo: memo,
+            ownerId: ownerId,
+            budgetId: budgetId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -4364,31 +4744,37 @@ typedef $$InstallmentsTableProcessedTableManager = ProcessedTableManager<
         {bool categoryId, bool assetId, bool transactionsRefs})>;
 typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
     Function({
-  Value<int> id,
+  Value<String> id,
   required DateTime date,
   required int amount,
   required TransactionType type,
-  Value<int?> categoryId,
-  Value<int?> assetId,
+  Value<String?> categoryId,
+  Value<String?> assetId,
   Value<String?> title,
   Value<String?> memo,
-  Value<int?> installmentId,
+  Value<String?> installmentId,
+  Value<String?> ownerId,
+  Value<String?> budgetId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
     Function({
-  Value<int> id,
+  Value<String> id,
   Value<DateTime> date,
   Value<int> amount,
   Value<TransactionType> type,
-  Value<int?> categoryId,
-  Value<int?> assetId,
+  Value<String?> categoryId,
+  Value<String?> assetId,
   Value<String?> title,
   Value<String?> memo,
-  Value<int?> installmentId,
+  Value<String?> installmentId,
+  Value<String?> ownerId,
+  Value<String?> budgetId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 
 final class $$TransactionsTableReferences
@@ -4400,7 +4786,7 @@ final class $$TransactionsTableReferences
           $_aliasNameGenerator(db.transactions.categoryId, db.categories.id));
 
   $$CategoriesTableProcessedTableManager? get categoryId {
-    final $_column = $_itemColumn<int>('category_id');
+    final $_column = $_itemColumn<String>('category_id');
     if ($_column == null) return null;
     final manager = $$CategoriesTableTableManager($_db, $_db.categories)
         .filter((f) => f.id.sqlEquals($_column));
@@ -4414,7 +4800,7 @@ final class $$TransactionsTableReferences
       .createAlias($_aliasNameGenerator(db.transactions.assetId, db.assets.id));
 
   $$AssetsTableProcessedTableManager? get assetId {
-    final $_column = $_itemColumn<int>('asset_id');
+    final $_column = $_itemColumn<String>('asset_id');
     if ($_column == null) return null;
     final manager = $$AssetsTableTableManager($_db, $_db.assets)
         .filter((f) => f.id.sqlEquals($_column));
@@ -4429,7 +4815,7 @@ final class $$TransactionsTableReferences
           db.transactions.installmentId, db.installments.id));
 
   $$InstallmentsTableProcessedTableManager? get installmentId {
-    final $_column = $_itemColumn<int>('installment_id');
+    final $_column = $_itemColumn<String>('installment_id');
     if ($_column == null) return null;
     final manager = $$InstallmentsTableTableManager($_db, $_db.installments)
         .filter((f) => f.id.sqlEquals($_column));
@@ -4449,7 +4835,7 @@ class $$TransactionsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get date => $composableBuilder(
@@ -4468,6 +4854,12 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get budgetId => $composableBuilder(
+      column: $table.budgetId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -4545,7 +4937,7 @@ class $$TransactionsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get date => $composableBuilder(
@@ -4562,6 +4954,12 @@ class $$TransactionsTableOrderingComposer
 
   ColumnOrderings<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get budgetId => $composableBuilder(
+      column: $table.budgetId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
@@ -4639,7 +5037,7 @@ class $$TransactionsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<DateTime> get date =>
@@ -4656,6 +5054,12 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<String> get memo =>
       $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get budgetId =>
+      $composableBuilder(column: $table.budgetId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4748,17 +5152,20 @@ class $$TransactionsTableTableManager extends RootTableManager<
           createComputedFieldComposer: () =>
               $$TransactionsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             Value<DateTime> date = const Value.absent(),
             Value<int> amount = const Value.absent(),
             Value<TransactionType> type = const Value.absent(),
-            Value<int?> categoryId = const Value.absent(),
-            Value<int?> assetId = const Value.absent(),
+            Value<String?> categoryId = const Value.absent(),
+            Value<String?> assetId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
-            Value<int?> installmentId = const Value.absent(),
+            Value<String?> installmentId = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
+            Value<String?> budgetId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               TransactionsCompanion(
             id: id,
@@ -4770,21 +5177,27 @@ class $$TransactionsTableTableManager extends RootTableManager<
             title: title,
             memo: memo,
             installmentId: installmentId,
+            ownerId: ownerId,
+            budgetId: budgetId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             required DateTime date,
             required int amount,
             required TransactionType type,
-            Value<int?> categoryId = const Value.absent(),
-            Value<int?> assetId = const Value.absent(),
+            Value<String?> categoryId = const Value.absent(),
+            Value<String?> assetId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
-            Value<int?> installmentId = const Value.absent(),
+            Value<String?> installmentId = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
+            Value<String?> budgetId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               TransactionsCompanion.insert(
             id: id,
@@ -4796,8 +5209,11 @@ class $$TransactionsTableTableManager extends RootTableManager<
             title: title,
             memo: memo,
             installmentId: installmentId,
+            ownerId: ownerId,
+            budgetId: budgetId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (
@@ -4879,22 +5295,26 @@ typedef $$TransactionsTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function(
         {bool categoryId, bool assetId, bool installmentId})>;
 typedef $$TodosTableCreateCompanionBuilder = TodosCompanion Function({
-  Value<int> id,
+  Value<String> id,
   required String title,
   Value<String?> memo,
   Value<bool> isDone,
+  Value<String?> ownerId,
   Value<DateTime?> remindAt,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 typedef $$TodosTableUpdateCompanionBuilder = TodosCompanion Function({
-  Value<int> id,
+  Value<String> id,
   Value<String> title,
   Value<String?> memo,
   Value<bool> isDone,
+  Value<String?> ownerId,
   Value<DateTime?> remindAt,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 
 class $$TodosTableFilterComposer extends Composer<_$AppDatabase, $TodosTable> {
@@ -4905,7 +5325,7 @@ class $$TodosTableFilterComposer extends Composer<_$AppDatabase, $TodosTable> {
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get title => $composableBuilder(
@@ -4916,6 +5336,9 @@ class $$TodosTableFilterComposer extends Composer<_$AppDatabase, $TodosTable> {
 
   ColumnFilters<bool> get isDone => $composableBuilder(
       column: $table.isDone, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get remindAt => $composableBuilder(
       column: $table.remindAt, builder: (column) => ColumnFilters(column));
@@ -4936,7 +5359,7 @@ class $$TodosTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get title => $composableBuilder(
@@ -4947,6 +5370,9 @@ class $$TodosTableOrderingComposer
 
   ColumnOrderings<bool> get isDone => $composableBuilder(
       column: $table.isDone, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get remindAt => $composableBuilder(
       column: $table.remindAt, builder: (column) => ColumnOrderings(column));
@@ -4967,7 +5393,7 @@ class $$TodosTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<String> get title =>
@@ -4978,6 +5404,9 @@ class $$TodosTableAnnotationComposer
 
   GeneratedColumn<bool> get isDone =>
       $composableBuilder(column: $table.isDone, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get remindAt =>
       $composableBuilder(column: $table.remindAt, builder: (column) => column);
@@ -5012,40 +5441,48 @@ class $$TodosTableTableManager extends RootTableManager<
           createComputedFieldComposer: () =>
               $$TodosTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             Value<String> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
             Value<bool> isDone = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
             Value<DateTime?> remindAt = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               TodosCompanion(
             id: id,
             title: title,
             memo: memo,
             isDone: isDone,
+            ownerId: ownerId,
             remindAt: remindAt,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             required String title,
             Value<String?> memo = const Value.absent(),
             Value<bool> isDone = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
             Value<DateTime?> remindAt = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               TodosCompanion.insert(
             id: id,
             title: title,
             memo: memo,
             isDone: isDone,
+            ownerId: ownerId,
             remindAt: remindAt,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -5068,33 +5505,39 @@ typedef $$TodosTableProcessedTableManager = ProcessedTableManager<
     PrefetchHooks Function()>;
 typedef $$FavoriteRecordsTableCreateCompanionBuilder = FavoriteRecordsCompanion
     Function({
-  Value<int> id,
+  Value<String> id,
   required int amount,
   required TransactionType type,
   required PeriodType period,
   Value<DateTime?> startDate,
   Value<DateTime?> lastGeneratedDate,
-  Value<int?> categoryId,
-  Value<int?> assetId,
+  Value<String?> categoryId,
+  Value<String?> assetId,
   Value<String?> title,
   Value<String?> memo,
+  Value<String?> ownerId,
+  Value<String?> budgetId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 typedef $$FavoriteRecordsTableUpdateCompanionBuilder = FavoriteRecordsCompanion
     Function({
-  Value<int> id,
+  Value<String> id,
   Value<int> amount,
   Value<TransactionType> type,
   Value<PeriodType> period,
   Value<DateTime?> startDate,
   Value<DateTime?> lastGeneratedDate,
-  Value<int?> categoryId,
-  Value<int?> assetId,
+  Value<String?> categoryId,
+  Value<String?> assetId,
   Value<String?> title,
   Value<String?> memo,
+  Value<String?> ownerId,
+  Value<String?> budgetId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<int> rowid,
 });
 
 final class $$FavoriteRecordsTableReferences extends BaseReferences<
@@ -5107,7 +5550,7 @@ final class $$FavoriteRecordsTableReferences extends BaseReferences<
           db.favoriteRecords.categoryId, db.categories.id));
 
   $$CategoriesTableProcessedTableManager? get categoryId {
-    final $_column = $_itemColumn<int>('category_id');
+    final $_column = $_itemColumn<String>('category_id');
     if ($_column == null) return null;
     final manager = $$CategoriesTableTableManager($_db, $_db.categories)
         .filter((f) => f.id.sqlEquals($_column));
@@ -5121,7 +5564,7 @@ final class $$FavoriteRecordsTableReferences extends BaseReferences<
       $_aliasNameGenerator(db.favoriteRecords.assetId, db.assets.id));
 
   $$AssetsTableProcessedTableManager? get assetId {
-    final $_column = $_itemColumn<int>('asset_id');
+    final $_column = $_itemColumn<String>('asset_id');
     if ($_column == null) return null;
     final manager = $$AssetsTableTableManager($_db, $_db.assets)
         .filter((f) => f.id.sqlEquals($_column));
@@ -5141,7 +5584,7 @@ class $$FavoriteRecordsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnFilters<int> get id => $composableBuilder(
+  ColumnFilters<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get amount => $composableBuilder(
@@ -5169,6 +5612,12 @@ class $$FavoriteRecordsTableFilterComposer
 
   ColumnFilters<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get budgetId => $composableBuilder(
+      column: $table.budgetId, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -5226,7 +5675,7 @@ class $$FavoriteRecordsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  ColumnOrderings<int> get id => $composableBuilder(
+  ColumnOrderings<String> get id => $composableBuilder(
       column: $table.id, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<int> get amount => $composableBuilder(
@@ -5250,6 +5699,12 @@ class $$FavoriteRecordsTableOrderingComposer
 
   ColumnOrderings<String> get memo => $composableBuilder(
       column: $table.memo, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get ownerId => $composableBuilder(
+      column: $table.ownerId, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get budgetId => $composableBuilder(
+      column: $table.budgetId, builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
@@ -5307,7 +5762,7 @@ class $$FavoriteRecordsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
-  GeneratedColumn<int> get id =>
+  GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
   GeneratedColumn<int> get amount =>
@@ -5330,6 +5785,12 @@ class $$FavoriteRecordsTableAnnotationComposer
 
   GeneratedColumn<String> get memo =>
       $composableBuilder(column: $table.memo, builder: (column) => column);
+
+  GeneratedColumn<String> get ownerId =>
+      $composableBuilder(column: $table.ownerId, builder: (column) => column);
+
+  GeneratedColumn<String> get budgetId =>
+      $composableBuilder(column: $table.budgetId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -5402,18 +5863,21 @@ class $$FavoriteRecordsTableTableManager extends RootTableManager<
           createComputedFieldComposer: () =>
               $$FavoriteRecordsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             Value<int> amount = const Value.absent(),
             Value<TransactionType> type = const Value.absent(),
             Value<PeriodType> period = const Value.absent(),
             Value<DateTime?> startDate = const Value.absent(),
             Value<DateTime?> lastGeneratedDate = const Value.absent(),
-            Value<int?> categoryId = const Value.absent(),
-            Value<int?> assetId = const Value.absent(),
+            Value<String?> categoryId = const Value.absent(),
+            Value<String?> assetId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
+            Value<String?> budgetId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               FavoriteRecordsCompanion(
             id: id,
@@ -5426,22 +5890,28 @@ class $$FavoriteRecordsTableTableManager extends RootTableManager<
             assetId: assetId,
             title: title,
             memo: memo,
+            ownerId: ownerId,
+            budgetId: budgetId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           createCompanionCallback: ({
-            Value<int> id = const Value.absent(),
+            Value<String> id = const Value.absent(),
             required int amount,
             required TransactionType type,
             required PeriodType period,
             Value<DateTime?> startDate = const Value.absent(),
             Value<DateTime?> lastGeneratedDate = const Value.absent(),
-            Value<int?> categoryId = const Value.absent(),
-            Value<int?> assetId = const Value.absent(),
+            Value<String?> categoryId = const Value.absent(),
+            Value<String?> assetId = const Value.absent(),
             Value<String?> title = const Value.absent(),
             Value<String?> memo = const Value.absent(),
+            Value<String?> ownerId = const Value.absent(),
+            Value<String?> budgetId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
           }) =>
               FavoriteRecordsCompanion.insert(
             id: id,
@@ -5454,8 +5924,11 @@ class $$FavoriteRecordsTableTableManager extends RootTableManager<
             assetId: assetId,
             title: title,
             memo: memo,
+            ownerId: ownerId,
+            budgetId: budgetId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0
               .map((e) => (

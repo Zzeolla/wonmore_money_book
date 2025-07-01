@@ -1,8 +1,10 @@
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/model/favorite_record_model.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:drift/drift.dart';
+import 'package:wonmore_money_book/model/transaction_model.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 
 class RepeatTransactionService {
@@ -10,20 +12,22 @@ class RepeatTransactionService {
 
   RepeatTransactionService(this._provider);
 
-  Future<void> generateTodayRepeatedTransactions({FavoriteRecord? favoriteRecord}) async {
+  Future<void> generateTodayRepeatedTransactions({FavoriteRecordModel? favoriteRecordModel}) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    final repeatedRecords = favoriteRecord != null
-      ? [favoriteRecord]
-      : await (_provider.database.select(_provider.database.favoriteRecords)
-      ..where((r) => r.period.equals(PeriodType.none.name).not()))
-        .get();
+    final repeatedRecords = favoriteRecordModel != null
+      ? [favoriteRecordModel]
+      : _provider.favoriteRecords.where((r) => r.period != PeriodType.none).toList();
+
+    // await (_provider.database.select(_provider.database.favoriteRecords)
+    //   ..where((r) => r.period.equals(PeriodType.none.name).not()))
+    //     .get();
 
     for (final record in repeatedRecords) {
       final startDate = record.startDate ?? today;
       final startTime = TimeOfDay.fromDateTime(startDate);
-      
+
       // 매월 반복의 경우 원래 날짜의 일자를 저장
       final originalDay = record.period == PeriodType.everyMonth ? startDate.day : null;
 
@@ -36,8 +40,8 @@ class RepeatTransactionService {
       while (true) {
         final nextDate = _getNextRepeatDate(record.period, current, originalDay);
 
-        if (nextDate == null || 
-            nextDate.isAfter(today) || 
+        if (nextDate == null ||
+            nextDate.isAfter(today) ||
             (prevDate != null && nextDate.isAtSameMomentAs(prevDate))) break;
 
         final generatedDateTime = DateTime(
@@ -49,37 +53,29 @@ class RepeatTransactionService {
         );
 
         // 거래 생성
-        await _provider.addTransaction(TransactionsCompanion(
-          date: drift.Value(generatedDateTime),
-          amount: drift.Value(record.amount),
-          type: drift.Value(record.type),
-          categoryId: record.categoryId == null
-              ? const drift.Value.absent()
-              : drift.Value(record.categoryId),
-          assetId:
-          record.assetId == null ? const drift.Value.absent() : drift.Value(record.assetId),
-          title: record.title == null ? const drift.Value.absent() : drift.Value(record.title),
-          memo: record.memo == null ? const drift.Value.absent() : drift.Value(record.memo),
-          // userId: Value(record.userId),
-          createdAt: drift.Value(DateTime.now()),
-          updatedAt: drift.Value(DateTime.now()),
-          // createdBy: Value(record.userId),
-          // updatedBy: Value(record.userId),
+        await _provider.addTransaction(TransactionModel(
+          date: generatedDateTime,
+          amount: record.amount,
+          type: record.type,
+          categoryId: record.categoryId,
+          assetId: record.assetId,
+          title: record.title,
+          memo: record.memo,
         ));
 
         prevDate = current;
-        current = nextDate; // 다음 루프를 위한 갱신
+        current = nextDate;
       }
       // lastGeneratedDate 갱신
       final lastGenDateTime = DateTime(
-          current.year,
-          current.month,
-          current.day,
-          startTime.hour,
-          startTime.minute
+        current.year,
+        current.month,
+        current.day,
+        startTime.hour,
+        startTime.minute
       );
-      await _provider.updateFavoriteRecord(
-          record.id, FavoriteRecordsCompanion(lastGeneratedDate: drift.Value(lastGenDateTime)));
+      final updatedLastModel = record.copyWith(lastGeneratedDate: lastGenDateTime);
+      await _provider.updateFavoriteRecord(record.id!, updatedLastModel);
     }
   }
 

@@ -4,7 +4,11 @@ import 'package:intl/intl.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/installment_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/repeat_record_input_dialog.dart';
+import 'package:wonmore_money_book/model/asset_model.dart';
+import 'package:wonmore_money_book/model/category_model.dart';
+import 'package:wonmore_money_book/model/favorite_record_model.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
+import 'package:wonmore_money_book/model/transaction_model.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
@@ -21,10 +25,10 @@ class RecordInputDialog extends StatefulWidget {
   final String? initialTitle;
   final int? initialAmount;
   final TransactionType? initialType;
-  final int? initialCategoryId;
-  final int? initialAssetId;
+  final String? initialCategoryId;
+  final String? initialAssetId;
   final String? initialMemo;
-  final int? transactionId; // 수정할 거래 내역의 ID
+  final String? transactionId; // 수정할 거래 내역의 ID
 
   const RecordInputDialog({
     super.key,
@@ -55,7 +59,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
   final _amountFocus = FocusNode();
   final _titleFocus = FocusNode();
 
-  Category? selectedCategory;
+  CategoryModel? selectedCategory;
   String? selectedAsset;
 
   final GlobalKey _menuKey = GlobalKey();
@@ -229,9 +233,9 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                     final categoryId = selectedCategory?.id;
                                     final assetName = selectedAsset;
                                     final provider = context.read<MoneyProvider>();
-                                    int? assetId;
+                                    String? assetId;
                                     if (assetName != null) {
-                                      Asset? asset;
+                                      AssetModel? asset;
                                       try {
                                         asset =
                                             provider.assets.firstWhere((a) => a.name == assetName);
@@ -283,9 +287,9 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                         final categoryId = selectedCategory?.id;
                                         final assetName = selectedAsset;
                                         final provider = context.read<MoneyProvider>();
-                                        int? assetId;
+                                        String? assetId;
                                         if (assetName != null) {
-                                          Asset? asset;
+                                          AssetModel? asset;
                                           try {
                                             asset =
                                                 provider.assets.firstWhere((a) => a.name == assetName);
@@ -320,9 +324,9 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                         final categoryId = selectedCategory?.id;
                                         final assetName = selectedAsset;
                                         final provider = context.read<MoneyProvider>();
-                                        int? assetId;
+                                        String? assetId;
                                         if (assetName != null) {
-                                          Asset? asset;
+                                          AssetModel? asset;
                                           try {
                                             asset =
                                                 provider.assets.firstWhere((a) => a.name == assetName);
@@ -628,9 +632,9 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                             final categoryId = selectedCategory?.id;
                             final assetName = selectedAsset;
                             final provider = context.read<MoneyProvider>();
-                            int? assetId;
+                            String? assetId;
                             if (assetName != null) {
-                              Asset? asset;
+                              AssetModel? asset;
                               try {
                                 asset = provider.assets.firstWhere((a) => a.name == assetName);
                               } catch (_) {
@@ -648,25 +652,17 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                     widget.initialAssetId != assetId ||
                                     widget.initialTitle != title ||
                                     widget.initialMemo != memo;
-
                                 if (hasChanges) {
                                   await provider.updateTransaction(
                                     widget.transactionId!,
-                                    TransactionsCompanion(
-                                      date: drift.Value(selectedDate),
-                                      amount: drift.Value(amount),
-                                      type: drift.Value(_selectedType),
-                                      categoryId: categoryId == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(categoryId),
-                                      assetId: assetId == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(assetId),
-                                      title: drift.Value(title),
-                                      memo: memo == null
-                                          ? const drift.Value.absent()
-                                          : drift.Value(memo),
-                                      updatedAt: drift.Value(DateTime.now()),
+                                    TransactionModel(
+                                      date: selectedDate,
+                                      amount: amount,
+                                      type: _selectedType,
+                                      categoryId: categoryId,
+                                      assetId: assetId,
+                                      title: title,
+                                      memo: memo,
                                     ),
                                   );
                                   Navigator.pop(context, true);
@@ -675,23 +671,16 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                 }
                               } else {
                                 // 새로운 거래내역 추가
+                                print('내역 추가');
                                 await provider.addTransaction(
-                                  TransactionsCompanion(
-                                    date: drift.Value(selectedDate),
-                                    amount: drift.Value(amount),
-                                    type: drift.Value(_selectedType),
-                                    categoryId: categoryId == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(categoryId),
-                                    assetId: assetId == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(assetId),
-                                    title: drift.Value(title),
-                                    memo: memo == null
-                                        ? const drift.Value.absent()
-                                        : drift.Value(memo),
-                                    createdAt: drift.Value(DateTime.now()),
-                                    updatedAt: drift.Value(DateTime.now()),
+                                  TransactionModel(
+                                    date: selectedDate,
+                                    amount: amount,
+                                    type: _selectedType,
+                                    categoryId: categoryId,
+                                    assetId: assetId,
+                                    title: title,
+                                    memo: memo,
                                   ),
                                 );
                                 Navigator.pop(context, true);
@@ -839,7 +828,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
     );
   }
 
-  Future<FavoriteRecord?> showFavoritePickerDialog(BuildContext context, List<FavoriteRecord> favorites) {
+  Future<FavoriteRecord?> showFavoritePickerDialog(BuildContext context, List<FavoriteRecordModel> favorites) {
     return showDialog<FavoriteRecord>(
       context: context,
       builder: (_) => Dialog(
