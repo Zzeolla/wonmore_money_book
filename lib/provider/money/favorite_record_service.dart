@@ -23,7 +23,7 @@ class FavoriteRecordService {
           .from('favorite_records')
           .select()
           .or(
-          'and(period.eq.none,created_by.eq.$userId),and(period.neq.none,owner_id.eq.$ownerId,budget_id.eq.$budgetId)'
+          'and(period.eq.none,created_by.eq.$userId,owner_id.eq.$ownerId),and(period.neq.none,owner_id.eq.$ownerId,budget_id.eq.$budgetId)'
       );
 
       return response.map(FavoriteRecordModel.fromJson).toList();

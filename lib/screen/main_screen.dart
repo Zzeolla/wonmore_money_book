@@ -9,6 +9,7 @@ import 'package:wonmore_money_book/screen/analysis_screen.dart';
 import 'package:wonmore_money_book/screen/assets_screen.dart';
 import 'package:wonmore_money_book/screen/home_screen.dart';
 import 'package:wonmore_money_book/screen/more_screen.dart';
+import 'package:wonmore_money_book/service/repeat_transaction_service.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -30,6 +31,12 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+
+    Future.microtask(() async {
+      final moneyProvider = context.read<MoneyProvider>();
+      final repeatService = RepeatTransactionService(moneyProvider);
+      await repeatService.generateTodayRepeatedTransactions();
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final userProvider = context.read<UserProvider>();
@@ -88,7 +95,7 @@ class _MainScreenState extends State<MainScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("기록 동기화"),
-        content: const Text("기존 로컬 기록을 업로드 중입니다.\n데이터양에 따라 시간이 걸릴 수 있습니다."),
+        content: const Text("기존 로컬 기록을 주 가계부에 업로드 중입니다.\n데이터양에 따라 시간이 걸릴 수 있습니다."),
         actions: [
           TextButton(
             onPressed: () {

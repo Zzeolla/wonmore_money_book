@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:io' show Platform;
 
 import 'package:wonmore_money_book/provider/user_provider.dart';
+import 'package:wonmore_money_book/widget/common_app_bar.dart';
+import 'package:wonmore_money_book/widget/rounded_login_button.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final String? message;
+
+  const LoginScreen({super.key, this.message});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -38,9 +43,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.message != null && widget.message!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(widget.message!)),
+        );
+      });
+    }
     final isIOS = Platform.isIOS;
 
     return Scaffold(
+      appBar: CommonAppBar(isMainScreen: false,),
       backgroundColor: const Color(0xFFF5F6FA),
       body: Center(
         child: SingleChildScrollView(
@@ -79,34 +92,28 @@ class _LoginScreenState extends State<LoginScreen> {
                       horizontal: 24, vertical: 32),
                   child: Column(
                     children: [
-                      _LoginButton(
-                        label: 'Google로 로그인',
-                        icon: Icons.g_mobiledata,
+                      RoundedLoginButton(
+                        label: '구글 로그인',
+                        iconAsset: 'assets/img/g-logo.png',
                         backgroundColor: Colors.white,
                         textColor: Colors.black87,
-                        onPressed: () => _signInWithOAuth(
-                            context, OAuthProvider.google),
+                        onPressed: () => _signInWithOAuth(context, OAuthProvider.google),
                       ),
                       const SizedBox(height: 16),
                       if (isIOS)
-                        _LoginButton(
-                          label: 'Apple로 로그인',
-                          icon: Icons.apple,
-                          backgroundColor: Colors.black,
-                          textColor: Colors.white,
-                          onPressed: () => _signInWithOAuth(
-                              context, OAuthProvider.apple),
+                        SignInWithAppleButton(
+                          onPressed: () => _signInWithOAuth(context, OAuthProvider.apple),
+                          style: SignInWithAppleButtonStyle.black,
                         ),
                       const SizedBox(height: 16),
-                      _LoginButton(
-                        label: '카카오로 로그인',
-                        icon: Icons.chat_bubble,
-                        backgroundColor: const Color(0xFFFFE812),
+                      RoundedLoginButton(
+                        label: '카카오 로그인',
+                        iconAsset: 'assets/img/kakao_bubble.png',
+                        backgroundColor: const Color(0xFFFEE500),
                         textColor: Colors.black,
-                        onPressed: () {
-                          // TODO: Kakao 연동
-                        },
-                      ),
+                        textOpacity: 0.85,
+                        onPressed: () => _signInWithOAuth(context, OAuthProvider.kakao),
+                      )
                     ],
                   ),
                 ),

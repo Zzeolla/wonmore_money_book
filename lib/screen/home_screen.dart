@@ -16,6 +16,9 @@ import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/custom_bottom_sheet.dart';
 import 'package:wonmore_money_book/widget/common_drawer.dart';
 import 'package:wonmore_money_book/widget/year_month_header.dart';
+import 'package:wonmore_money_book/service/record_ad_service.dart';
+import 'package:wonmore_money_book/service/rewarded_interstitial_ad_service.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -33,11 +36,14 @@ class _HomeScreenState extends State<HomeScreen> {
   static const double kBottomNavBarHeight = 56.0;
   static const double kMinAdHeight = 52.0;
 
+  final _adService = RewardedInterstitialAdService();
+
   late double _rowHeight;
 
   @override
   void initState() {
     super.initState();
+    _adService.loadAd();
     // 앱 시작 시 현재 달의 거래내역만 로드
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MoneyProvider>().changeFocusedDay(DateTime.now());
@@ -81,12 +87,11 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: Icon(Icons.star_border_purple500, color: Color(0xFFF2F4F6), size: 30),
             onPressed: () =>
-                context.read<HomeScreenTabProvider>().setTab(HomeTab.favorite), // TODO: 즐겨찾기 팝업
+                context.read<HomeScreenTabProvider>().setTab(HomeTab.favorite),
           ),
           IconButton(
             icon: Icon(Icons.checklist, color: Color(0xFFF2F4F6), size: 30),
             onPressed: () => context.read<HomeScreenTabProvider>().setTab(HomeTab.todo),
-            // TODO: 투두 화면 이동 또는 팝업 열기
             // 장보기 목록, 처리해야 할 금융 업무(이체, 납부 등), 기념일 체크
           ),
         ],
@@ -159,7 +164,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     bottom: kMinAdHeight + 16,
                     child: FloatingActionButton(
                       onPressed: () {
-                        final provider = context.read<MoneyProvider>();
                         showDialog(
                           context: context,
                           builder: (context) => RecordInputDialog(
@@ -235,5 +239,59 @@ class _HomeScreenState extends State<HomeScreen> {
         return CustomBottomSheet(selectedDay: selectedDay, rowHeight: rowHeight);
       },
     );
+  }
+
+  Future<void> tryAddTransaction() async {
+    await RecordAdService.resetIfNewDay();
+    final todayCount = await RecordAdService.getTodayCount();
+    final adWatched = await RecordAdService.getAdWatchedCount();
+
+    if (todayCount == 0) {
+      await RecordAdService.incrementCount();
+      _openRecordDialog();
+      return;
+    }
+
+    if (adWatched == 0 && todayCount < 5) {
+      if (_adService.isReady) {
+        _adService.showAd(() async {
+          await RecordAdService.incrementAdCount();
+          await RecordAdService.incrementCount();
+          _openRecordDialog();
+        });
+      } else {
+        _openRecordDialog();
+      }
+      return;
+    }
+
+    if (adWatched == 1 && todayCount >= 5) {
+      if (_adService.isReady) {
+        _adService.showAd(() async {
+          await RecordAdService.incrementAdCount();
+          await RecordAdService.incrementCount();
+          _openRecordDialog();
+        });
+      } else {
+        _openRecordDialog();
+      }
+      return;
+    }
+
+    await RecordAdService.incrementCount();
+    _openRecordDialog();
+  }
+
+  void _openRecordDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => RecordInputDialog(initialDate: DateTime.now()),
+    ).then((result) {
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('저장되었습니다!')),
+        );
+      }
+    });
   }
 }

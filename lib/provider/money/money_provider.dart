@@ -154,7 +154,8 @@ class MoneyProvider extends ChangeNotifier {
 
   Future<void> _clearLocalDatabase() async {
     await _database.delete(_database.assets).go();
-    // await _database.delete(_database.categories).go();
+    await _database.delete(_database.categories).go();
+    await _database.insertDefaultCategories();
     await _database.delete(_database.installments).go();
     await _database.delete(_database.favoriteRecords).go();
     await _database.delete(_database.transactions).go();
@@ -336,18 +337,31 @@ class MoneyProvider extends ChangeNotifier {
     await _loadAllAssets();
   }
 
-  Future<List<CategorySummary>> getCategorySummariesByPeriod({   /// TODO: 추후 supabase 로그인 시 사용할 수 있도록 수정 필요
+  Future<List<CategorySummary>> getCategorySummariesByPeriod({
     required DateTime start,
     required DateTime end,
     required TransactionType type,
     required String selectedAssetName,
   }) async {
+    if (_currentUserId == null) {
+      return _getLocalCategorySummariesByPeriod(start, end, type, selectedAssetName);
+    } else {
+      return _getSupabaseCategorySummariesByPeriod(start, end, type, selectedAssetName);
+    }
+  }
+
+  Future<List<CategorySummary>> _getLocalCategorySummariesByPeriod(
+    DateTime start,
+    DateTime end,
+    TransactionType type,
+    String selectedAssetName,
+  ) async {
     // 자산 ID 찾기 (전체가 아닌 경우)
     String? assetId;
     if (selectedAssetName != '전체') {
       final asset = _assets.firstWhere(
             (a) => a.name == selectedAssetName,
-        orElse: () => throw Exception('자산 이름이 존재하지 않습니다: $selectedAssetName'),
+        orElse: () => throw Exception('자산이 존재하지 않습니다: $selectedAssetName'),
       );
       assetId = asset.id;
     }
@@ -390,6 +404,55 @@ class MoneyProvider extends ChangeNotifier {
       );
     }).toList();
   }
+
+  Future<List<CategorySummary>> _getSupabaseCategorySummariesByPeriod(
+      DateTime start,
+      DateTime end,
+      TransactionType type,
+      String selectedAssetName,
+      ) async {
+    final client = Supabase.instance.client;
+    final ownerId = _ownerId!;
+    final budgetId = _budgetId!;
+
+    // 자산 필터링
+    String? assetId;
+    if (selectedAssetName != '전체') {
+      final asset = _assets.firstWhere(
+            (a) => a.name == selectedAssetName,
+        orElse: () => throw Exception('자산이 존재하지 않습니다: $selectedAssetName'),
+      );
+      assetId = asset.id;
+    }
+
+    final response = client
+        .from('transactions')
+        .select('amount, category_id, categories(name)')
+        .eq('owner_id', ownerId)
+        .eq('budget_id', budgetId)
+        .eq('type', type.name)
+        .gte('date', start.toIso8601String())
+        .lte('date', end.toIso8601String());
+
+    if (assetId != null) {
+      response.eq('asset_id', assetId);
+    }
+
+    final raw = await response;
+
+    final Map<String, double> categoryTotals = {};
+
+    for (final row in raw) {
+      final categoryName = row['categories']?['name'] ?? '기타';
+      final amount = (row['amount'] as num).toDouble();
+      categoryTotals[categoryName] = (categoryTotals[categoryName] ?? 0) + amount;
+    }
+
+    return categoryTotals.entries.map((e) {
+      return CategorySummary(name: e.key, amount: e.value);
+    }).toList();
+  }
+
 
   // 즐겨찾기
   Future<void> loadFavoriteRecords() async {

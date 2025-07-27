@@ -57,8 +57,8 @@ class RepeatTransactionService {
           date: generatedDateTime,
           amount: record.amount,
           type: record.type,
-          categoryId: record.categoryId,
-          assetId: record.assetId,
+          categoryId: (record.categoryId?.isEmpty ?? true) ? null : record.categoryId,
+          assetId: (record.assetId?.isEmpty ?? true) ? null : record.assetId,
           title: record.title,
           memo: record.memo,
         ));

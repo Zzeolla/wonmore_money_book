@@ -31,7 +31,7 @@ class AssetModel {
       id: json['id'],
       name: json['name'],
       targetAmount: json['target_amount'],
-      ownerId: json['ownerId'],
+      ownerId: json['ownerId'] ?? '',
       updatedAt: DateTime.parse(json['updated_at'])
     );
   }

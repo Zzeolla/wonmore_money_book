@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wonmore_money_book/database/database.dart';
@@ -9,17 +13,34 @@ import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
+import 'package:wonmore_money_book/screen/budget_list_screen.dart';
 import 'package:wonmore_money_book/screen/home_screen.dart';
 import 'package:wonmore_money_book/screen/assets_screen.dart';
 import 'package:wonmore_money_book/screen/analysis_screen.dart';
+import 'package:wonmore_money_book/screen/join_group_screen.dart';
 import 'package:wonmore_money_book/screen/login_screen.dart';
 import 'package:wonmore_money_book/screen/main_screen.dart';
 import 'package:wonmore_money_book/screen/more_screen.dart';
+import 'package:wonmore_money_book/screen/my_profile_screen.dart';
 import 'package:wonmore_money_book/screen/splash_screen.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:wonmore_money_book/screen/user_list_screen.dart';
+
+Future<void> deleteLocalDb() async {
+  final dir = await getApplicationDocumentsDirectory();
+  final dbFile = File('${dir.path}/db.sqlite'); // Drift 기본 파일명
+  if (await dbFile.exists()) {
+    await dbFile.delete();
+    print('✅ DB 파일 삭제됨');
+  } else {
+    print('ℹ️ DB 파일 없음');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
 
   // 광고 기능 초기화
   await MobileAds.instance.initialize();
@@ -31,8 +52,8 @@ void main() async {
   final database = AppDatabase();
 
   await Supabase.initialize(
-    url: 'https://rzauhdeimiizczhnclpw.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6YXVoZGVpbWlpemN6aG5jbHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxNTUxNTksImV4cCI6MjA2NTczMTE1OX0.iZdWkSNqrjKj8E1nFK10kNtwaWY7o-7wPi7lSXSFDWw'
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
   runApp(
@@ -124,6 +145,10 @@ class MyApp extends StatelessWidget {
         '/assets': (context) => AssetsScreen(),
         '/analysis': (context) => const AnalysisScreen(),
         '/more': (context) => const MoreScreen(),
+        '/more/my-info': (context) => const MyInfoScreen(),
+        '/more/join-group': (context) => const JoinGroupScreen(),
+        '/more/edit-budget': (context) => const BudgetListScreen(),
+        '/more/edit-user': (context) => const UserListScreen(),
         '/login': (context) => const LoginScreen(),
       },
     );

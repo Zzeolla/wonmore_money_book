@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
+import 'package:wonmore_money_book/util/ad_helper.dart';
 
 class BannerAdWidget extends StatefulWidget {
   const BannerAdWidget({super.key});
@@ -17,9 +20,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   void initState() {
     super.initState();
 
-    final adUnitId = Platform.isIOS
-    ? 'ca-app-pub-3940256099942544/2934735716'
-    : 'ca-app-pub-3940256099942544/6300978111';
+    final adUnitId = AdHelper.bannerAdUnitId;
 
 
     banner = BannerAd(
@@ -43,6 +44,10 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = context.watch<UserProvider>();
+    final planName = userProvider.myPlan?.planName ?? 'free';
+    if (planName == 'pro') return const SizedBox.shrink();
+
     return SizedBox(
       height: 52,
       width: double.infinity,

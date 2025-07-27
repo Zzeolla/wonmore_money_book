@@ -2,12 +2,12 @@ import 'package:drift/drift.dart';
 import 'package:wonmore_money_book/database/database.dart';
 
 class TodoModel {
-  String? id;
-  String title;
-  String? memo;
-  bool? isDone;
-  String? ownerId;
-  DateTime? updatedAt;
+  final String? id;
+  final String title;
+  final String? memo;
+  final bool? isDone;
+  final String? ownerId;
+  final DateTime? updatedAt;
 
   TodoModel({
     this.id,

@@ -11,6 +11,7 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+.env
 
 # IntelliJ related
 *.iml
@@ -43,3 +44,48 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# 📦 Environment variables (보안 민감 파일)
+.env
+.env.*
+
+# 🔧 Flutter/Dart/Pub related
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# 🧱 Android build
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# 🍎 macOS/iOS specific
+.DS_Store
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+macos/Flutter/Flutter.framework
+
+# 👨‍💻 Editor-related
+.idea/
+*.iml
+*.ipr
+*.iws
+.atom/
+.vscode/  # 보통 개발 환경마다 다르니 관리 안 할 거면 주석 해제
+.history
+.svn/
+
+# 🗃️ 기타 불필요한 파일
+*.log
+*.class
+*.pyc
+*.swp
+app.*.symbols
+app.*.map.json

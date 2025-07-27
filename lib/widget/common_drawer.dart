@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/login_screen.dart';
 
@@ -11,24 +12,15 @@ class CommonDrawer extends StatefulWidget {
 }
 
 class _CommonDrawerState extends State<CommonDrawer> {
-
-  /// TODO: 가계부 이름도 추가할 수 있어야 겠다. 없을 경우 userName의 가계부 로
-
   // 현재 선택된 가계부 이름
   late String selectedBudgetName;
-
-  // 함께 사용하는 사용자들
-  final List<SharedUser> sharedUsers = [
-    SharedUser(name: '이엄마', role: 'owner'),
-    SharedUser(name: '신철원', role: 'editor'),
-    SharedUser(name: '아이', role: 'viewer'),
-  ];
 
   @override
 
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
+    final moneyProvider = context.watch<MoneyProvider>();
 
     if (!userProvider.isLoggedIn) {
       return Drawer(
@@ -77,8 +69,8 @@ class _CommonDrawerState extends State<CommonDrawer> {
       );
     }
     final userId = userProvider.userId;
-    final sharedUser = userProvider.sharedUser;
-    final myInfo = sharedUser?.firstWhere((user) => user.id == userId);
+    final sharedUser = userProvider.sharedUsers;
+    final myInfo = userProvider.myInfo;
     final userName = myInfo?.name ?? '이름 없음';
     final isProfile = myInfo?.isProfile ?? false;
     final isLoggedIn = userProvider.isLoggedIn;
@@ -110,16 +102,19 @@ class _CommonDrawerState extends State<CommonDrawer> {
               padding: const EdgeInsets.only(top: 22.0),
               child: Row(
                 children: [
-                  Text(
-                    userName ?? '',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      userName ?? '',
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      softWrap: false,
+                    ),
                   ),
-                  Spacer(),
                   IconButton(
                     icon: Icon(Icons.settings, color: Colors.white),
                     onPressed: () {
-                      // TODO: 설정 화면 이동
-                      print('설정 눌림');
+                      Navigator.pushNamed(context, '/more/my-info');
                     },
                   ),
                 ],
@@ -158,8 +153,37 @@ class _CommonDrawerState extends State<CommonDrawer> {
                     ),
                     IconButton(
                       icon: const Icon(Icons.sync, size: 20, color: Colors.grey),
-                      onPressed: () {
-                        // TODO: ownerId 변경 처리 로직 연결
+                      onPressed: () async {
+                        if (sharedUser == null || sharedUser.isEmpty) return;
+
+                        final selectedId = await showDialog<String>(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return SimpleDialog(
+                              title: const Text('그룹 선택'),
+                              children: sharedUser.map((user) {
+                                return SimpleDialogOption(
+                                  onPressed: () {
+                                    Navigator.pop(context, user.id); // 해당 user의 id를 선택 결과로 반환
+                                  },
+                                  child: Row(
+                                    children: [
+                                      if (user.id == ownerId) const Icon(Icons.check, color: Colors.green, size: 20),
+                                      const SizedBox(width: 4),
+                                      Text(user.groupName ?? '(이름 없음)'),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
+                        );
+
+                        if (selectedId != null && selectedId != ownerId) {
+                          await userProvider.setOwnerId(selectedId);
+                          final newBudgetId = userProvider.budgetId;
+                          await moneyProvider.setOwnerId(selectedId, newBudgetId!); // provider에 메서드가 있어야 함
+                        }
                       },
                     ),
                   ],
@@ -179,18 +203,20 @@ class _CommonDrawerState extends State<CommonDrawer> {
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
-                      value: selectedBudgetName,
+                      value: budgets?.any((b) => b.id == budgetId) == true ? budgetId : null,
                       icon: const Icon(Icons.keyboard_arrow_down),
                       style: const TextStyle(fontSize: 16, color: Colors.black),
                       items: budgets?.map((budget) {
                         return DropdownMenuItem<String>(
-                          value: budget.name,
+                          value: budget.id,
                           child: Text(budget.name ?? '(이름 없음)'),
                         );
                       }).toList(),
-                      onChanged: (newValue) {
+                      onChanged: (newValue) async {
                         if (newValue != null) {
-                          context.read<UserProvider>().setOwnerId(newValue);
+                          await userProvider.setBudgetId(newValue);
+                          await moneyProvider.setBudgetId(newValue);
+                          setState(() {});
                         }
                       },
                     ),
@@ -228,6 +254,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: List.generate(sortedUsers.length, (index) {
+                    print(sortedUsers.length);
                     final user = sortedUsers[index];
                     final isOwner = user.id == ownerId;
 
@@ -250,6 +277,9 @@ class _CommonDrawerState extends State<CommonDrawer> {
                               style: TextStyle(
                                 fontWeight: isOwner ? FontWeight.bold : FontWeight.normal,
                               ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              softWrap: false,
                             ),
                           ),
                           if (isOwner)
@@ -292,7 +322,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
           // 사용자 초대 버튼
           ListTile(
             leading: const Icon(Icons.person_add),
-            title: const Text('사용자 초대'),
+            title: const Text('가계부 그룹 공유/참여'),
             onTap: handleInviteUser,
           ),
 
@@ -311,21 +341,16 @@ class _CommonDrawerState extends State<CommonDrawer> {
     final isLoggedIn = context.read<UserProvider>().isLoggedIn;
 
     if (!isLoggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('로그인이 필요합니다.'),
-          duration: Duration(milliseconds: 1000),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const LoginScreen(message: '이 기능은 로그인 후 사용할 수 있습니다.'),
         ),
       );
-
-      Future.delayed(Duration(milliseconds: 1100), () {
-        handleLogin();
-      });
       return;
     }
 
-    // 사용자 초대 로직 TODO : 만들어야함
-    print('사용자 초대');
+    Navigator.pushNamed(context, '/more/join-group');
   }
 
   void handleLogin() {
@@ -339,33 +364,4 @@ class _CommonDrawerState extends State<CommonDrawer> {
       Navigator.pushReplacementNamed(context, '/');
     }
   }
-}
-
-// 공유 사용자 모델
-class SharedUser {
-  final String name;
-  final String role;
-
-  SharedUser({required this.name, required this.role});
-
-  String get roleLabel {
-    switch (role) {
-      case 'owner':
-        return '관리자';
-      case 'editor':
-        return '편집자';
-      case 'viewer':
-        return '보기 전용';
-      default:
-        return '알 수 없음';
-    }
-  }
-}
-
-// 가계부 그룹 모델
-class BudgetGroup {
-  final String name;
-  final bool isOwner;
-
-  BudgetGroup({required this.name, required this.isOwner});
 }

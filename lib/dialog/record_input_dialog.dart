@@ -143,7 +143,6 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
 
   String _iconSubtitleText() {
     return switch (_selectedType) {
-      // todo: 반복/할부 기능 구현 필요
       TransactionType.income => '반복',
       TransactionType.expense => '반복/할부',
       TransactionType.transfer => '반복',

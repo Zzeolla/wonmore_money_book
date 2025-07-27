@@ -29,7 +29,7 @@ class AppDatabase extends _$AppDatabase {
         // 데이터베이스 최초 생성 시 실행
         await m.createAll();
         // 기본 카테고리 데이터 삽입
-        await _insertDefaultCategories();
+        await insertDefaultCategories();
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 3) {
@@ -44,7 +44,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   // 기본 카테고리 데이터 삽입
-  Future<void> _insertDefaultCategories() async {
+  Future<void> insertDefaultCategories() async {
     int order_income = 0;
     int order_expense = 0;
 

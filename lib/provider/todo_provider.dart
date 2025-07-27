@@ -13,7 +13,7 @@ class TodoProvider extends ChangeNotifier {
   List<TodoModel> _todos = [];
 
   TodoProvider(this._db) {
-    _loadTodos();
+    loadTodos();
   }
 
   List<TodoModel> get todos => _todos;
@@ -21,7 +21,7 @@ class TodoProvider extends ChangeNotifier {
   Future<void> setUserId(String? userId, String? ownerId) async {
     _userId = userId;
     _ownerId = ownerId;
-    _loadTodos();
+    loadTodos();
   }
 
   Future<void> syncTodoLocalDataToSupabase() async {
@@ -37,16 +37,18 @@ class TodoProvider extends ChangeNotifier {
     await _db.delete(_db.todos).go();
   }
 
-  Future<void> _loadTodos() async {
+  Future<void> loadTodos() async {
     if (_userId == null) {
       final localTodo = await _db.select(_db.todos).get();
       _todos = localTodo.map(TodoModel.fromDriftRow).toList();
 
     } else {
+      /// TODO: 추후에는 디폴트가 createdBy를 기준으로 내가 만든것만 보이게 하고, todolist를 공유할 지 말지를 선택해서 ownerId들에게 보이는 걸로도 설정 가능하게 바꾸기로
       final response = await Supabase.instance.client
           .from('todos')
           .select()
           .eq('is_done', false)
+          .eq('owner_id', _ownerId!)
           .order('created_at');
       _todos = response.map(TodoModel.fromJson).toList();
     }
@@ -67,7 +69,7 @@ class TodoProvider extends ChangeNotifier {
     } else {
       await supabase.from('todos').insert(todoModel.toMap());
     }
-    await _loadTodos();
+    await loadTodos();
   }
 
   Future<void> toggleTodo(String id, bool isDone) async {
@@ -83,7 +85,7 @@ class TodoProvider extends ChangeNotifier {
       }).eq('id', id);
     }
 
-    await _loadTodos();
+    await loadTodos();
   }
 
   Future<void> updateTodo(String id, String title, String? memo) async {
@@ -103,7 +105,7 @@ class TodoProvider extends ChangeNotifier {
       await supabase.from('todos').update(updatedMap).eq('id', id);
     }
 
-    await _loadTodos();
+    await loadTodos();
   }
 
   Future<void> deleteTodo(String id) async {
@@ -113,7 +115,7 @@ class TodoProvider extends ChangeNotifier {
       await supabase.from('todos').delete().eq('id', id);
     }
 
-    await _loadTodos();
+    await loadTodos();
   }
 
 } 

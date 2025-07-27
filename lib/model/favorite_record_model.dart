@@ -4,19 +4,19 @@ import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 
 class FavoriteRecordModel {
-  String? id;
-  int amount;
-  TransactionType type;
-  PeriodType period;
-  DateTime? startDate;
-  DateTime? lastGeneratedDate;
-  String? categoryId;
-  String? assetId;
-  String? title;
-  String? memo;
-  String? ownerId;
-  String? budgetId;
-  DateTime? updatedAt;
+  final String? id;
+  final int amount;
+  final TransactionType type;
+  final PeriodType period;
+  final DateTime? startDate;
+  final DateTime? lastGeneratedDate;
+  final String? categoryId;
+  final String? assetId;
+  final String? title;
+  final String? memo;
+  final String? ownerId;
+  final String? budgetId;
+  final DateTime? updatedAt;
 
   FavoriteRecordModel({
     this.id,
@@ -42,8 +42,8 @@ class FavoriteRecordModel {
       'period': period.name,
       'start_date': startDate?.toIso8601String(),
       'last_generated_date': lastGeneratedDate?.toIso8601String(),
-      'category_id': categoryId,
-      'asset_id': assetId,
+      'category_id': (categoryId?.isEmpty ?? true) ? null : categoryId,
+      'asset_id': (assetId?.isEmpty ?? true) ? null : assetId,
       'title': title,
       'memo': memo,
       'owner_id': ownerId,
@@ -58,14 +58,14 @@ class FavoriteRecordModel {
       amount: json['amount'],
       type: TransactionType.values.firstWhere((e) => e.name == json['type']),
       period: PeriodType.values.firstWhere((e) => e.name == json['period']),
-      startDate: DateTime.parse(json['start_date']),
-      lastGeneratedDate: DateTime.parse(json['last_generated_date']),
-      categoryId: json['category_id'],
-      assetId: json['asset_id'],
-      title: json['title'],
-      memo: json['memo'],
-      ownerId: json['owner_id'],
-      budgetId: json['budget_id'],
+      startDate: json['start_date'] != null ? DateTime.parse(json['start_date']) : null,
+      lastGeneratedDate: json['last_generated_date'] != null ? DateTime.parse(json['last_generated_date']) : null,
+      categoryId: json['category_id'] ?? '',
+      assetId: json['asset_id'] ?? '',
+      title: json['title'] ?? '',
+      memo: json['memo'] ?? '',
+      ownerId: json['owner_id'] ?? '',
+      budgetId: json['budget_id'] ?? '',
       updatedAt: DateTime.parse(json['updated_at']),
     );
   }

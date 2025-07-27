@@ -131,11 +131,19 @@ class CategoryService {
       final maxOrder = await _db.getMaxSortOrderByType(type);
       return maxOrder + 1;
     } else {
-      final response = await supabase.from('categories').select('sort_order')
-          .eq('type', type.name).eq('owner_id', ownerId!).order('sort_order', ascending: false)
+      final response = await supabase
+          .from('categories')
+          .select('sort_order')
+          .eq('type', type.name)
+          .eq('owner_id', ownerId!)
+          .order('sort_order', ascending: false)
           .limit(1);
-      final map = response.map(CategoryModel.fromJson).toList();
-      return map.first.sortOrder! + 1;
+
+      final maxSortOrder = response.isNotEmpty
+          ? (response.first['sort_order'] as int? ?? 0)
+          : 0;
+
+      return maxSortOrder + 1;
     }
   }
 

@@ -1,12 +1,12 @@
 class UserModel {
-  String? id;
-  String? email;
-  String? name;
-  String? groupName;
-  String? lastOwnerId;
-  String? lastBudgetId;
-  bool? isProfile;
-  String? profileUrl;
+  final String? id;
+  final String? email;
+  final String? name;
+  final String? groupName;
+  final String? lastOwnerId;
+  final String? lastBudgetId;
+  final bool? isProfile;
+  final String? profileUrl;
 
   UserModel({
     this.id,

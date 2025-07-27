@@ -384,7 +384,7 @@ class _InstallmentInputDialogState extends State<InstallmentInputDialog> {
                               if (result!) {
                                 await context
                                     .read<MoneyProvider>()
-                                    .deleteInstallment(widget.installmentId!); /// TODO: 삭제 provider 생성 및 적용 필요
+                                    .deleteInstallment(widget.installmentId!);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('삭제되었습니다')),
                                 );

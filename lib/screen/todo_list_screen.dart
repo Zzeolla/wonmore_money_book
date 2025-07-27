@@ -22,6 +22,14 @@ class TodoListScreen extends StatefulWidget {
 class _TodoListScreenState extends State<TodoListScreen> {
   bool _isFlushbar = false;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TodoProvider>().loadTodos();
+    });
+  }
+
   void _showFlushBar(BuildContext context, String todoId, String title) {
     _isFlushbar = true;
     Flushbar(

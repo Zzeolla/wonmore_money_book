@@ -27,13 +27,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   String _selectedAsset = '전체'; // 자산 이름 또는 ID
   final now = DateTime.now();
 
-  final dummyData = [
-    CategorySummary(name: '식비', amount: 45000),
-    CategorySummary(name: '교통', amount: 30000),
-    CategorySummary(name: '문화', amount: 15000),
-    CategorySummary(name: '기타', amount: 10000),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -54,7 +47,6 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final end = _weekDateInfo!.endDate;
 
     return Scaffold(
-      // todo: 분석 기능 만들기 최대한 간단하게
       appBar: CommonAppBar(actions: [
         IconButton(
           icon: Icon(Icons.date_range, color: Color(0xFFF2F4F6), size: 30),
@@ -200,21 +192,43 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         ],
       ),
     );
-
     if (selected != null) {
-      setState(() {
-        _datePeriodType = selected;
-        if (selected == DatePeriodType.month || selected == DatePeriodType.custom) {
-          _weekDateInfo = WeekDateInfo(
-            weekNumber: null,
-            startDate: DateTime(date.year, date.month, 1),
-            endDate: DateTime(date.year, date.month + 1, 1).subtract(const Duration(days: 1)),
-          );
-        } else {
-          _weekDateInfo = getSundayBasedWeekInfo(date);
+      if (selected == DatePeriodType.custom) {
+        final range = await showDateRangePicker(
+          context: context,
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+          initialDateRange: DateTimeRange(
+            start: _weekDateInfo!.startDate,
+            end: _weekDateInfo!.endDate,
+          ),
+        );
+
+        if (range != null) {
+          setState(() {
+            _datePeriodType = DatePeriodType.custom;
+            _weekDateInfo = WeekDateInfo(
+              weekNumber: null,
+              startDate: range.start,
+              endDate: range.end,
+            );
+          });
         }
-        // 필요 시 _startDate, _endDate 계산
-      });
+      } else {
+        setState(() {
+          _datePeriodType = selected;
+          if (selected == DatePeriodType.month) {
+            _weekDateInfo = WeekDateInfo(
+              weekNumber: null,
+              startDate: DateTime(date.year, date.month, 1),
+              endDate: DateTime(date.year, date.month + 1, 1)
+                  .subtract(const Duration(days: 1)),
+            );
+          } else if (selected == DatePeriodType.week) {
+            _weekDateInfo = getSundayBasedWeekInfo(date);
+          }
+        });
+      }
     }
   }
 
@@ -250,19 +264,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     }
     // final yearMonthText = '${focusedDay.year}.${focusedDay.month.toString().padLeft(2, '0')}월';
 
-    void _showMonthPickerDialog() async {
-      final picked = await showMonthPicker(
-        context: context,
-        initialDate: focusedDay,
-        firstDate: DateTime(2000),
-        lastDate: DateTime(2100),
-      );
-      if (picked != null) {
-        provider.changeFocusedDay(DateTime(picked.year, picked.month));
-      }
-    }
-
-    Widget _buildCircleArrowButton({required IconData icon, required VoidCallback onTap}) {
+    Widget buildCircleArrowButton({required IconData icon, required VoidCallback onTap}) {
       return GestureDetector(
         onTap: onTap,
         child: Container(
@@ -287,16 +289,93 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (periodType != DatePeriodType.custom)
-              _buildCircleArrowButton(
+              buildCircleArrowButton(
                 icon: Icons.chevron_left,
                 onTap: () {
-                  final prevMonth = DateTime(focusedDay.year, focusedDay.month - 1);
-                  provider.changeFocusedDay(prevMonth);
+                  if (periodType == DatePeriodType.month) {
+                    final prevMonth = DateTime(focusedDay.year, focusedDay.month - 1);
+                    provider.changeFocusedDay(prevMonth);
+                    setState(() {
+                      _weekDateInfo = WeekDateInfo(
+                        weekNumber: null,
+                        startDate: DateTime(prevMonth.year, prevMonth.month, 1),
+                        endDate: DateTime(prevMonth.year, prevMonth.month + 1, 1)
+                            .subtract(const Duration(days: 1)),
+                      );
+                    });
+                  } else if (periodType == DatePeriodType.week) {
+                    final prevWeekStart = _weekDateInfo!.startDate.subtract(const Duration(days: 7));
+                    final prevWeek = getSundayBasedWeekInfo(prevWeekStart);
+                    provider.changeFocusedDay(prevWeekStart);
+                    setState(() {
+                      _weekDateInfo = prevWeek;
+                    });
+                  }
                 },
               ),
             const SizedBox(width: 16),
             GestureDetector(
-              onTap: _showMonthPickerDialog,
+              onTap: () async {
+                if (_datePeriodType == DatePeriodType.custom) {
+                  // ✅ 커스텀: 기간 선택기
+                  final range = await showDateRangePicker(
+                    context: context,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                    initialDateRange: DateTimeRange(
+                      start: _weekDateInfo!.startDate,
+                      end: _weekDateInfo!.endDate,
+                    ),
+                  );
+
+                  if (range != null) {
+                    setState(() {
+                      _weekDateInfo = WeekDateInfo(
+                        weekNumber: null,
+                        startDate: range.start,
+                        endDate: range.end,
+                      );
+                    });
+                  }
+
+                } else if (_datePeriodType == DatePeriodType.week) {
+                  // ✅ 주간: 날짜 하나 선택 → 그 날짜가 속한 주로 이동
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: _weekDateInfo!.startDate,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+
+                  if (picked != null) {
+                    final newWeek = getSundayBasedWeekInfo(picked);
+                    provider.changeFocusedDay(picked);
+                    setState(() {
+                      _weekDateInfo = newWeek;
+                    });
+                  }
+
+                } else {
+                  // ✅ 월간: 월 선택기
+                  final picked = await showMonthPicker(
+                    context: context,
+                    initialDate: provider.focusedDay,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (picked != null) {
+                    provider.changeFocusedDay(DateTime(picked.year, picked.month));
+                    setState(() {
+                      _weekDateInfo = WeekDateInfo(
+                        weekNumber: null,
+                        startDate: DateTime(picked.year, picked.month, 1),
+                        endDate: DateTime(picked.year, picked.month + 1, 1)
+                            .subtract(const Duration(days: 1)),
+                      );
+                    });
+                  }
+                }
+              },
               child: Text(
                 yearMonthText,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
@@ -304,11 +383,28 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ),
             const SizedBox(width: 16),
             if (periodType != DatePeriodType.custom)
-              _buildCircleArrowButton(
+              buildCircleArrowButton(
                 icon: Icons.chevron_right,
                 onTap: () {
-                  final nextMonth = DateTime(focusedDay.year, focusedDay.month + 1);
-                  provider.changeFocusedDay(nextMonth);
+                  if (periodType == DatePeriodType.month) {
+                    final nextMonth = DateTime(focusedDay.year, focusedDay.month + 1);
+                    provider.changeFocusedDay(nextMonth);
+                    setState(() {
+                      _weekDateInfo = WeekDateInfo(
+                        weekNumber: null,
+                        startDate: DateTime(nextMonth.year, nextMonth.month, 1),
+                        endDate: DateTime(nextMonth.year, nextMonth.month + 1, 1)
+                            .subtract(const Duration(days: 1)),
+                      );
+                    });
+                  } else if (periodType == DatePeriodType.week) {
+                    final nextWeekStart = _weekDateInfo!.startDate.add(const Duration(days: 7));
+                    final nextWeek = getSundayBasedWeekInfo(nextWeekStart);
+                    provider.changeFocusedDay(nextWeekStart);
+                    setState(() {
+                      _weekDateInfo = nextWeek;
+                    });
+                  }
                 },
               ),
           ],

@@ -460,9 +460,18 @@ class _RepeatRecordInputDialogState extends State<RepeatRecordInputDialog> {
                                     Navigator.pop(context, false);
                                   }
                                 } else {
+                                  final now = DateTime.now();
+                                  final oneMonthAgo = DateTime(now.year, now.month - 1, now.day);
+
+                                  if (selectedDate.isBefore(oneMonthAgo)) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('선택한 날짜는 한 달 이전이라 등록이 불가합니다.'))
+                                    );
+                                    return;
+                                  }
                                   // 새로운 거래내역 추가
                                   await provider.addFavoriteRecord(
-                                    FavoriteRecordModel( ///TODO: 이거 제한이 필요할듯? 과거 한달 전부터만 입력 가능하도록
+                                    FavoriteRecordModel(
                                       startDate: selectedDate,
                                       amount: amount,
                                       type: _selectedType,

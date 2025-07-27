@@ -2,17 +2,17 @@ import 'package:drift/drift.dart';
 import 'package:wonmore_money_book/database/database.dart';
 
 class InstallmentModel {
-  String? id;
-  DateTime date;
-  int totalAmount;
-  int months;
-  String? categoryId;
-  String? assetId;
-  String? title;
-  String? memo;
-  String? ownerId;
-  String? budgetId;
-  DateTime? updatedAt;
+  final String? id;
+  final DateTime date;
+  final int totalAmount;
+  final int months;
+  final String? categoryId;
+  final String? assetId;
+  final String? title;
+  final String? memo;
+  final String? ownerId;
+  final String? budgetId;
+  final DateTime? updatedAt;
 
   InstallmentModel({
     this.id,

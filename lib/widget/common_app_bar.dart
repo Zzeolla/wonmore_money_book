@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
   final bool isMainScreen;
+  final String label;
 
   const CommonAppBar({
     super.key,
     this.isMainScreen = true,
     this.actions,
+    this.label = '원모아 가계부',
   });
 
   @override
@@ -28,8 +30,8 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
         onPressed: () => Navigator.of(context).maybePop(),
         color: Colors.white,
       ),
-      title: const Text(
-        '원모아 가계부',
+      title: Text(
+        label,
         style: TextStyle(
           color: Color(0xFFF2F4F6),
           fontSize: 20,
