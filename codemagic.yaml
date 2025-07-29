@@ -1,0 +1,28 @@
+workflows:
+  ios_debug_build:
+    name: iOS Debug Build
+    environment:
+      flutter: stable
+      xcode: latest
+      vars:
+        SUPABASE_URL: https://rzauhdeimiizczhnclpw.supabase.co
+        SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6YXVoZGVpbWlpemN6aG5jbHB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAxNTUxNTksImV4cCI6MjA2NTczMTE1OX0.iZdWkSNqrjKj8E1nFK10kNtwaWY7o-7wPi7lSXSFDWw
+        ADMOB_BANNER_ID_ANDROID: ca-app-pub-3285977796570780/4619409421
+        ADMOB_BANNER_ID_IOS: ca-app-pub-3285977796570780/2621721450
+        ADMOB_REWARDED_ID_ANDROID: ca-app-pub-3285977796570780/4428102038
+        ADMOB_REWARDED_ID_IOS: ca-app-pub-3285977796570780/1605625430
+    scripts:
+      - name: Generate .env file
+        script: |
+          echo "SUPABASE_URL=$SUPABASE_URL" >> .env
+          echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
+          echo "ADMOB_BANNER_ID_ANDROID=$ADMOB_BANNER_ID_ANDROID" >> .env
+          echo "ADMOB_BANNER_ID_IOS=$ADMOB_BANNER_ID_IOS" >> .env
+          echo "ADMOB_REWARDED_ID_ANDROID=$ADMOB_REWARDED_ID_ANDROID" >> .env
+          echo "ADMOB_REWARDED_ID_IOS=$ADMOB_REWARDED_ID_IOS" >> .env
+      - name: Get dependencies
+        script: flutter pub get
+      - name: Build iOS debug
+        script: flutter build ios --debug --flavor ios-production -t lib/main_prod.dart
+    artifacts:
+      - build/ios/ipa/*.ipa
