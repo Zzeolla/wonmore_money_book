@@ -23,6 +23,6 @@ workflows:
       - name: Get dependencies
         script: flutter pub get
       - name: Build iOS debug
-        script: flutter build ios --debug --flavor ios-production -t lib/main_prod.dart
+        script: flutter build ios --debug
     artifacts:
       - build/ios/ipa/*.ipa
