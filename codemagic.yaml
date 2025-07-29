@@ -2,7 +2,7 @@ workflows:
   ios_debug_build:
     name: iOS Debug Build
     environment:
-      flutter: stable
+      flutter: "3.29.2"
       xcode: latest
       vars:
         SUPABASE_URL: https://rzauhdeimiizczhnclpw.supabase.co
