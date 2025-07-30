@@ -16,17 +16,13 @@ workflows:
         ADMOB_BANNER_ID_IOS: $ADMOB_BANNER_ID_IOS
         ADMOB_REWARDED_ID_ANDROID: $ADMOB_REWARDED_ID_ANDROID
         ADMOB_REWARDED_ID_IOS: $ADMOB_REWARDED_ID_IOS
-        BUNDLE_ID: com.zlabo.wonmoremoneybook
+        BUNDLE_ID: com.zlabo.wonmoremoneybook  # 👈 여기 너 앱 번들 아이디 넣어
 
     scripts:
       - name: 🔐 Decode and install signing files
         script: |
-          echo "🔍 Debug - CERTIFICATE_URL length: ${#CERTIFICATE_URL}"
-          echo "🔍 Debug - PROVISIONING_PROFILE_URL length: ${#PROVISIONING_PROFILE_URL}"
-          
           echo $CERTIFICATE_URL | base64 --decode > signing.p12
           echo $PROVISIONING_PROFILE_URL | base64 --decode > profile.mobileprovision
-
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           uuid=$(grep -a -o 'UUID.*</string>' profile.mobileprovision | head -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
           profile_name=$(grep -a -A1 '<key>Name</key>' profile.mobileprovision | tail -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
@@ -37,7 +33,6 @@ workflows:
           security list-keychains -s build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "" build.keychain
-          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
 
       - name: 🧾 Generate ExportOptions.plist
         script: |
@@ -80,9 +75,6 @@ workflows:
 
     artifacts:
       - build/ios/ipa/*.ipa
-      - build/ios/ipa/*.dSYM.zip
-      - ExportOptions.plist
-      - .env
 
     publishing:
       app_store_connect:
