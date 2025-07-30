@@ -34,10 +34,11 @@ workflows:
       - build/ios/ipa/*.ipa
 
     code_signing:
-      certificate: wonmore_money_book_appstore_cert
+      certificate: $CERTIFICATE_URL
       certificate_password: $P12_PASSWORD
-      provisioning_profiles: wonmore_money_book_appstore_profile
-      bundle_identifier: com.zlabo.wonmoremoneybook
+      provisioning_profiles:
+        - url: $PROVISIONING_PROFILE_URL
+          bundle_identifier: com.zlabo.wonmoremoneybook
 
     publishing:
       app_store_connect:
