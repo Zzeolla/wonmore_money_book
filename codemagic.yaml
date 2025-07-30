@@ -5,7 +5,7 @@ workflows:
       flutter: "3.29.2"
       xcode: latest
       groups:
-        - env  # Codemagic 환경 변수 그룹 (.env 관련 정보 포함)
+        - env
       vars:
         P12_PASSWORD: $P12_PASSWORD
         CERTIFICATE_URL: $CERTIFICATE_URL
@@ -21,6 +21,9 @@ workflows:
     scripts:
       - name: 🔐 Decode and install signing files
         script: |
+          echo "🔍 Debug - CERTIFICATE_URL length: ${#CERTIFICATE_URL}"
+          echo "🔍 Debug - PROVISIONING_PROFILE_URL length: ${#PROVISIONING_PROFILE_URL}"
+          
           echo $CERTIFICATE_URL | base64 --decode > signing.p12
           echo $PROVISIONING_PROFILE_URL | base64 --decode > profile.mobileprovision
 
