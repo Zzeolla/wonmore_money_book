@@ -33,14 +33,7 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
 
-    code_signing:
-      certificate: $CERTIFICATE_URL
-      certificate_password: $P12_PASSWORD
-      provisioning_profiles:
-        - url: $PROVISIONING_PROFILE_URL
-          bundle_identifier: com.zlabo.wonmoremoneybook
-
     publishing:
       app_store_connect:
-        apple_id: shincw1142@gmail.com  # ✅ 애플 로그인 이메일
-        password: $APP_SPECIFIC_PASSWORD        # ✅ 앱 전용 비밀번호 (환경변수 등록 필수)
+        apple_id: shincw1142@gmail.com
+        password: $APP_SPECIFIC_PASSWORD
