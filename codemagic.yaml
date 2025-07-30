@@ -2,6 +2,8 @@ workflows:
   ios_release_build:
     name: iOS Release Build
     environment:
+      groups:
+        - env
       flutter: "3.29.2"
       xcode: latest
       vars:
@@ -14,7 +16,21 @@ workflows:
         P12_PASSWORD: $P12_PASSWORD
         CERTIFICATE_URL: $CERTIFICATE_URL
         PROVISIONING_PROFILE_URL: $PROVISIONING_PROFILE_URL
+
     scripts:
+      - name: Decode and install signing files
+        script: |
+          echo $CERTIFICATE_URL | base64 --decode > signing.p12
+          echo $PROVISIONING_PROFILE_URL | base64 --decode > profile.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          uuid=$(grep -a -o 'UUID.*</string>' profile.mobileprovision | head -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
+          cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
+          security create-keychain -p "" build.keychain
+          security import signing.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security list-keychains -s build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+
       - name: Generate .env file
         script: |
           echo "SUPABASE_URL=$SUPABASE_URL" >> .env
@@ -28,7 +44,7 @@ workflows:
         script: flutter pub get
 
       - name: Build iOS release
-        script: flutter build ios --release --no-codesign
+        script: flutter build ipa --release --export-options-plist=ExportOptions.plist
 
     artifacts:
       - build/ios/ipa/*.ipa
