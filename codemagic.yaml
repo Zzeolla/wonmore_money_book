@@ -23,6 +23,12 @@ workflows:
         script: |
           echo $CERTIFICATE_URL | base64 --decode > signing.p12
           echo $PROVISIONING_PROFILE_URL | base64 --decode > profile.mobileprovision
+          
+          echo "✅ Profile file size: $(ls -la profile.mobileprovision)"
+          echo "✅ Profile content preview:"
+          head -5 profile.mobileprovision
+    
+    
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           uuid=$(grep -a -o 'UUID.*</string>' profile.mobileprovision | head -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
           profile_name=$(grep -a -A1 '<key>Name</key>' profile.mobileprovision | tail -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
@@ -31,6 +37,9 @@ workflows:
           echo "✅ Extracted Provisioning Profile Name: $profile_name"
           
           cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
+          
+          echo "✅ Installed profiles:"
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
 
           security create-keychain -p "" build.keychain
           security import signing.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
