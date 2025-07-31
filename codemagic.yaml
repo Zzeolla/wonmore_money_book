@@ -47,8 +47,8 @@ workflows:
             <string>manual</string>
             <key>provisioningProfiles</key>
             <dict>
-              <key>${BUNDLE_ID}</key>
-              <string>${profile_name}</string>
+              <key>com.zlabo.wonmoremoneybook</key>
+              <string>wonmoremoneybook Distribution</string>
             </dict>
             <key>compileBitcode</key>
             <false/>
