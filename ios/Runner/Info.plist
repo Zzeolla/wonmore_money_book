@@ -7,7 +7,7 @@
 		<key>CFBundleDisplayName</key>
 		<string>원모아가계부</string>
 		<key>CFBundleExecutable</key>
-		<string>$(EXECUTABLE_NAME)</string>
+		<string>com.zlabo.wonmoremoneybook</string>
 		<key>CFBundleIdentifier</key>
 		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 		<key>CFBundleInfoDictionaryVersion</key>
