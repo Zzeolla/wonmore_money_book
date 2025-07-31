@@ -26,6 +26,10 @@ workflows:
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           uuid=$(grep -a -o 'UUID.*</string>' profile.mobileprovision | head -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
           profile_name=$(grep -a -A1 '<key>Name</key>' profile.mobileprovision | tail -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
+          
+          echo "✅ Extracted UUID: $uuid"
+          echo "✅ Extracted Provisioning Profile Name: $profile_name"
+          
           cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
 
           security create-keychain -p "" build.keychain
@@ -36,27 +40,28 @@ workflows:
 
       - name: 🧾 Generate ExportOptions.plist
         script: |
-          cat > ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>com.zlabo.wonmoremoneybook</key>
-              <string>wonmoremoneybook Distribution</string>
-            </dict>
-            <key>compileBitcode</key>
-            <false/>
-            <key>destination</key>
-            <string>export</string>
-          </dict>
-          </plist>
-          EOF
+          echo "✅ ExportOptions.plist will use profile name: $profile_name"
+
+          echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" > ExportOptions.plist
+          echo "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">" >> ExportOptions.plist
+          echo "<plist version=\"1.0\">" >> ExportOptions.plist
+          echo "<dict>" >> ExportOptions.plist
+          echo "  <key>method</key>" >> ExportOptions.plist
+          echo "  <string>app-store</string>" >> ExportOptions.plist
+          echo "  <key>signingStyle</key>" >> ExportOptions.plist
+          echo "  <string>manual</string>" >> ExportOptions.plist
+          echo "  <key>provisioningProfiles</key>" >> ExportOptions.plist
+          echo "  <dict>" >> ExportOptions.plist
+          echo "    <key>${BUNDLE_ID}</key>" >> ExportOptions.plist
+          echo "    <string>${profile_name}</string>" >> ExportOptions.plist
+          echo "  </dict>" >> ExportOptions.plist
+          echo "  <key>compileBitcode</key>" >> ExportOptions.plist
+          echo "  <false/>" >> ExportOptions.plist
+          echo "  <key>destination</key>" >> ExportOptions.plist
+          echo "  <string>export</string>" >> ExportOptions.plist
+          echo "</dict>" >> ExportOptions.plist
+          echo "</plist>" >> ExportOptions.plist
+      
 
       - name: 🧪 Generate .env file
         script: |
