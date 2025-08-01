@@ -7,57 +7,19 @@ workflows:
       groups:
         - env
       vars:
-        P12_PASSWORD: $P12_PASSWORD
-        CERTIFICATE_URL: $CERTIFICATE_URL
-        PROVISIONING_PROFILE_URL: $PROVISIONING_PROFILE_URL
+        BUNDLE_ID: $BUNDLE_ID
+        TEAM_ID: $TEAM_ID
         SUPABASE_URL: $SUPABASE_URL
         SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
         ADMOB_BANNER_ID_ANDROID: $ADMOB_BANNER_ID_ANDROID
         ADMOB_BANNER_ID_IOS: $ADMOB_BANNER_ID_IOS
         ADMOB_REWARDED_ID_ANDROID: $ADMOB_REWARDED_ID_ANDROID
         ADMOB_REWARDED_ID_IOS: $ADMOB_REWARDED_ID_IOS
-        BUNDLE_ID: com.zlabo.wonmoremoneybook  # 👈 여기 너 앱 번들 아이디 넣어
+        APP_STORE_CONNECT_KEY_ID: $APP_STORE_CONNECT_KEY_ID
+        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
+        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
 
     scripts:
-      - name: 🔐 Decode and install signing files
-        script: |
-          echo $CERTIFICATE_URL | base64 --decode > signing.p12
-          echo $PROVISIONING_PROFILE_URL | base64 --decode > profile.mobileprovision
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          uuid=$(grep -a -o 'UUID.*</string>' profile.mobileprovision | head -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
-          profile_name=$(grep -a -A1 '<key>Name</key>' profile.mobileprovision | tail -1 | sed -e 's/.*<string>\(.*\)<\/string>/\1/')
-          cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/$uuid.mobileprovision
-
-          security create-keychain -p "" build.keychain
-          security import signing.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
-          security list-keychains -s build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "" build.keychain
-
-      - name: 🧾 Generate ExportOptions.plist
-        script: |
-          cat > ExportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>provisioningProfiles</key>
-            <dict>
-              <key>${BUNDLE_ID}</key>
-              <string>${profile_name}</string>
-            </dict>
-            <key>compileBitcode</key>
-            <false/>
-            <key>destination</key>
-            <string>export</string>
-          </dict>
-          </plist>
-          EOF
-
       - name: 🧪 Generate .env file
         script: |
           echo "SUPABASE_URL=$SUPABASE_URL" >> .env
@@ -71,7 +33,15 @@ workflows:
         script: flutter pub get
 
       - name: 🚀 Build iOS release
-        script: flutter build ipa --release --export-options-plist=ExportOptions.plist
+        script: flutter build ipa --release
+
+    code_signing:
+      automatic_code_signing:
+        apple_team_id: $TEAM_ID
+        bundle_identifier: $BUNDLE_ID
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
 
     artifacts:
       - build/ios/ipa/*.ipa
@@ -79,4 +49,3 @@ workflows:
     publishing:
       app_store_connect:
         apple_id: shincw1142@gmail.com
-        password: $APP_SPECIFIC_PASSWORD
