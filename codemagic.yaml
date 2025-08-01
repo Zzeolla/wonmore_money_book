@@ -5,20 +5,7 @@ workflows:
       flutter: "3.29.2"
       xcode: latest
       groups:
-        - env
-      vars:
-        BUNDLE_ID: $BUNDLE_ID
-        TEAM_ID: $TEAM_ID
-        SUPABASE_URL: $SUPABASE_URL
-        SUPABASE_ANON_KEY: $SUPABASE_ANON_KEY
-        ADMOB_BANNER_ID_ANDROID: $ADMOB_BANNER_ID_ANDROID
-        ADMOB_BANNER_ID_IOS: $ADMOB_BANNER_ID_IOS
-        ADMOB_REWARDED_ID_ANDROID: $ADMOB_REWARDED_ID_ANDROID
-        ADMOB_REWARDED_ID_IOS: $ADMOB_REWARDED_ID_IOS
-        APP_STORE_CONNECT_KEY_ID: $APP_STORE_CONNECT_KEY_ID
-        APP_STORE_CONNECT_ISSUER_ID: $APP_STORE_CONNECT_ISSUER_ID
-        APP_STORE_CONNECT_PRIVATE_KEY: $APP_STORE_CONNECT_PRIVATE_KEY
-
+        - env  # Codemagic 웹에서 관리하는 환경변수 그룹
     scripts:
       - name: 🧪 Generate .env file
         script: |
@@ -34,14 +21,6 @@ workflows:
 
       - name: 🚀 Build iOS release
         script: flutter build ipa --release
-
-    automatic_code_signing:  # 🔥 여기 최상위에서 선언
-      team_id: $TEAM_ID
-      app_identifier: $BUNDLE_ID
-      api_key:
-        key_id: $APP_STORE_CONNECT_KEY_ID
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        private_key: $APP_STORE_CONNECT_PRIVATE_KEY
 
     artifacts:
       - build/ios/ipa/*.ipa
