@@ -5,7 +5,8 @@ workflows:
       flutter: "3.29.2"
       xcode: latest
       groups:
-        - env  # Codemagic 웹에서 관리하는 환경변수 그룹
+        - env  # Codemagic 웹에서 만든 env 그룹
+
     scripts:
       - name: 🧪 Generate .env file
         script: |
@@ -21,6 +22,11 @@ workflows:
 
       - name: 🚀 Build iOS release
         script: flutter build ipa --release
+
+    code_signing:
+      automatic_code_signing:
+        team_id: $TEAM_ID
+        bundle_identifier: $BUNDLE_ID
 
     artifacts:
       - build/ios/ipa/*.ipa
