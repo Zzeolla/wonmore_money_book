@@ -1,8 +1,11 @@
-import 'dart:io';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:wonmore_money_book/util/ad_helper.dart';
 
 class RewardedInterstitialAdService {
+  static final RewardedInterstitialAdService _instance = RewardedInterstitialAdService._internal();
+  factory RewardedInterstitialAdService() => _instance;
+  RewardedInterstitialAdService._internal();
+
   RewardedInterstitialAd? _ad;
 
   void loadAd() {
@@ -15,7 +18,6 @@ class RewardedInterstitialAdService {
         },
         onAdFailedToLoad: (error) {
           _ad = null;
-          print('광고 로드 실패: $error');
         },
       ),
     );
@@ -24,7 +26,9 @@ class RewardedInterstitialAdService {
   bool get isReady => _ad != null;
 
   void showAd(Function onRewarded) {
-    if (_ad == null) return;
+    if (_ad == null) {
+      return;
+    }
 
     _ad!.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {

@@ -11,6 +11,7 @@ import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/screen/favorite_screen.dart';
 import 'package:wonmore_money_book/screen/todo_list_screen.dart';
+import 'package:wonmore_money_book/util/record_ad_handler.dart';
 import 'package:wonmore_money_book/widget/calendar_widget.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/custom_bottom_sheet.dart';
@@ -43,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _adService.loadAd();
+    RewardedInterstitialAdService().loadAd();
     // 앱 시작 시 현재 달의 거래내역만 로드
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MoneyProvider>().changeFocusedDay(DateTime.now());
@@ -163,22 +164,23 @@ class _HomeScreenState extends State<HomeScreen> {
                     right: 16,
                     bottom: kMinAdHeight + 16,
                     child: FloatingActionButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => RecordInputDialog(
-                            initialDate: DateTime.now(),
-                          ),
-                        ).then(
-                          (result) {
-                            if (result) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('저장되었습니다!')),
-                              );
-                            }
-                          },
-                        );
-                      },
+                      onPressed: () => RecordAdHandler.tryAddTransaction(context, _openRecordDialog),
+                      //     () {
+                      //   showDialog(
+                      //     context: context,
+                      //     builder: (context) => RecordInputDialog(
+                      //       initialDate: DateTime.now(),
+                      //     ),
+                      //   ).then(
+                      //     (result) {
+                      //       if (result) {
+                      //         ScaffoldMessenger.of(context).showSnackBar(
+                      //           SnackBar(content: Text('저장되었습니다!')),
+                      //         );
+                      //       }
+                      //     },
+                      //   );
+                      // },
                       backgroundColor: Color(0xFFA79BFF),
                       child: Icon(
                         Icons.add,

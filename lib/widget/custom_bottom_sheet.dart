@@ -9,8 +9,10 @@ import 'package:wonmore_money_book/model/asset_model.dart';
 import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/transaction_model.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
+import 'package:wonmore_money_book/service/rewarded_interstitial_ad_service.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/util/record_ad_handler.dart';
 
 class CustomBottomSheet extends StatefulWidget {
   final DateTime selectedDay;
@@ -40,6 +42,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
     _baseDay = widget.selectedDay;
     _currentPageIndex = initialPage;
     _pageController = PageController(initialPage: initialPage);
+    RewardedInterstitialAdService().loadAd();
   }
 
   @override
@@ -312,25 +315,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
       right: 16,
       bottom: 50 + 16,
       child: FloatingActionButton(
-        onPressed: () {
-          final provider = context.read<MoneyProvider>();
-          final now = DateTime.now();
-          final selected = _baseDay;
-          final date = DateTime(selected.year, selected.month, selected.day, now.hour, now.minute);
-          showDialog(
-            context: context,
-            builder: (context) =>
-                RecordInputDialog(
-                  initialDate: date,
-                ),
-          ).then((result) {
-            if (result == true) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('저장되었습니다!')),
-              );
-            }
-          });
-        },
+        onPressed: () => RecordAdHandler.tryAddTransaction(context, _openRecordDialog),
         backgroundColor: const Color(0xFFA79BFF),
         shape: const CircleBorder(),
         child: const Icon(Icons.add, color: Colors.white, size: 36),
@@ -359,6 +344,25 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
         fab,
       ],
     );
+  }
+
+  void _openRecordDialog() {
+    final now = DateTime.now();
+    final selected = _baseDay;
+    final date = DateTime(selected.year, selected.month, selected.day, now.hour, now.minute);
+    showDialog(
+      context: context,
+      builder: (context) =>
+          RecordInputDialog(
+            initialDate: date,
+          ),
+    ).then((result) {
+      if (result == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('저장되었습니다!')),
+        );
+      }
+    });
   }
 
   String _weekdayString(int weekday) {

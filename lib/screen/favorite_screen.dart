@@ -10,7 +10,9 @@ import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/service/rewarded_interstitial_ad_service.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
+import 'package:wonmore_money_book/util/record_ad_handler.dart';
 
 class FavoriteScreen extends StatefulWidget {
   final VoidCallback onClose;
@@ -26,6 +28,12 @@ class FavoriteScreen extends StatefulWidget {
 
 class _FavoriteScreenState extends State<FavoriteScreen> {
   bool _isRepeat = false;
+
+  @override
+  void initState() {
+    super.initState();
+    RewardedInterstitialAdService().loadAd();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -237,18 +245,22 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
         ),
         bottomNavigationBar: BannerAdWidget(),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => showDialog(
-            context: context,
-            builder: (_) => _isRepeat
-                ? RepeatRecordInputDialog(
-                    initialStartDate: DateTime.now(),
-                  )
-                : const FavoriteRecordInputDialog(),
-          ),
+          onPressed: () => RecordAdHandler.tryAddTransaction(context, _openRecordDialog),
           backgroundColor: Color(0xFFA79BFF),
           child: Icon(Icons.add, color: Colors.white, size: 36),
         ),
       ),
+    );
+  }
+
+  void _openRecordDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => _isRepeat
+          ? RepeatRecordInputDialog(
+        initialStartDate: DateTime.now(),
+      )
+          : const FavoriteRecordInputDialog(),
     );
   }
 

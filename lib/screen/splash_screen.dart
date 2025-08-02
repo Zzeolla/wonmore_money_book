@@ -2,6 +2,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:wonmore_money_book/model/budget_model.dart';
@@ -140,6 +141,10 @@ class _SplashScreenState extends State<SplashScreen> {
       // print('userId : ${userProvider.userId}');
       // print('ownerId : ${userProvider.ownerId}');
       // print('budgetId : ${userProvider.budgetId}');
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('record_limit_count');
+      await prefs.remove('record_limit_ad_count');
       // 4. 다음 화면 이동
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/main');
