@@ -1,10 +1,7 @@
-import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:wonmore_money_book/database/database.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
-import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/asset_model.dart';
 import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/favorite_record_model.dart';

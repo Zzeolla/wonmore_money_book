@@ -1,10 +1,9 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
-import 'dart:io' show Platform;
-
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/rounded_login_button.dart';

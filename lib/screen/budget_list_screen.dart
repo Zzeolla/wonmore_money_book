@@ -5,7 +5,6 @@ import 'package:wonmore_money_book/dialog/budget_input_dialog.dart';
 import 'package:wonmore_money_book/model/subscription_model.dart';
 import 'package:wonmore_money_book/model/user_model.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
-import 'package:wonmore_money_book/model/budget_model.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 
 class BudgetListScreen extends StatelessWidget {

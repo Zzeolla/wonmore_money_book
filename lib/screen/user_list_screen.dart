@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:wonmore_money_book/model/user_model.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 

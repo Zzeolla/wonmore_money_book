@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/model/category_model.dart';
-import 'package:wonmore_money_book/provider/money/money_provider.dart';
-import 'package:wonmore_money_book/util/icon_map.dart';
-import 'package:wonmore_money_book/util/color_palette.dart';
-import 'package:wonmore_money_book/widget/custom_circle_button.dart';
-import 'package:drift/drift.dart' as drift;
 import 'package:wonmore_money_book/model/transaction_type.dart';
-import 'package:wonmore_money_book/database/database.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/util/color_palette.dart';
+import 'package:wonmore_money_book/util/icon_map.dart';
+import 'package:wonmore_money_book/widget/custom_circle_button.dart';
 
 class CategoryInputDialog extends StatefulWidget {
   final CategoryModel? category;

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
-import 'package:wonmore_money_book/database/database.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
 import 'package:wonmore_money_book/dialog/favorite_record_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/repeat_record_input_dialog.dart';
 import 'package:wonmore_money_book/model/asset_model.dart';

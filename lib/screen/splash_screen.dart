@@ -1,18 +1,14 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'package:wonmore_money_book/model/budget_model.dart';
-import 'package:wonmore_money_book/model/subscription_model.dart';
 import 'package:wonmore_money_book/model/user_model.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/no_internet_screen.dart';
-import 'package:wonmore_money_book/service/repeat_transaction_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

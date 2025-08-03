@@ -6,7 +6,6 @@ import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
 import 'package:wonmore_money_book/screen/login_screen.dart';
-import 'package:wonmore_money_book/util/clean_app_data.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/common_drawer.dart';
 
