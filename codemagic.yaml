@@ -21,8 +21,7 @@ workflows:
       - build/ios/ipa/*.app.zip
     publishing:
       app_store_connect:
-        credentials: app_store_credentials
-        app_store_id: 6749498023  # ⚠️ App Store에 등록된 앱의 ID 숫자
+        use_integration: true
         bundle_id: $BUNDLE_ID
         submit_to_testflight: false
         submit_to_app_store: true
