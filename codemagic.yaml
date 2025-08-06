@@ -1,0 +1,10 @@
+workflows:
+  ios_release_build:
+    name: iOS Release Build
+    environment:
+      flutter: "3.29.2"  # 너가 사용하는 버전 확인 후 맞춰줘
+      xcode: latest
+      vars:
+        BUNDLE_ID: com.zlabo.wonmoremoneybook
+      groups:
+        - app_store_credentials
