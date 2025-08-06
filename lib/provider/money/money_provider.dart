@@ -18,6 +18,7 @@ import 'package:wonmore_money_book/service/repeat_transaction_service.dart';
 
 class MoneyProvider extends ChangeNotifier {
   final AppDatabase _database;
+  final Map<String, List<TransactionModel>> _monthlyCache = {};
   late RepeatTransactionService repeatTransactionService;
   late TransactionService _transactionService;
   late CategoryService _categoryService;
@@ -27,6 +28,7 @@ class MoneyProvider extends ChangeNotifier {
   String? _currentUserId;
   String? _ownerId;
   String? _budgetId;
+  String _monthKey(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}';
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   int _monthlyIncome = 0;
@@ -181,6 +183,7 @@ class MoneyProvider extends ChangeNotifier {
     _focusedDay = month;
     // await loadTransactionsForMonth(month);
     await _loadMonthlySummary();
+    prefetchSurroundingMonths(month);
     notifyListeners();
   }
 
@@ -190,36 +193,19 @@ class MoneyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 월별 요약 데이터 로드
+  // 🔸 현재 월 거래내역을 로드 (캐시 우선)
   Future<void> _loadMonthlySummary() async {
-    final startDate = DateTime(_focusedDay.year, _focusedDay.month, 1);
-    final endDate = DateTime(_focusedDay.year, _focusedDay.month + 1, 1);
+    final key = _monthKey(_focusedDay);
 
-    if (_currentUserId == null) {
-      final query = _database.select(_database.transactions)
-        ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
-        t.date.isSmallerThanValue(endDate));
-
-      // _monthlyTransactions = await query.get();
-      final localTransactions = await query.get();
-
-      // _monthlyTransactions = TransactionModel.fromDriftRow(localTransactions);
-      _monthlyTransactions = localTransactions.map(TransactionModel.fromDriftRow).toList();
-
+    if (_monthlyCache.containsKey(key)) {
+      _monthlyTransactions = _monthlyCache[key]!;
     } else {
-      final response = await Supabase.instance.client
-          .from('transactions')
-          .select()
-          .eq('budget_id', _budgetId!)
-          .gte('date', startDate.toIso8601String())
-          .lt('date', endDate.toIso8601String());
-
-      final supabaseTransactions = response
-        .map(TransactionModel.fromJson).toList();
-
-      _monthlyTransactions = supabaseTransactions;
+      final transactions = await _fetchTransactionsForMonth(_focusedDay);
+      _monthlyCache[key] = transactions;
+      _monthlyTransactions = transactions;
+      _enforceCacheLimit();
     }
-    
+
     _monthlyIncome = _monthlyTransactions
         .where((t) => t.type == TransactionType.income)
         .fold(0, (sum, t) => sum + t.amount);
@@ -230,6 +216,53 @@ class MoneyProvider extends ChangeNotifier {
 
     _monthlyBalance = _monthlyIncome - _monthlyExpense;
     _updateDailySummaryMap();
+  }
+
+  // 🔸 특정 월의 거래내역을 Supabase 또는 Local DB 에서 가져오기
+  Future<List<TransactionModel>> _fetchTransactionsForMonth(DateTime targetMonth) async {
+    final startDate = DateTime(targetMonth.year, targetMonth.month, 1);
+    final endDate = DateTime(targetMonth.year, targetMonth.month + 1, 1);
+
+    if (_currentUserId == null) {
+      final query = _database.select(_database.transactions)
+        ..where((t) => t.date.isBiggerOrEqualValue(startDate) &
+        t.date.isSmallerThanValue(endDate));
+      final result = await query.get();
+      return result.map(TransactionModel.fromDriftRow).toList();
+    } else {
+      final response = await Supabase.instance.client
+          .from('transactions')
+          .select()
+          .eq('budget_id', _budgetId!)
+          .gte('date', startDate.toIso8601String())
+          .lt('date', endDate.toIso8601String());
+      return response.map(TransactionModel.fromJson).toList();
+    }
+  }
+
+  // 🔸 주변 월 미리 로드
+  Future<void> prefetchSurroundingMonths(DateTime center) async {
+    for (int offset = -1; offset <= 1; offset++) {
+      final date = DateTime(center.year, center.month + offset, 1);
+      final key = _monthKey(date);
+      if (!_monthlyCache.containsKey(key)) {
+        final data = await _fetchTransactionsForMonth(date);
+        _monthlyCache[key] = data;
+      }
+    }
+    _enforceCacheLimit();
+  }
+
+  // 🔸 오래된 캐시 제거 (최대 6개월 유지)
+  void _enforceCacheLimit() {
+    const maxMonths = 3;
+    if (_monthlyCache.length > maxMonths) {
+      final keys = _monthlyCache.keys.toList()..sort();
+      final excess = _monthlyCache.length - maxMonths;
+      for (int i = 0; i < excess; i++) {
+        _monthlyCache.remove(keys[i]);
+      }
+    }
   }
 
   Future<bool> hasAnyTransactions() async {

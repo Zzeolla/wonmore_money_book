@@ -138,20 +138,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
 
                       Expanded(
-                        child: SingleChildScrollView(
-                          child: CalendarWidget(
-                            focusedDay: provider.focusedDay,
-                            selectedDay: provider.selectedDay,
-                            rowHeight: _rowHeight,
-                            onDaySelected: (selectedDay, _) {
-                              provider.selectDayAndFocus(selectedDay);
-                              _showBottomSheet(context, selectedDay, _rowHeight);
-                            },
-                            onPageChanged: (focusedDay) {
-                              provider.changeFocusedDay(focusedDay);
-                            },
-                            dailySummary: dailySummary,
-                          ),
+                        child: CalendarWidget(
+                          focusedDay: provider.focusedDay,
+                          selectedDay: provider.selectedDay,
+                          rowHeight: _rowHeight,
+                          onDaySelected: (selectedDay, _) {
+                            provider.selectDayAndFocus(selectedDay);
+                            _showBottomSheet(context, selectedDay, _rowHeight);
+                          },
+                          onPageChanged: (focusedDay) {
+                            provider.changeFocusedDay(focusedDay);
+                          },
+                          dailySummary: dailySummary,
                         ),
                       ),
                       BannerAdWidget(),

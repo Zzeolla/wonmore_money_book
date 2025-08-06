@@ -24,75 +24,110 @@ class CalendarWidget extends StatefulWidget {
 }
 
 class _CalendarWidgetState extends State<CalendarWidget> {
+  late DateTime _internalFocusedDay;
+
+  @override
+  void initState() {
+    super.initState();
+    _internalFocusedDay = widget.focusedDay;
+  }
+
+  void _goToPreviousMonth() {
+    setState(() {
+      _internalFocusedDay = DateTime(
+        _internalFocusedDay.year,
+        _internalFocusedDay.month - 1,
+      );
+    });
+    widget.onPageChanged?.call(_internalFocusedDay);
+  }
+
+  void _goToNextMonth() {
+    setState(() {
+      _internalFocusedDay = DateTime(
+        _internalFocusedDay.year,
+        _internalFocusedDay.month + 1,
+      );
+    });
+    widget.onPageChanged?.call(_internalFocusedDay);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return TableCalendar(
-      locale: 'ko_KR',
-      focusedDay: widget.focusedDay,
-      firstDay: DateTime.utc(1900, 1, 1),
-      lastDay: DateTime.utc(2100, 12, 31),
-      headerVisible: false,
-      sixWeekMonthsEnforced: true,
-      daysOfWeekHeight: 32,
-      rowHeight: widget.rowHeight,
-      selectedDayPredicate: (day) => isSameDay(widget.selectedDay, day),
-      onDaySelected: widget.onDaySelected,
-      onPageChanged: (focusedDay) {
-        if (widget.onPageChanged != null) {
-          widget.onPageChanged!(focusedDay);
+    return GestureDetector(
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity != null) {
+          if (details.primaryVelocity! < -100) {
+            _goToNextMonth();
+          } else if (details.primaryVelocity! > 100) {
+            _goToPreviousMonth();
+          }
         }
       },
-      daysOfWeekStyle: DaysOfWeekStyle(
-        weekdayStyle: TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
-      ),
-      calendarBuilders: CalendarBuilders(
-        dowBuilder: (context, day) {
-          if (day.weekday == DateTime.sunday) {
-            return Center(
-              child: Text('일', style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold)),
-            );
-          } else if (day.weekday == DateTime.saturday) {
-            return Center(
-              child: Text('토', style: TextStyle(color: Colors.blue, fontSize: 14, fontWeight: FontWeight.bold)),
-            );
-          } else {
-            return Center(
-              child: Text(
-                _weekdayString(day.weekday),
-                style: TextStyle(color: Colors.black87, fontSize: 14),
-              ),
-            );
-          }
-        },
-        defaultBuilder: (context, day, focusedDay) {
-          return _buildDayCell(day, widget.dailySummary);
-        },
-        todayBuilder: (context, day, focusedDay) {
-          return _buildDayCell(day, widget.dailySummary, isToday: true);
-        },
-        selectedBuilder: (context, day, focusedDay) {
-          return _buildDayCell(day, widget.dailySummary, isSelected: true);
-        },
-        outsideBuilder: (context, day, focusedDay) {
-          return _buildDayCell(day, widget.dailySummary, isOutside: true);
-        },
-      ),
-      calendarStyle: CalendarStyle(
-        selectedDecoration: BoxDecoration(
-          color: Colors.deepPurpleAccent,
-          shape: BoxShape.circle,
+      child: TableCalendar(
+        locale: 'ko_KR',
+        focusedDay: _internalFocusedDay,
+        firstDay: DateTime.utc(1900, 1, 1),
+        lastDay: DateTime.utc(2100, 12, 31),
+        headerVisible: false,
+        sixWeekMonthsEnforced: true,
+        daysOfWeekHeight: 32,
+        rowHeight: widget.rowHeight,
+        availableGestures: AvailableGestures.none, // 내부 제스처 막고 외부로 처리
+        selectedDayPredicate: (day) => isSameDay(widget.selectedDay, day),
+        onDaySelected: widget.onDaySelected,
+        daysOfWeekStyle: DaysOfWeekStyle(
+          weekdayStyle: TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.bold),
+        ),
+        calendarBuilders: CalendarBuilders(
+          dowBuilder: (context, day) {
+            if (day.weekday == DateTime.sunday) {
+              return Center(
+                child: Text('일', style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold)),
+              );
+            } else if (day.weekday == DateTime.saturday) {
+              return Center(
+                child: Text('토', style: TextStyle(color: Colors.blue, fontSize: 14, fontWeight: FontWeight.bold)),
+              );
+            } else {
+              return Center(
+                child: Text(
+                  _weekdayString(day.weekday),
+                  style: TextStyle(color: Colors.black87, fontSize: 14),
+                ),
+              );
+            }
+          },
+          defaultBuilder: (context, day, focusedDay) {
+            return _buildDayCell(day, widget.dailySummary);
+          },
+          todayBuilder: (context, day, focusedDay) {
+            return _buildDayCell(day, widget.dailySummary, isToday: true);
+          },
+          selectedBuilder: (context, day, focusedDay) {
+            return _buildDayCell(day, widget.dailySummary, isSelected: true);
+          },
+          outsideBuilder: (context, day, focusedDay) {
+            return _buildDayCell(day, widget.dailySummary, isOutside: true);
+          },
+        ),
+        calendarStyle: CalendarStyle(
+          selectedDecoration: BoxDecoration(
+            color: Colors.deepPurpleAccent,
+            shape: BoxShape.circle,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildDayCell(
-    DateTime day,
-    Map<DateTime, Map<String, int>> dailySummary, {
-    bool isToday = false,
-    bool isSelected = false,
-    bool isOutside = false,
-  }) {
+      DateTime day,
+      Map<DateTime, Map<String, int>> dailySummary, {
+        bool isToday = false,
+        bool isSelected = false,
+        bool isOutside = false,
+      }) {
     final summary = dailySummary[DateTime(day.year, day.month, day.day)];
     final income = summary?['income'] ?? 0;
     final expense = summary?['expense'] ?? 0;
@@ -107,9 +142,7 @@ class _CalendarWidgetState extends State<CalendarWidget> {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(8),
-        border: isSelected
-            ? Border.all(color: Colors.amber, width: 1.5)
-            : null,
+        border: isSelected ? Border.all(color: Colors.amber, width: 1.5) : null,
       ),
       alignment: Alignment.topCenter,
       child: Column(
@@ -140,11 +173,9 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     if (amount == 0) return '';
     if (amount.abs() >= 1000000) {
       double m = amount / 1000000;
-      // 소수점 첫째자리까지 표기(예: 12.5M), 정수면 12M
       return m % 1 == 0 ? '${m.toInt()}M' : '${m.toStringAsFixed(1)}M';
     }
-    return amount.toString().replaceAllMapped(
-        RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
+    return amount.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
   }
 
   static String _weekdayString(int weekday) {
