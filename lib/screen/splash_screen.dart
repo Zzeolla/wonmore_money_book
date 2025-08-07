@@ -138,9 +138,9 @@ class _SplashScreenState extends State<SplashScreen> {
       // print('ownerId : ${userProvider.ownerId}');
       // print('budgetId : ${userProvider.budgetId}');
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('record_limit_count');
-      await prefs.remove('record_limit_ad_count');
+      // final prefs = await SharedPreferences.getInstance();
+      // await prefs.remove('record_limit_count');
+      // await prefs.remove('record_limit_ad_count');
       // 4. 다음 화면 이동
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/main');

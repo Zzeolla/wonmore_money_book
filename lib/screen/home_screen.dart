@@ -4,12 +4,14 @@ import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/home_screen_tab.dart';
+import 'package:wonmore_money_book/model/subscription_model.dart';
 import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/favorite_screen.dart';
 import 'package:wonmore_money_book/screen/todo_list_screen.dart';
 import 'package:wonmore_money_book/service/record_ad_service.dart';
-import 'package:wonmore_money_book/service/rewarded_interstitial_ad_service.dart';
+import 'package:wonmore_money_book/service/interstitial_ad_service.dart';
 import 'package:wonmore_money_book/util/record_ad_handler.dart';
 import 'package:wonmore_money_book/widget/calendar_widget.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
@@ -34,14 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
   static const double kBottomNavBarHeight = 56.0;
   static const double kMinAdHeight = 52.0;
 
-  final _adService = RewardedInterstitialAdService();
-
   late double _rowHeight;
 
   @override
   void initState() {
     super.initState();
-    RewardedInterstitialAdService().loadAd();
+    InterstitialAdService().loadAd();
     // 앱 시작 시 현재 달의 거래내역만 로드
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MoneyProvider>().changeFocusedDay(DateTime.now());
@@ -159,23 +159,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     right: 16,
                     bottom: kMinAdHeight + 16,
                     child: FloatingActionButton(
-                      onPressed: () => RecordAdHandler.tryAddTransaction(context, _openRecordDialog),
-                      //     () {
-                      //   showDialog(
-                      //     context: context,
-                      //     builder: (context) => RecordInputDialog(
-                      //       initialDate: DateTime.now(),
-                      //     ),
-                      //   ).then(
-                      //     (result) {
-                      //       if (result) {
-                      //         ScaffoldMessenger.of(context).showSnackBar(
-                      //           SnackBar(content: Text('저장되었습니다!')),
-                      //         );
-                      //       }
-                      //     },
-                      //   );
-                      // },
+                      onPressed: () {
+                        final myPlan = context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
+                        final adsEnabled = myPlan.adsEnabled ?? true;
+
+                        if (adsEnabled) {
+                          RecordAdHandler.tryAddTransaction(context, _openRecordDialog);
+                        } else {
+                          _openRecordDialog();
+                        }
+                      },
                       backgroundColor: Color(0xFFA79BFF),
                       child: Icon(
                         Icons.add,
@@ -236,47 +229,6 @@ class _HomeScreenState extends State<HomeScreen> {
         return CustomBottomSheet(selectedDay: selectedDay, rowHeight: rowHeight);
       },
     );
-  }
-
-  Future<void> tryAddTransaction() async {
-    await RecordAdService.resetIfNewDay();
-    final todayCount = await RecordAdService.getTodayCount();
-    final adWatched = await RecordAdService.getAdWatchedCount();
-
-    if (todayCount == 0) {
-      await RecordAdService.incrementCount();
-      _openRecordDialog();
-      return;
-    }
-
-    if (adWatched == 0 && todayCount < 5) {
-      if (_adService.isReady) {
-        _adService.showAd(() async {
-          await RecordAdService.incrementAdCount();
-          await RecordAdService.incrementCount();
-          _openRecordDialog();
-        });
-      } else {
-        _openRecordDialog();
-      }
-      return;
-    }
-
-    if (adWatched == 1 && todayCount >= 5) {
-      if (_adService.isReady) {
-        _adService.showAd(() async {
-          await RecordAdService.incrementAdCount();
-          await RecordAdService.incrementCount();
-          _openRecordDialog();
-        });
-      } else {
-        _openRecordDialog();
-      }
-      return;
-    }
-
-    await RecordAdService.incrementCount();
-    _openRecordDialog();
   }
 
   void _openRecordDialog() {

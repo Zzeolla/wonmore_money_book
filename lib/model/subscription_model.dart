@@ -51,6 +51,7 @@ class SubscriptionModel {
 
   factory SubscriptionModel.free() => SubscriptionModel(
     planName: 'Free',
+    adsEnabled: true,
     maxBudgets: 3,
     maxSharedUsers: 3,
   );

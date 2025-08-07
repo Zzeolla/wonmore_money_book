@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:wonmore_money_book/service/record_ad_service.dart';
-import 'package:wonmore_money_book/service/rewarded_interstitial_ad_service.dart';
+import 'package:wonmore_money_book/service/interstitial_ad_service.dart';
 
 class RecordAdHandler {
   static Future<void> tryAddTransaction(BuildContext context, VoidCallback openDialog) async {
@@ -8,7 +8,7 @@ class RecordAdHandler {
     final todayCount = await RecordAdService.getTodayCount();
     final adWatched = await RecordAdService.getAdWatchedCount();
 
-    final adService = RewardedInterstitialAdService();
+    final adService = InterstitialAdService();
 
     if (todayCount == 0) {
       await RecordAdService.incrementCount();

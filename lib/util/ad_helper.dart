@@ -27,4 +27,16 @@ class AdHelper {
           : dotenv.env['ADMOB_REWARDED_ID_IOS']!;
     }
   }
+
+  static String get interstitialAdUnitId {
+    if (kDebugMode) {
+      return Platform.isAndroid
+          ? 'ca-app-pub-3940256099942544/1033173712' // ✅ 테스트용
+          : 'ca-app-pub-3940256099942544/4411468910';
+    } else {
+      return Platform.isAndroid
+          ? dotenv.env['ADMOB_INTERSTITIAL_ID_ANDROID']!
+          : dotenv.env['ADMOB_INTERSTITIAL_ID_IOS']!;
+    }
+  }
 }

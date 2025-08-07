@@ -6,9 +6,11 @@ import 'package:wonmore_money_book/dialog/repeat_record_input_dialog.dart';
 import 'package:wonmore_money_book/model/asset_model.dart';
 import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
+import 'package:wonmore_money_book/model/subscription_model.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
-import 'package:wonmore_money_book/service/rewarded_interstitial_ad_service.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
+import 'package:wonmore_money_book/service/interstitial_ad_service.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
 import 'package:wonmore_money_book/util/record_ad_handler.dart';
 
@@ -30,7 +32,7 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
   @override
   void initState() {
     super.initState();
-    RewardedInterstitialAdService().loadAd();
+    InterstitialAdService().loadAd();
   }
 
   @override
@@ -243,7 +245,16 @@ class _FavoriteScreenState extends State<FavoriteScreen> {
         ),
         bottomNavigationBar: BannerAdWidget(),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => RecordAdHandler.tryAddTransaction(context, _openRecordDialog),
+          onPressed: () {
+            final myPlan = context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
+            final adsEnabled = myPlan.adsEnabled ?? true;
+
+            if (adsEnabled) {
+              RecordAdHandler.tryAddTransaction(context, _openRecordDialog);
+            } else {
+              _openRecordDialog();
+            }
+          },
           backgroundColor: Color(0xFFA79BFF),
           child: Icon(Icons.add, color: Colors.white, size: 36),
         ),
