@@ -23,6 +23,7 @@ class UserProvider extends ChangeNotifier {
   List<String>? _sharedUserIds;
   List<UserModel>? _sharedUsers;
   List<UserModel>? _mySharedUsers;
+  List<UserModel>? _sharedOwnerUsers;
   SubscriptionModel? _myPlan;
 
   User? get currentUser => _currentUser;
@@ -41,6 +42,7 @@ class UserProvider extends ChangeNotifier {
   List<String>? get sharedUserIds => _sharedUserIds;
   List<UserModel>? get sharedUsers => _sharedUsers;
   List<UserModel>? get mySharedUsers => _mySharedUsers;
+  List<UserModel>? get sharedOwnerUsers => _sharedOwnerUsers;
   SubscriptionModel? get myPlan => _myPlan;
 
   Future<void> initializeUserProvider() async {
@@ -224,6 +226,13 @@ class UserProvider extends ChangeNotifier {
     final sharedOwnerGroup = responseGetOwner.map(SharedUserModel.fromJson).toList();
     _sharedOwnerIds = sharedOwnerGroup.map((e) => e.ownerId!).toList();
 
+    final responseSharedOwnerUser = await Supabase.instance.client
+        .from('users')
+        .select('*')
+        .inFilter('id', _sharedOwnerIds!);
+    _sharedOwnerUsers = responseSharedOwnerUser.map(UserModel.fromJson).toList();
+
+    // 현재 내가 선택하고 있는 ownerId를 공유받고 있는 userId
     final responseGetUser = await Supabase.instance.client
         .from('shared_users')
         .select('user_id')
@@ -231,6 +240,7 @@ class UserProvider extends ChangeNotifier {
     final sharedUserGroup = responseGetUser.map(SharedUserModel.fromJson).toList();
     _sharedUserIds = sharedUserGroup.map((e) => e.userId!).toList();
 
+    // 현재 ownerID 그룹에 포함되어 있는 user들으 의 정보 가져옴
     final userResponse = await Supabase.instance.client
         .from('users')
         .select('*')

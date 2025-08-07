@@ -197,6 +197,8 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
         'created_at': DateTime.now().toIso8601String(),
       });
 
+      await userProvider.loadSharedUsers();
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('그룹에 참여했어요!')),

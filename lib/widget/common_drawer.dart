@@ -22,6 +22,10 @@ class _CommonDrawerState extends State<CommonDrawer> {
     final userProvider = context.watch<UserProvider>();
     final moneyProvider = context.watch<MoneyProvider>();
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      userProvider.loadSharedUsers();
+    });
+
     if (!userProvider.isLoggedIn) {
       return Drawer(
         backgroundColor: const Color(0xFFF2F4F6),
@@ -77,6 +81,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
     final ownerId = userProvider.ownerId;
     final budgetId = userProvider.budgetId;
     final sharedOwnerIds = userProvider.sharedOwnerIds;
+    final sharedOwnerUsers = userProvider.sharedOwnerUsers;
     final budgets = userProvider.budgets;
     final selectedBudgetName = (budgets != null && budgets.isNotEmpty)
         ? budgets.firstWhere((b) => b.id == budgetId,
@@ -154,14 +159,14 @@ class _CommonDrawerState extends State<CommonDrawer> {
                     IconButton(
                       icon: const Icon(Icons.sync, size: 20, color: Colors.grey),
                       onPressed: () async {
-                        if (sharedUser == null || sharedUser.isEmpty) return;
+                        if (sharedOwnerUsers == null || sharedOwnerUsers.isEmpty) return;
 
                         final selectedId = await showDialog<String>(
                           context: context,
                           builder: (BuildContext context) {
                             return SimpleDialog(
                               title: const Text('그룹 선택'),
-                              children: sharedUser.map((user) {
+                              children: sharedOwnerUsers.map((user) {
                                 return SimpleDialogOption(
                                   onPressed: () {
                                     Navigator.pop(context, user.id); // 해당 user의 id를 선택 결과로 반환
