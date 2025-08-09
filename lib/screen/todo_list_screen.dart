@@ -2,7 +2,7 @@ import 'package:another_flushbar/flushbar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/todo_input_dialog.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
@@ -148,7 +148,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
                   ),
                   child: InkWell(
                     onLongPress: () async {
-                      final result = await showCustomDeleteDialog(
+                      final result = await showCustomConfirmDialog(
                         context,
                         message: '이 할 일을 정말 삭제할까요?',
                       );

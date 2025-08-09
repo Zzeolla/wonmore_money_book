@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
@@ -21,6 +22,7 @@ class AnalysisScreen extends StatefulWidget {
 }
 
 class _AnalysisScreenState extends State<AnalysisScreen> {
+  final _commaFormat = NumberFormat('#,###');
   TransactionType _selectedType = TransactionType.expense;
   DatePeriodType _datePeriodType = DatePeriodType.month;
   WeekDateInfo? _weekDateInfo;
@@ -72,7 +74,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     });
                   },
                 ),
-                SizedBox(width: 24),
+                SizedBox(width: 6),
                 TransactionTypeButton(
                   label: '지출',
                   type: TransactionType.expense,
@@ -83,7 +85,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     });
                   },
                 ),
-                SizedBox(width: 24),
+                SizedBox(width: 6),
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -153,6 +155,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                   child: PieChartWidget(
                     data: data,
                     transactionType: _selectedType,
+                    amountFormatter: _formatAmount,
                   ),
                 );
               },
@@ -411,6 +414,21 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         ),
       ),
     );
+  }
+
+  String _formatAmount(int amount) {
+    if (amount == 0) return '0';
+    final abs = amount.abs();
+    final sign = amount.isNegative ? '-' : '';
+    if (abs >= 1000000000) { // 1,000,000,000+
+      final n = (abs / 1000000).round();
+      return '$sign${_commaFormat.format(n)}백만';
+    } else if (abs >= 10000000) { // 10,000,000+
+      final n = (abs / 1000000).round();
+      return '$sign${n}백만';
+    } else {
+      return '$sign${_commaFormat.format(abs)}';
+    }
   }
 }
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/widget/custom_circle_button.dart';
 
@@ -130,7 +130,7 @@ class _AssetInputDialogState extends State<AssetInputDialog> {
                       if (widget.assetId == null) {
                         Navigator.pop(context);
                       } else {
-                        final result = await showCustomDeleteDialog(
+                        final result = await showCustomConfirmDialog(
                           context,
                           message: '이 자산을 정말 삭제할까요?'
                         );

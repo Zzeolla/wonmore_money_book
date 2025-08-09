@@ -72,9 +72,9 @@ class CategoryService {
   }
 
   Future<void> deleteCategory(String id) async {
-    await (_db.delete(_db.categories)..where((c) => c.id.equals(id))).go();
-
-    if (userId != null) {
+    if (userId == null) {
+      await (_db.delete(_db.categories)..where((c) => c.id.equals(id))).go();
+    } else {
       await supabase.from('categories').delete().eq('id', id);
     }
   }
@@ -146,45 +146,4 @@ class CategoryService {
       return maxSortOrder + 1;
     }
   }
-
-  // void listenToCategoryChanges(Function onChanged) {
-  //   if (ownerId == null) return;
-  //
-  //   _realtimeChannel?.unsubscribe();
-  //
-  //   _realtimeChannel = supabase.channel('public:categories');
-  //   _realtimeChannel!.onPostgresChanges(
-  //     event: PostgresChangeEvent.all,
-  //     schema: 'public',
-  //     table: 'categories',
-  //     filter: PostgresChangeFilter(
-  //       type: PostgresChangeFilterType.eq,
-  //       column: 'owner_id',
-  //       value: ownerId!,
-  //     ),
-  //     callback: (payload) => onChanged(),
-  //   )
-  //   .subscribe();
-  // }
-  //
-  // void disposeRealtime() {
-  //   _realtimeChannel?.unsubscribe();
-  //   _realtimeChannel = null;
-  // }
-  //
-  // Future<void> reloadCategoriesFromSupabase() async {
-  //   if (ownerId == null) return;
-  //
-  //   final response = await supabase.from('categories').select().eq('owner_id', ownerId!) as List;
-  //
-  //   final serverCategories =
-  //       response.map((json) => CategoryModel.fromJson(json as Map<String, dynamic>)).toList();
-  //
-  //   await _db.transaction(() async {
-  //     await _db.delete(_db.categories).go();
-  //     for (final category in serverCategories) {
-  //       await _db.into(_db.categories).insert(category.toCompanion());
-  //     }
-  //   });
-  // }
 }

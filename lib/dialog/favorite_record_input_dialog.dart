@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/model/asset_model.dart';
 import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/favorite_record_model.dart';
@@ -391,7 +391,7 @@ class _FavoriteRecordInputDialogState extends State<FavoriteRecordInputDialog> {
                               if (widget.favoriteRecordId == null) {
                                 Navigator.pop(context);
                               } else {
-                                final result = await showCustomDeleteDialog(
+                                final result = await showCustomConfirmDialog(
                                     context,
                                     message: '이 즐겨찾기 내역을 정말 삭제할까요?'
                                 );

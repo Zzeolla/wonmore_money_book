@@ -34,6 +34,21 @@ class _CalendarWidgetState extends State<CalendarWidget> {
     _internalFocusedDay = widget.focusedDay;
   }
 
+  @override
+  void didUpdateWidget(covariant CalendarWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 부모가 focusedDay를 바꿨으면 내부도 맞춰준다
+    if (!isSameMonth(oldWidget.focusedDay, widget.focusedDay) ||
+        !isSameDay(oldWidget.focusedDay, widget.focusedDay)) {
+      setState(() {
+        _internalFocusedDay = widget.focusedDay;
+      });
+    }
+  }
+
+  bool isSameMonth(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month;
+
   void _goToPreviousMonth() {
     setState(() {
       _internalFocusedDay = DateTime(

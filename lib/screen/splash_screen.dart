@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,138 +20,224 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  StreamSubscription<List<ConnectivityResult>>? _connSub;
+  bool _initializing = false;
+  bool _navigated = false;
+  bool _error = false;
+  int _retryCount = 0;
+  static const _maxRetries = 3;
+
   @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final supabaseUser = Supabase.instance.client.auth.currentUser;
-      final userProvider = context.read<UserProvider>();
-      final moneyProvider = context.read<MoneyProvider>();
-      final todoProvider = context.read<TodoProvider>();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _guardedInit();
+    });
 
-      // 1. 인터넷 체크
-      final connectivity = await Connectivity().checkConnectivity();
-      if (connectivity == ConnectivityResult.none) {
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => const NoInternetScreen()),
-          );
-        }
-        return;
-      }
-      // 2. 로그인 id 확인
-      if (supabaseUser != null) {
-        await userProvider.setUser(supabaseUser);
-        final user = userProvider.currentUser;
-        final response = await Supabase.instance.client
-            .from('users').select().eq('id', user!.id).maybeSingle();
+    // 온라인 전환되면 자동 재시도
+    _connSub = Connectivity().onConnectivityChanged.listen((results) {
+      // 하나라도 none이 아니면 온라인으로 간주
+      final online = results.any((r) => r != ConnectivityResult.none);
 
-        if (response == null) {
-          final email = user.email ?? '';
-          final name = email.contains('@') ? email
-              .split('@')
-              .first : '사용자';
-          final profileImageUrl = Supabase.instance.client.storage
-              .from('avatars')
-              .getPublicUrl('${user.id}/profile.png');
-
-          bool imageExists = false;
-          final newUser = UserModel(
-            id: user.id,
-            email: email,
-            name: name,
-            groupName: '$name의 그룹',
-            lastOwnerId: user.id,
-            profileUrl: profileImageUrl,
-            isProfile: imageExists
-          );
-
-          await Supabase.instance.client.from('users').insert(newUser.toMap());
-
-          await Supabase.instance.client.from('subscriptions').insert({
-            'user_id': user.id,
-            'plan_name': 'free',
-            'start_date': DateTime.now().toIso8601String(),
-            'is_active': true,
-          });
-
-          final newBudgetId = const Uuid().v4();
-          await Supabase.instance.client.from('budgets').insert({
-            'id': newBudgetId,
-            'owner_id': user.id,
-            'name': '주 가계부',
-            'updated_by': user.id,
-            'is_main': true
-          });
-          await userProvider.setOwnerId(user.id);
-        } else {
-          if (userProvider.justSignedIn) {
-            await userProvider.setOwnerId(user.id);
-          } else {
-            final lastOwnerResponse = await Supabase.instance.client
-                .from('users')
-                .select('last_owner_id')
-                .eq('id', user.id)
-                .maybeSingle();
-            await userProvider.setOwnerId(lastOwnerResponse?['last_owner_id']);
-          }
-        }
-
-        await userProvider.initializeUserProvider();
-        final ownerId = userProvider.ownerId;
-        final budgetId = userProvider.budgetId;
-
-
-        // print('ownerId : ${userProvider.ownerId}');
-        // print('budgetId : ${userProvider.budgetId}');
-
-
-
-        if (budgetId != null) {
-          await moneyProvider.setInitialUserId(user.id, ownerId, budgetId);
-        } else {
-          final response = await Supabase.instance.client
-              .from('budgets')
-              .select('*')
-              .eq('owner_id', ownerId!)
-              .eq('is_main', true)
-              .maybeSingle();
-
-          final mainBudgetId = response?['id'] as String?;
-          if (mainBudgetId != null) {
-            await Future.wait([
-              userProvider.setBudgetId(mainBudgetId),
-              moneyProvider.setInitialUserId(user.id, ownerId, mainBudgetId),
-            ]);
-          }
-        }
-        await todoProvider.setUserId(user.id, ownerId);
-      } else {
-        await Future.wait([
-          userProvider.initializeUserProvider(),
-          moneyProvider.setInitialUserId(null, null, null),
-          todoProvider.setUserId(null, null),
-        ]);
-      }
-      //
-      // print('userId : ${userProvider.userId}');
-      // print('ownerId : ${userProvider.ownerId}');
-      // print('budgetId : ${userProvider.budgetId}');
-
-      // final prefs = await SharedPreferences.getInstance();
-      // await prefs.remove('record_limit_count');
-      // await prefs.remove('record_limit_ad_count');
-      // 4. 다음 화면 이동
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/main');
+      if (online && !_initializing && !_navigated && mounted) {
+        _guardedInit();
       }
     });
   }
 
   @override
+  void dispose() {
+    _connSub?.cancel();
+    super.dispose();
+  }
+
+  Future<T> _withTimeout<T>(Future<T> future, {Duration timeout = const Duration(seconds: 8)}) {
+    return future.timeout(timeout, onTimeout: () {
+      throw TimeoutException('Splash init timed out');
+    });
+    // 필요하면 여기서 재시도 래핑도 가능
+  }
+
+  Future<void> _guardedInit() async {
+    if (_initializing || _navigated) return;
+    setState(() {
+      _initializing = true;
+      _error = false;
+    });
+
+    try {
+      // 1) 네트워크 체크 (타임아웃)
+      final connectivity = await _withTimeout(Connectivity().checkConnectivity(), timeout: const Duration(seconds: 5));
+      if (connectivity == ConnectivityResult.none) {
+        throw Exception('No internet');
+      }
+
+      // 2) 메인 초기화 (기존 로직을 함수로 분리)
+      await _withTimeout(_initAppCore());
+
+      // 3) 성공 시 단 1회만 이동
+      if (mounted && !_navigated) {
+        _navigated = true;
+        Navigator.pushReplacementNamed(context, '/main');
+      }
+    } catch (e) {
+      // 실패 시 에러 UI 노출 + 수동 재시도 허용
+      if (!mounted) return;
+      setState(() {
+        _error = true;
+      });
+
+      // 자동 재시도(선택): 적당히 1~2회 백오프 후 시도
+      if (_retryCount < _maxRetries) {
+        _retryCount++;
+        await Future.delayed(Duration(seconds: 2 * _retryCount));
+        if (mounted && !_navigated) {
+          _error = false;
+          _initializing = false;
+          _guardedInit();
+          return;
+        }
+      }
+    } finally {
+      if (mounted) {
+        _initializing = false;
+      }
+    }
+  }
+
+  // 🔧 기존 init 로직을 그대로 옮겨와 try/catch + timeout 하에서 실행
+  Future<void> _initAppCore() async {
+    final supabaseUser = Supabase.instance.client.auth.currentUser;
+    final userProvider = context.read<UserProvider>();
+    final moneyProvider = context.read<MoneyProvider>();
+    final todoProvider = context.read<TodoProvider>();
+
+    if (supabaseUser != null) {
+      await userProvider.setUser(supabaseUser);
+
+      // users 레코드 확인/생성 (타임아웃 보호)
+      final userRow = await _withTimeout(
+        Supabase.instance.client
+            .from('users')
+            .select()
+            .eq('id', supabaseUser.id)
+            .maybeSingle(),
+        timeout: const Duration(seconds: 8),
+      );
+
+      if (userRow == null) {
+        final email = supabaseUser.email ?? '';
+        final name = email.contains('@') ? email.split('@').first : '사용자';
+        final profileImageUrl = Supabase.instance.client.storage
+            .from('avatars')
+            .getPublicUrl('${supabaseUser.id}/profile.png');
+
+        await _withTimeout(
+          Supabase.instance.client.from('users').insert({
+            'id': supabaseUser.id,
+            'email': email,
+            'name': name,
+            'group_name': '$name의 그룹',
+            'last_owner_id': supabaseUser.id,
+            'profile_url': profileImageUrl,
+            'is_profile': false,
+          }),
+          timeout: const Duration(seconds: 8),
+        );
+
+        await _withTimeout(
+          Supabase.instance.client.from('subscriptions').insert({
+            'user_id': supabaseUser.id,
+            'plan_name': 'free',
+            'start_date': DateTime.now().toIso8601String(),
+            'is_active': true,
+          }),
+          timeout: const Duration(seconds: 8),
+        );
+
+        final newBudgetId = const Uuid().v4();
+        await _withTimeout(
+          Supabase.instance.client.from('budgets').insert({
+            'id': newBudgetId,
+            'owner_id': supabaseUser.id,
+            'name': '주 가계부',
+            'updated_by': supabaseUser.id,
+            'is_main': true,
+          }),
+          timeout: const Duration(seconds: 8),
+        );
+      }
+
+      // Provider 초기화
+      await _withTimeout(userProvider.initializeUserProvider(), timeout: const Duration(seconds: 8));
+
+      final ownerId = userProvider.ownerId;
+      final budgetId = userProvider.budgetId;
+
+      if (budgetId != null && ownerId != null) {
+        await _withTimeout(
+          moneyProvider.setInitialUserId(supabaseUser.id, ownerId, budgetId),
+          timeout: const Duration(seconds: 8),
+        );
+      } else {
+        final response = await _withTimeout(
+          Supabase.instance.client
+              .from('budgets')
+              .select('id')
+              .eq('owner_id', ownerId ?? supabaseUser.id)
+              .eq('is_main', true)
+              .maybeSingle(),
+          timeout: const Duration(seconds: 8),
+        );
+
+        final mainBudgetId = response?['id'] as String?;
+        if (mainBudgetId != null) {
+          await Future.wait([
+            _withTimeout(userProvider.setBudgetId(mainBudgetId), timeout: const Duration(seconds: 8)),
+            _withTimeout(moneyProvider.setInitialUserId(supabaseUser.id, ownerId ?? supabaseUser.id, mainBudgetId),
+                timeout: const Duration(seconds: 8)),
+          ]);
+        }
+      }
+
+      await _withTimeout(
+        todoProvider.setUserId(supabaseUser.id, ownerId ?? supabaseUser.id),
+        timeout: const Duration(seconds: 8),
+      );
+    } else {
+      await _withTimeout(
+        Future.wait([
+          userProvider.initializeUserProvider(),
+          moneyProvider.setInitialUserId(null, null, null),
+          todoProvider.setUserId(null, null),
+        ]),
+        timeout: const Duration(seconds: 8),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_error) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('네트워크 또는 초기화에 실패했어요.'),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: _guardedInit,
+                child: const Text('다시 시도'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // 기본 로딩
     return const Scaffold(
       body: Center(child: CircularProgressIndicator()),
     );

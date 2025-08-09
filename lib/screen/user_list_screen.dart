@@ -10,15 +10,15 @@ class UserListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
-    final sharedUsers = userProvider.sharedUsers ?? [];
+    final sharedUsers = userProvider.mySharedUsers ?? [];
     final myUserId = userProvider.userId;
     final ownerId = userProvider.ownerId;
     final budgets = userProvider.myBudgets ?? [];
     final supabase = Supabase.instance.client;
 
     final sortedUsers = [...sharedUsers]..sort((a, b) {
-        if (a.id == ownerId) return -1;
-        if (b.id == ownerId) return 1;
+        if (a.id == myUserId) return -1;
+        if (b.id == myUserId) return 1;
         return a.name!.compareTo(b.name!);
       });
 
@@ -56,7 +56,7 @@ class UserListScreen extends StatelessWidget {
               itemCount: sortedUsers.length,
               itemBuilder: (context, index) {
                 final user = sortedUsers[index];
-                final isOwner = user.id == ownerId;
+                final isOwner = user.id == myUserId;
 
                 return Card(
                   margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -141,9 +141,6 @@ class UserListScreen extends StatelessWidget {
                             const SnackBar(content: Text('삭제 중 오류가 발생했습니다')),
                           );
                         }
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('권한 설정 기능 준비 중')),
-                        );
                       },
                     ),
                   ),

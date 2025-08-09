@@ -500,9 +500,19 @@ class MoneyProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // @override
-  // void dispose() {
-  //   _categoryService.disposeRealtime();
-  //   super.dispose();
-  // }
+  Future<void> resetCategoriesToDefault() async {
+    final uid = _currentUserId;
+    final oid = _ownerId;
+
+    if (uid != null && oid != null) {
+      await Supabase.instance.client.from('categories').delete().eq('owner_id', oid);
+      await _categoryService.syncCategories();
+      await _loadAllCategories();
+    } else {
+      await _database.delete(_database.categories).go();
+      await _database.insertDefaultCategories();
+      await _loadAllCategories();
+    }
+    notifyListeners();
+  }
 }

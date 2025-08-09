@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/model/budget_model.dart';
 import 'package:wonmore_money_book/model/user_model.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
@@ -125,7 +125,7 @@ class _BudgetInputDialogState extends State<BudgetInputDialog> {
                             return;
                           }
 
-                          final result = await showCustomDeleteDialog(
+                          final result = await showCustomConfirmDialog(
                             context,
                             message: '이 가계부를 정말 삭제할까요?',
                           );

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-Future<bool?> showCustomDeleteDialog(
+Future<bool?> showCustomConfirmDialog(
     BuildContext context, {
       String title = '삭제하시겠습니까?',
       String message = '이 내역을 삭제할까요?',

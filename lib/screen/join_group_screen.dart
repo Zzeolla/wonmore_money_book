@@ -197,7 +197,39 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      await userProvider.loadSharedUsers();
+      // ✅ 4. 주 가계부 자동 공유 처리
+      // 4-1) 주 가계부 찾기 (is_main이 없다면 .order('created_at').limit(1) 로 대체)
+      final mainBudget = await client
+          .from('budgets')
+          .select('id')
+          .eq('owner_id', ownerId)
+          .eq('is_main', true)         // 없으면 .order('created_at').limit(1) 로 변경
+          .maybeSingle();
+
+      String? mainBudgetId = mainBudget?['id'];
+      if (mainBudgetId == null) {
+        // fallback: 가장 먼저 만든 가계부를 주 가계부로 간주
+        final first = await client
+            .from('budgets')
+            .select('id')
+            .eq('owner_id', ownerId)
+            .order('created_at')
+            .limit(1)
+            .maybeSingle();
+        mainBudgetId = first?['id'];
+      }
+
+      // 4-2) 권한 등록 (보기만 허용 or 보기+수정, 원하는 정책으로)
+      if (mainBudgetId != null) {
+        await client.from('budget_permissions').insert({
+          'budget_id': mainBudgetId,
+          'user_id': userId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      // 컨텍스트 전환 + 데이터 리로드
+      await userProvider.setOwnerId(ownerId); // 👈 새 그룹으로 전환
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

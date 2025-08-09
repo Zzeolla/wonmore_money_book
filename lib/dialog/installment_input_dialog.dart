@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/model/asset_model.dart';
 import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/installment_model.dart';
@@ -378,7 +378,7 @@ class _InstallmentInputDialogState extends State<InstallmentInputDialog> {
                             backgroundColor: const Color(0xFFA79BFF),
                             onTap: () async {
                               final result =
-                                  await showCustomDeleteDialog(context, message: '이 내역을 정말 삭제할까요?');
+                                  await showCustomConfirmDialog(context, message: '이 내역을 정말 삭제할까요?');
                               if (result!) {
                                 await context
                                     .read<MoneyProvider>()

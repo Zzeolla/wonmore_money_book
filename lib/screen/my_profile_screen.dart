@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/model/budget_model.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
@@ -312,7 +312,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
         profileImage = null;
         isInterProfile = false;
       } else {
-        final confirm = await showCustomDeleteDialog(
+        final confirm = await showCustomConfirmDialog(
           context,
           title: '프로필 사진 삭제',
           message: '현재 등록된 프로필 사진을 정말 삭제하시겠습니까?',

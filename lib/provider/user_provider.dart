@@ -69,12 +69,20 @@ class UserProvider extends ChangeNotifier {
     if (_currentUser != null) {
       final response =
           await Supabase.instance.client.from('users').select('*').eq('id', _userId!).single();
+
       _myInfo = UserModel.fromJson(response);
       _myPlan = await loadUserSubscription(_userId!);
+
+      _ownerId = (response['last_owner_id'] as String?) ?? _userId;
+      _budgetId = response['last_budget_id'] as String?;
+
       _profileImageUrl =
           Supabase.instance.client.storage.from('avatars').getPublicUrl('$_userId/profile.png');
+
       await loadSharedUsers();
+      await _validationOwnerId();
       await loadBudgets();
+      await _validationBudgetId();
     } else {
       _ownerId = null;
       _budgetId = null;
@@ -89,6 +97,7 @@ class UserProvider extends ChangeNotifier {
       _sharedUserIds = [];
       _sharedUsers = [];
       _mySharedUsers = [];
+      _sharedOwnerUsers = [];
     }
     notifyListeners();
   }
@@ -120,64 +129,43 @@ class UserProvider extends ChangeNotifier {
     await _validationOwnerId();
     await loadBudgets();
 
-    final response = await Supabase.instance.client
-        .from('users')
-        .select('last_budget_id')
-        .eq('id', _userId!)
-        .maybeSingle();
+    final uid = _userId;
+    if (uid != null) {
+      final response = await Supabase.instance.client
+          .from('users')
+          .select('last_budget_id')
+          .eq('id', uid)
+          .maybeSingle();
 
-    final lastBudgetId = response?['last_budget_id'];
-
-    if (lastBudgetId != null && _permissionBudgets!.contains(lastBudgetId)) {
-      _budgetId = lastBudgetId;
-    } else {
-      final mainBudget = _budgets!.firstWhere(
-        (b) => b.isMain == true,
-        orElse: () => _budgets!.first,
-      );
-      _budgetId = mainBudget.id;
+      final lastBudgetId = response?['last_budget_id'] as String?;
+      if (lastBudgetId != null && (_permissionBudgets ?? []).contains(lastBudgetId)) {
+        _budgetId = lastBudgetId;
+      } else {
+        final mainBudget = (_budgets ?? []).firstWhere(
+          (b) => b.isMain == true,
+          orElse: () => (_budgets?.isNotEmpty ?? false) ? _budgets!.first : BudgetModel(),
+        );
+        _budgetId = mainBudget.id;
+      }
+      await Supabase.instance.client.from('users').update({
+        'last_owner_id': _ownerId,
+        'last_budget_id': _budgetId,
+      }).eq('id', _userId!);
     }
 
-    await Supabase.instance.client.from('users').update({
-      'last_owner_id': _ownerId,
-      'last_budget_id': _budgetId,
-    }).eq('id', _userId!);
-
-    // if (_userId != null) {
-    //   // 1. main budget 가져오기
-    //   final response = await client
-    //       .from('budgets')
-    //       .select('id')
-    //       .eq('owner_id', _ownerId!)
-    //       .eq('is_main', true)
-    //       .maybeSingle();
-    //
-    //   final mainBudgetId = response?['id'] as String?;
-    //
-    //   if (mainBudgetId != null) {
-    //     _budgetId = mainBudgetId;
-    //
-    //     // 2. users 테이블에 last_owner_id & last_budget_id 업데이트
-    //     await client.from('users').update({
-    //       'last_owner_id': _ownerId,
-    //       'last_budget_id': _budgetId,
-    //     }).eq('id', _userId!);
-    //   } else {
-    //     // 예외 처리: main budget이 없을 때 (선택)
-    //     _budgetId = null;
-    //   }
-    // }
     notifyListeners();
   }
 
   Future<void> setBudgetId(String budgetId) async {
     _budgetId = budgetId;
 
-    if (_userId != null) {
+    final uid = _userId;
+    if (uid != null) {
       await Supabase.instance.client
           .from('users')
-          .update({'last_budget_id': _budgetId}).eq('id', _userId!);
+          .update({'last_budget_id': _budgetId}).eq('id', uid);
     }
+    notifyListeners();
   }
 
   set justSignedIn(bool value) {
@@ -194,134 +182,200 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> _validationOwnerId() async {
-    if (!_sharedOwnerIds!.contains(_ownerId)) {
+    if (_sharedOwnerIds == null || _sharedOwnerIds!.isEmpty) {
+      _ownerId = _userId;
+    } else if (_ownerId == null || !_sharedOwnerIds!.contains(_ownerId)) {
       _ownerId = _userId;
     }
-    // final response = await Supabase.instance.client
-    //     .from('users')
-    //     .select('last_owner_id')
-    //     .eq('id', _userId!)
-    //     .maybeSingle();
-    //
-    // final lastOwnerId = response?['last_owner_id'];
-    //
-    // if (lastOwnerId != null && _sharedOwnerIds!.contains(lastOwnerId)) {
-    //   _ownerId = lastOwnerId;
-    // } else {
-    //   _ownerId = _userId;
-    // }
-
     notifyListeners();
   }
 
   Future<void> _validationBudgetId() async {
+    if (_userId == null) return;
+
     final response = await Supabase.instance.client
         .from('users')
         .select('last_budget_id')
         .eq('id', _userId!)
         .maybeSingle();
 
-    final lastBudgetId = response?['last_budget_id'];
-
-    if (lastBudgetId != null && _permissionBudgets!.contains(lastBudgetId)) {
+    final lastBudgetId = response?['last_budget_id'] as String?;
+    if (lastBudgetId != null && (_permissionBudgets ?? []).contains(lastBudgetId)) {
       _budgetId = lastBudgetId;
     }
     notifyListeners();
   }
 
   Future<void> loadSharedUsers() async {
-    // shared_users 테이블을 통해 내가 속한 ownerId들을 먼저 가져옴
-    final responseGetOwner = await Supabase.instance.client
-        .from('shared_users')
-        .select('owner_id')
-        .eq('user_id', _userId!);
-    final sharedOwnerGroup = responseGetOwner.map(SharedUserModel.fromJson).toList();
-    _sharedOwnerIds = sharedOwnerGroup.map((e) => e.ownerId!).toList();
+    try {
+      final uid = _userId;
+      final oid = _ownerId;
+      if (uid == null) {
+        debugPrint('[loadSharedUsers] skip: userId is null');
+        _sharedOwnerIds = [];
+        _sharedOwnerUsers = [];
+        _sharedUserIds = [];
+        _sharedUsers = [];
+        _mySharedUsers = [];
+        notifyListeners();
+        return;
+      }
 
-    final responseSharedOwnerUser =
-        await Supabase.instance.client.from('users').select('*').inFilter('id', _sharedOwnerIds!);
-    _sharedOwnerUsers = responseSharedOwnerUser.map(UserModel.fromJson).toList();
+      // 1) 내가 속한 ownerIds
+      final ownerRows =
+          await Supabase.instance.client.from('shared_users').select('owner_id').eq('user_id', uid);
 
-    // 현재 내가 선택하고 있는 ownerId를 공유받고 있는 userId
-    final responseGetUser = await Supabase.instance.client
-        .from('shared_users')
-        .select('user_id')
-        .eq('owner_id', _ownerId!);
-    final sharedUserGroup = responseGetUser.map(SharedUserModel.fromJson).toList();
-    _sharedUserIds = sharedUserGroup.map((e) => e.userId!).toList();
+      final sharedOwnerGroup = (ownerRows as List).map((e) => SharedUserModel.fromJson(e)).toList();
+      _sharedOwnerIds = sharedOwnerGroup.map((e) => e.ownerId!).toList();
 
-    // 현재 ownerID 그룹에 포함되어 있는 user들으 의 정보 가져옴
-    final userResponse =
-        await Supabase.instance.client.from('users').select('*').inFilter('id', _sharedUserIds!);
-    _sharedUsers = userResponse.map(UserModel.fromJson).toList();
+      // 1-1) owner 유저 정보
+      if ((_sharedOwnerIds ?? []).isNotEmpty) {
+        final ownerUsers = await Supabase.instance.client
+            .from('users')
+            .select('*')
+            .inFilter('id', _sharedOwnerIds!);
+        _sharedOwnerUsers = (ownerUsers as List).map((e) => UserModel.fromJson(e)).toList();
+      } else {
+        _sharedOwnerUsers = [];
+      }
 
-    final responseGetSharedUser = await Supabase.instance.client
-        .from('shared_users')
-        .select('user_id')
-        .eq('owner_id', _userId!);
-    final mySharedUserGroup = responseGetSharedUser.map(SharedUserModel.fromJson).toList();
-    final mySharedUserIds = mySharedUserGroup.map((e) => e.userId!).toList();
+      // 2) 현재 선택된 owner 그룹 멤버들
+      if (oid != null) {
+        final userIdRows = await Supabase.instance.client
+            .from('shared_users')
+            .select('user_id')
+            .eq('owner_id', oid);
 
-    final mySharedUserResponse =
-        await Supabase.instance.client.from('users').select('*').inFilter('id', mySharedUserIds);
-    _mySharedUsers = mySharedUserResponse.map(UserModel.fromJson).toList();
-    notifyListeners();
+        final sharedUserGroup =
+            (userIdRows as List).map((e) => SharedUserModel.fromJson(e)).toList();
+        _sharedUserIds = sharedUserGroup.map((e) => e.userId!).toList();
+
+        if ((_sharedUserIds ?? []).isNotEmpty) {
+          final users = await Supabase.instance.client
+              .from('users')
+              .select('*')
+              .inFilter('id', _sharedUserIds!);
+          _sharedUsers = (users as List).map((e) => UserModel.fromJson(e)).toList();
+        } else {
+          _sharedUsers = [];
+        }
+      } else {
+        debugPrint('[loadSharedUsers] ownerId is null → skip group users');
+        _sharedUserIds = [];
+        _sharedUsers = [];
+      }
+
+      // 3) 내가 owner인 그룹(owner_id == _userId)의 공유 대상
+      final mySharedRows =
+          await Supabase.instance.client.from('shared_users').select('user_id').eq('owner_id', uid);
+
+      final mySharedGroup = (mySharedRows as List).map((e) => SharedUserModel.fromJson(e)).toList();
+      final mySharedIds = mySharedGroup.map((e) => e.userId!).toList();
+
+      if (mySharedIds.isNotEmpty) {
+        final myUsers =
+            await Supabase.instance.client.from('users').select('*').inFilter('id', mySharedIds);
+        _mySharedUsers = (myUsers as List).map((e) => UserModel.fromJson(e)).toList();
+      } else {
+        _mySharedUsers = [];
+      }
+
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('❌ loadSharedUsers error: $e\n$st');
+      _sharedOwnerIds ??= [];
+      _sharedOwnerUsers ??= [];
+      _sharedUserIds ??= [];
+      _sharedUsers ??= [];
+      _mySharedUsers ??= [];
+      notifyListeners();
+    }
   }
 
   Future<void> loadBudgets() async {
-    final response =
-        await Supabase.instance.client.from('budgets').select('id').eq('owner_id', _ownerId!);
-    final allBudgetIds = response.map(BudgetModel.fromJson).toList().map((e) => e.id!).toList();
+    try {
+      final uid = _userId;
+      final oid = _ownerId;
+      if (oid == null || uid == null) {
+        debugPrint('[loadBudgets] skip: ownerId/userId is null');
+        _budgets = [];
+        _myBudgets = [];
+        _permissionBudgets = [];
+        notifyListeners();
+        return;
+      }
 
-    final permissionResponse = await Supabase.instance.client
-        .from('budget_permissions')
-        .select('budget_id')
-        .eq('user_id', _userId!);
-    final permittedBudgetIds = permissionResponse.map((e) => e['budget_id'] as String).toList();
+      // owner의 모든 budget id
+      final idRows =
+          await Supabase.instance.client.from('budgets').select('id').eq('owner_id', oid);
+      final allBudgetIds =
+          (idRows as List).map((e) => BudgetModel.fromJson(e)).map((e) => e.id!).toList();
 
-    _permissionBudgets = allBudgetIds.where((id) => permittedBudgetIds.contains(id)).toList();
+      // 내가 권한 가진 budget id
+      final permRows = await Supabase.instance.client
+          .from('budget_permissions')
+          .select('budget_id')
+          .eq('user_id', uid);
+      final permittedIds = (permRows as List).map((e) => e['budget_id'] as String).toList();
 
-    final finalBudgetResponse = await Supabase.instance.client
-        .from('budgets')
-        .select('*')
-        .inFilter('id', _permissionBudgets!);
-    _budgets = finalBudgetResponse.map(BudgetModel.fromJson).toList();
+      _permissionBudgets = allBudgetIds.where((id) => permittedIds.contains(id)).toList();
 
-    final myBudgetResponse =
-        await Supabase.instance.client.from('budgets').select('*').eq('owner_id', _userId!);
-    _myBudgets = myBudgetResponse.map(BudgetModel.fromJson).toList();
-    notifyListeners();
+      // 권한 있는 budget 상세
+      if ((_permissionBudgets ?? []).isNotEmpty) {
+        final budgetsRows = await Supabase.instance.client
+            .from('budgets')
+            .select('*')
+            .inFilter('id', _permissionBudgets!);
+        _budgets = (budgetsRows as List).map((e) => BudgetModel.fromJson(e)).toList();
+      } else {
+        _budgets = [];
+      }
+
+      // 내가 owner인 budgets
+      final myRows = await Supabase.instance.client.from('budgets').select('*').eq('owner_id', uid);
+      _myBudgets = (myRows as List).map((e) => BudgetModel.fromJson(e)).toList();
+
+      notifyListeners();
+    } catch (e, st) {
+      debugPrint('❌ loadBudgets error: $e\n$st');
+      _budgets ??= [];
+      _myBudgets ??= [];
+      _permissionBudgets ??= [];
+      notifyListeners();
+    }
   }
 
   Future<void> checkImageExists() async {
     try {
-      final response = await http.head(Uri.parse(_profileImageUrl!));
-      _imageExists = response.statusCode == 200;
-    } catch (e) {
+      final url = _profileImageUrl;
+      if (url == null) {
+        _imageExists = false;
+      } else {
+        final response = await http.head(Uri.parse(url));
+        _imageExists = response.statusCode == 200;
+      }
+    } catch (_) {
       _imageExists = false;
     }
     notifyListeners();
   }
 
   Future<void> addBudget(String title, Set<String> selectedUserIds) async {
-    final fullUserIds = {...selectedUserIds, _userId!};
+    final uid = _userId;
+    if (uid == null) return;
 
+    final fullUserIds = {...selectedUserIds, uid};
     final supabase = Supabase.instance.client;
 
     final newBudgetId = const Uuid().v4();
-    await supabase.from('budgets').insert({
-      'id': newBudgetId,
-      'owner_id': _userId,
-      'name': title,
-      'updated_by': _userId,
-      'is_main': false
-    });
+    await supabase.from('budgets').insert(
+        {'id': newBudgetId, 'owner_id': uid, 'name': title, 'updated_by': uid, 'is_main': false});
 
     if (fullUserIds.isNotEmpty) {
       final rows = fullUserIds
-          .map((userId) => {
+          .map((u) => {
                 'budget_id': newBudgetId,
-                'user_id': userId,
+                'user_id': u,
               })
           .toList();
 
@@ -333,13 +387,16 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> updateBudget(String budgetId, String title, Set<String> selectedUserIds) async {
-    final fullUserIds = {...selectedUserIds, _userId!};
+    final uid = _userId;
+    if (uid == null) return;
+
+    final fullUserIds = {...selectedUserIds, uid};
     final supabase = Supabase.instance.client;
 
     // 1. budgets 테이블에서 제목 업데이트
     await supabase.from('budgets').update({
       'name': title,
-      'updated_by': _userId,
+      'updated_by': uid,
     }).eq('id', budgetId);
 
     // 2. 기존 권한 삭제
@@ -348,9 +405,9 @@ class UserProvider extends ChangeNotifier {
     // 3. 새로운 권한 삽입
     if (fullUserIds.isNotEmpty) {
       final rows = fullUserIds
-          .map((userId) => {
+          .map((u) => {
                 'budget_id': budgetId,
-                'user_id': userId,
+                'user_id': u,
               })
           .toList();
 

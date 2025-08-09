@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/dialog/category_input_dialog.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/transaction_type_button.dart';
@@ -35,8 +36,47 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
       appBar: CommonAppBar(
         isMainScreen: false,
         actions: [
+          if (context.read<UserProvider>().userId == context.read<UserProvider>().ownerId)
+            IconButton(
+              icon: const Icon(Icons.restart_alt, color: Color(0xFFF2F4F6), size: 30),
+              onPressed: () async {
+                final result = await showCustomConfirmDialog(
+                  context,
+                  title: '정말 초기화하시겠습니까?',
+                  message: '초기화 시 기본 카테고리만 남고,\n직접 추가한 카테고리는 모두 삭제됩니다.',
+                  cancelText: '취소',
+                  confirmText: '초기화',
+                  confirmColor: Colors.blueAccent,
+                );
+
+                if (result == true) {
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => const Center(child:CircularProgressIndicator()),
+                  );
+
+                  try {
+                    await context.read<MoneyProvider>().resetCategoriesToDefault();
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('카테고리를 초기화했습니다.')),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('초기화 실패: $e')),
+                      );
+                    }
+                  }
+                }
+              },
+            ),
           IconButton(
-            icon: const Icon(Icons.add, color: Color(0xFFF2F4F6), size: 36),
+            icon: const Icon(Icons.add, color: Color(0xFFF2F4F6), size: 30),
             onPressed: () async {
               final result = await showDialog(
                 context: context,
@@ -98,6 +138,20 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                       filtered.insert(newIndex, item);
                       await context.read<MoneyProvider>().reorderCategories(filtered);
                     },
+                    proxyDecorator: (Widget child, int index, Animation<double> anim) {
+                      return AnimatedBuilder(
+                        animation: anim,
+                        builder: (context, _) {
+                          // 프록시에 추가 음영/머티리얼 없음, 카드 자체의 기본 그림자도 0으로
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              cardTheme: const CardTheme(elevation: 0), // 프록시에서만 카드 그림자 제거
+                            ),
+                            child: child, // 그대로 보여주기
+                          );
+                        },
+                      );
+                    },
                     itemBuilder: (context, index) {
                       final category = filtered[index];
                       return Card(
@@ -145,7 +199,7 @@ class _CategoryManagementScreenState extends State<CategoryManagementScreen> {
                               IconButton(
                                 icon: const Icon(Icons.delete, color: Colors.grey),
                                 onPressed: () async {
-                                  final result = await showCustomDeleteDialog(
+                                  final result = await showCustomConfirmDialog(
                                     context,
                                     message: '이 카테고리를 정말 삭제할까요?',
                                   );

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/model/asset_model.dart';
 import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/favorite_record_model.dart';
@@ -385,7 +385,7 @@ class _RepeatRecordInputDialogState extends State<RepeatRecordInputDialog> {
                             color: Colors.white,
                             backgroundColor: const Color(0xFFA79BFF),
                             onTap: () async {
-                              final result = await showCustomDeleteDialog(context,
+                              final result = await showCustomConfirmDialog(context,
                                   message: '이 즐겨찾기 내역을 정말 삭제할까요?');
                               if (result!) {
                                 await context

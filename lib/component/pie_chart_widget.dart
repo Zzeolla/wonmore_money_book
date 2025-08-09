@@ -6,8 +6,14 @@ import 'package:wonmore_money_book/model/transaction_type.dart';
 class PieChartWidget extends StatefulWidget {
   final List<CategorySummary> data;
   final TransactionType transactionType;
+  final String Function(int)? amountFormatter;
 
-  const PieChartWidget({super.key, required this.data, required this.transactionType,});
+  const PieChartWidget({
+    super.key,
+    required this.data,
+    required this.transactionType,
+    this.amountFormatter,
+  });
 
   @override
   State<PieChartWidget> createState() => _PieChartWidgetState();
@@ -55,8 +61,8 @@ class _PieChartWidgetState extends State<PieChartWidget> {
                       color: entry.color,
                       radius: 70,
                       badgeWidget: (_touchedIndex == null || _touchedIndex == i)
-                        ? _buildBadge(entry.name, percent)
-                        : null,
+                          ? _buildBadge(entry.name, percent)
+                          : null,
                       badgePositionPercentageOffset: 1.2,
                     );
                   }),
@@ -67,8 +73,9 @@ class _PieChartWidgetState extends State<PieChartWidget> {
             ),
             Column(
               children: [
-                Text(widget.transactionType == TransactionType.expense ? '총 지출' : '총 수입', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                Text(_formatCurrency(total),
+                Text(widget.transactionType == TransactionType.expense ? '총 지출' : '총 수입',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(_fmtAmount(total),
                     style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
@@ -77,34 +84,35 @@ class _PieChartWidgetState extends State<PieChartWidget> {
         const SizedBox(height: 50),
         // ✅ 여기가 핵심: 리스트 복사 후 sort
         ...(() {
-          final sortedData = widget.data.toList()
-            ..sort((a, b) => b.amount.compareTo(a.amount));
-          return sortedData.map((e) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16),
-            child: Row(
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: e.color,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    '${e.name} (${(e.amount / total * 100).toStringAsFixed(1)}%)',
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                ),
-                Text(
-                  _formatCurrency(e.amount),
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          )).toList();
+          final sortedData = widget.data.toList()..sort((a, b) => b.amount.compareTo(a.amount));
+          return sortedData
+              .map((e) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: e.color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${e.name} (${(e.amount / total * 100).toStringAsFixed(1)}%)',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                        Text(
+                          _fmtAmount(e.amount),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ))
+              .toList();
         })(),
       ],
     );
@@ -128,7 +136,16 @@ class _PieChartWidgetState extends State<PieChartWidget> {
     );
   }
 
-  String _formatCurrency(double value) {
-    return '₩${value.toStringAsFixed(0).replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')}';
+  String _fmtAmount(num value) {
+    final int v = value.round();
+    final custom = widget.amountFormatter?.call(v);
+    if (custom != null) return '₩$custom';
+
+    // 콜백이 없으면 기본 콤마 포맷 사용
+    final s = v.toString().replaceAllMapped(
+      RegExp(r'\B(?=(\d{3})+(?!\d))'),
+          (m) => ',',
+    );
+    return '₩$s';
   }
 }

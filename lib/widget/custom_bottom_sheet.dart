@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
-import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
+import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/dialog/installment_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/asset_model.dart';
@@ -295,7 +295,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                       }
                     },
                     onLongPress: () async {
-                      final result = await showCustomDeleteDialog(
+                      final result = await showCustomConfirmDialog(
                         context,
                         message: '이 내역을 정말 삭제할까요?'
                       );
