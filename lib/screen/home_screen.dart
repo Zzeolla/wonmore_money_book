@@ -124,9 +124,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Expanded(
-                                      child: _buildSummaryItem('수입', provider.monthlyIncome, '+')),
+                                      child: _buildSummaryItem('수입', provider.monthlyIncome, '\u20A9')),
                                   Expanded(
-                                      child: _buildSummaryItem('지출', provider.monthlyExpense, '-')),
+                                      child: _buildSummaryItem('지출', provider.monthlyExpense, '\u20A9')),
                                   Expanded(
                                       child: _buildSummaryItem(
                                           '잔액', provider.monthlyBalance, '\u20A9')),
@@ -188,9 +188,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildSummaryItem(String label, int amount, [String prefix = '\\']) {
     final formattedAmount = NumberFormat('#,###').format(amount);
     final displayAmount = '$prefix $formattedAmount';
-    final Color amountColor = switch (prefix) {
-      '+' => Colors.blue,
-      '-' => Colors.red,
+    final Color amountColor = switch (label) {
+      '수입' => Colors.blue,
+      '지출' => Colors.red,
       _ => Colors.black,
     };
     return Column(

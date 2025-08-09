@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class CalendarWidget extends StatefulWidget {
@@ -25,6 +26,7 @@ class CalendarWidget extends StatefulWidget {
 
 class _CalendarWidgetState extends State<CalendarWidget> {
   late DateTime _internalFocusedDay;
+  final NumberFormat _commaFormat = NumberFormat('#,###');
 
   @override
   void initState() {
@@ -170,12 +172,23 @@ class _CalendarWidgetState extends State<CalendarWidget> {
   }
 
   String _formatAmount(int amount) {
-    if (amount == 0) return '';
-    if (amount.abs() >= 1000000) {
-      double m = amount / 1000000;
-      return m % 1 == 0 ? '${m.toInt()}M' : '${m.toStringAsFixed(1)}M';
+    if (amount == 0) return '0';
+
+    final abs = amount.abs();
+    final sign = amount.isNegative ? '-' : '';
+
+    if (abs >= 1000000000) {
+      // 1,000,000,000 이상 → ###,###백만
+      final n = (abs / 1000000).round();
+      return '$sign${_commaFormat.format(n)}백만';
+    } else if (abs >= 10000000) {
+      // 10,000,000 이상 → ##백만
+      final n = (abs / 1000000).round();
+      return '$sign${n}백만';
+    } else {
+      // 10,000,000 미만 → 그냥 , 찍기
+      return '$sign${_commaFormat.format(abs)}';
     }
-    return amount.toString().replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
   }
 
   static String _weekdayString(int weekday) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/dialog/custom_delete_dialog.dart';
@@ -36,6 +37,7 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
   final int pageRange = 15;
   final int initialPage = 15;
   late final PageController _pageController;
+  final NumberFormat _commaFormat = NumberFormat('#,###');
 
   @override
   void initState() {
@@ -122,18 +124,22 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                 Expanded(
                   child: Center(
                     child: Text(
-                      '+${_formatAmount(incomeSum)}원',
+                      '+${_formatAmountShort(incomeSum)}원',
                       style: TextStyle(
                           color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
                 Expanded(
                   child: Center(
                     child: Text(
-                      '-${_formatAmount(expenseSum)}원',
+                      '-${_formatAmountShort(expenseSum)}원',
                       style: TextStyle(
                           color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
@@ -225,7 +231,11 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
                         ],
                       ),
                     ),
-                    title: Text(tx.title ?? ''),
+                    title: Text(
+                      tx.title ?? '',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     subtitle: asset != null ? Text(asset.name) : null,
                     trailing: Text(
                       '${tx.type == TransactionType.income ? '+' : '-'}${_formatAmount(tx
@@ -401,5 +411,25 @@ class _CustomBottomSheetState extends State<CustomBottomSheet> {
         RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},');
   }
 
+
+  String _formatAmountShort(int amount) {
+    if (amount == 0) return '0';
+
+    final abs = amount.abs();
+    final sign = amount.isNegative ? '-' : '';
+
+    if (abs >= 1000000000) {
+      // 1,000,000,000 이상 → ###,###백만
+      final n = (abs / 1000000).round();
+      return '$sign${_commaFormat.format(n)}백만';
+    } else if (abs >= 10000000) {
+      // 10,000,000 이상 → ##백만
+      final n = (abs / 1000000).round();
+      return '$sign${n}백만';
+    } else {
+      // 10,000,000 미만 → 그냥 , 찍기
+      return '$sign${_commaFormat.format(abs)}';
+    }
+  }
 
 }

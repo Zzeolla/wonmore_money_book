@@ -25,7 +25,7 @@ class TodoModel {
       'memo': memo,
       'is_done': isDone,
       'owner_id': ownerId,
-      'updated_at': updatedAt,
+      'updated_at': updatedAt?.toIso8601String(),
     };
   }
 

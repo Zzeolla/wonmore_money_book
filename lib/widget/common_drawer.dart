@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/login_screen.dart';
 
@@ -16,7 +17,6 @@ class _CommonDrawerState extends State<CommonDrawer> {
   late String selectedBudgetName;
 
   @override
-
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
@@ -28,49 +28,46 @@ class _CommonDrawerState extends State<CommonDrawer> {
 
     if (!userProvider.isLoggedIn) {
       return Drawer(
-        backgroundColor: const Color(0xFFF2F4F6),
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              accountEmail: const SizedBox.shrink(),
-              accountName: Text(
-                '사용자 이름',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          backgroundColor: const Color(0xFFF2F4F6),
+          child: Column(
+            children: [
+              UserAccountsDrawerHeader(
+                accountEmail: const SizedBox.shrink(),
+                accountName: Text(
+                  '사용자 이름',
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                currentAccountPicture: CircleAvatar(
+                    radius: 40,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.person, color: Colors.black, size: 40)),
+                decoration: const BoxDecoration(color: Color(0xFF635BFF)),
               ),
-
-              currentAccountPicture: CircleAvatar(
-                radius: 40,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, color: Colors.black, size: 40)
-              ),
-              decoration: const BoxDecoration(color: Color(0xFF635BFF)),
-            ),
-            Expanded(
-              child: Center(
-                child: Text(
-                  '로그인이 필요합니다',
-                  style: TextStyle(fontSize: 18),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    '로그인이 필요합니다',
+                    style: TextStyle(fontSize: 18),
+                  ),
                 ),
               ),
-            ),
 
-            const Divider(),
+              const Divider(),
 
-            ListTile(
-              leading: const Icon(Icons.person_add),
-              title: const Text('사용자 초대'),
-              onTap: handleInviteUser,
-            ),
+              ListTile(
+                leading: const Icon(Icons.person_add),
+                title: const Text('사용자 초대'),
+                onTap: handleInviteUser,
+              ),
 
-            // 로그아웃 버튼
-            ListTile(
-              leading: Icon(Icons.login),
-              title: Text('로그인'),
-              onTap: handleLogin,
-            ),
-          ],
-        )
-      );
+              // 로그아웃 버튼
+              ListTile(
+                leading: Icon(Icons.login),
+                title: Text('로그인'),
+                onTap: handleLogin,
+              ),
+            ],
+          ));
     }
     final userId = userProvider.userId;
     final sharedUser = userProvider.sharedUsers;
@@ -84,16 +81,21 @@ class _CommonDrawerState extends State<CommonDrawer> {
     final sharedOwnerUsers = userProvider.sharedOwnerUsers;
     final budgets = userProvider.budgets;
     final selectedBudgetName = (budgets != null && budgets.isNotEmpty)
-        ? budgets.firstWhere((b) => b.id == budgetId,
-          orElse: () => budgets.first,
-          ).name
+        ? budgets
+            .firstWhere(
+              (b) => b.id == budgetId,
+              orElse: () => budgets.first,
+            )
+            .name
         : '(가계부 없음)';
 
     final selectedGroupName = (sharedUser != null && sharedUser.isNotEmpty)
-        ? sharedUser.firstWhere(
-          (u) => u.id == ownerId,
-          orElse: () => sharedUser.first,
-          ).groupName
+        ? sharedUser
+            .firstWhere(
+              (u) => u.id == ownerId,
+              orElse: () => sharedUser.first,
+            )
+            .groupName
         : '(그룹 없음)';
 
     return Drawer(
@@ -110,7 +112,11 @@ class _CommonDrawerState extends State<CommonDrawer> {
                   Expanded(
                     child: Text(
                       userName ?? '',
-                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        height: 1.3,
+                      ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       softWrap: false,
@@ -125,16 +131,11 @@ class _CommonDrawerState extends State<CommonDrawer> {
                 ],
               ),
             ),
-
             currentAccountPicture: CircleAvatar(
               radius: 40,
               backgroundColor: Colors.white,
-              backgroundImage: isProfile
-                  ? NetworkImage(myInfo?.profileUrl ?? '')
-                  : null,
-              child: !isProfile
-                  ? Icon(Icons.person, color: Colors.black, size: 40)
-                  : null,
+              backgroundImage: isProfile ? NetworkImage(myInfo?.profileUrl ?? '') : null,
+              child: !isProfile ? Icon(Icons.person, color: Colors.black, size: 40) : null,
             ),
             decoration: const BoxDecoration(color: Color(0xFF635BFF)),
           ),
@@ -154,7 +155,8 @@ class _CommonDrawerState extends State<CommonDrawer> {
                   children: [
                     Text(
                       selectedGroupName ?? '(그룹 없음)',
-                      style: TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
                     ),
                     IconButton(
                       icon: const Icon(Icons.sync, size: 20, color: Colors.grey),
@@ -173,7 +175,8 @@ class _CommonDrawerState extends State<CommonDrawer> {
                                   },
                                   child: Row(
                                     children: [
-                                      if (user.id == ownerId) const Icon(Icons.check, color: Colors.green, size: 20),
+                                      if (user.id == ownerId)
+                                        const Icon(Icons.check, color: Colors.green, size: 20),
                                       const SizedBox(width: 4),
                                       Text(user.groupName ?? '(이름 없음)'),
                                     ],
@@ -187,13 +190,14 @@ class _CommonDrawerState extends State<CommonDrawer> {
                         if (selectedId != null && selectedId != ownerId) {
                           await userProvider.setOwnerId(selectedId);
                           final newBudgetId = userProvider.budgetId;
-                          await moneyProvider.setOwnerId(selectedId, newBudgetId!); // provider에 메서드가 있어야 함
+                          await moneyProvider.setOwnerId(
+                              selectedId, newBudgetId!); // provider에 메서드가 있어야 함
+                          await context.read<TodoProvider>().setUserId(userId, selectedId);
                         }
                       },
                     ),
                   ],
                 ),
-
                 const Text(
                   '현재 가계부',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
@@ -234,7 +238,8 @@ class _CommonDrawerState extends State<CommonDrawer> {
           const Divider(),
 
           // 함께 쓰는 사용자 리스트
-          Text('함께하는 유저',
+          Text(
+            '함께하는 유저',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -245,57 +250,55 @@ class _CommonDrawerState extends State<CommonDrawer> {
             child: (sharedUser == null || sharedUser.isEmpty)
                 ? Center(child: Text('로그인이 필요합니다'))
                 : Builder(builder: (context) {
-              final sortedUsers = [...sharedUser]; // 원본 리스트 복사
-              final ownerId = context.read<UserProvider>().ownerId;
+                    final sortedUsers = [...sharedUser]; // 원본 리스트 복사
+                    final ownerId = context.read<UserProvider>().ownerId;
 
-              // 정렬 로직
-              sortedUsers.sort((a, b) {
-                if (a.id == ownerId) return -1;
-                if (b.id == ownerId) return 1;
-                return a.name!.compareTo(b.name!);
-              });
+                    // 정렬 로직
+                    sortedUsers.sort((a, b) {
+                      if (a.id == ownerId) return -1;
+                      if (b.id == ownerId) return 1;
+                      return a.name!.compareTo(b.name!);
+                    });
 
-              return SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: List.generate(sortedUsers.length, (index) {
-                    print(sortedUsers.length);
-                    final user = sortedUsers[index];
-                    final isOwner = user.id == ownerId;
+                    return SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: List.generate(sortedUsers.length, (index) {
+                          print(sortedUsers.length);
+                          final user = sortedUsers[index];
+                          final isOwner = user.id == ownerId;
 
-                    return ListTile(
-                      leading: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.white,
-                        backgroundImage: user.isProfile!
-                            ? NetworkImage(user.profileUrl!)
-                            : null,
-                        child: !user.isProfile!
-                            ? Icon(Icons.group, color: Colors.black, size: 40)
-                            : null,
-                      ),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              user.name!,
-                              style: TextStyle(
-                                fontWeight: isOwner ? FontWeight.bold : FontWeight.normal,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              softWrap: false,
+                          return ListTile(
+                            leading: CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Colors.white,
+                              backgroundImage:
+                                  user.isProfile! ? NetworkImage(user.profileUrl!) : null,
+                              child: !user.isProfile!
+                                  ? Icon(Icons.group, color: Colors.black, size: 40)
+                                  : null,
                             ),
-                          ),
-                          if (isOwner)
-                            const Text('👑'), // 오른쪽 끝에 왕관
-                        ],
+                            title: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    user.name!,
+                                    style: TextStyle(
+                                      fontWeight: isOwner ? FontWeight.bold : FontWeight.normal,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                    softWrap: false,
+                                  ),
+                                ),
+                                if (isOwner) const Text('👑'), // 오른쪽 끝에 왕관
+                              ],
+                            ),
+                          );
+                        }),
                       ),
                     );
                   }),
-                ),
-              );
-            }),
           ),
           // Expanded(
           //   child: (sharedUser == null || sharedUser.isEmpty)
@@ -363,7 +366,9 @@ class _CommonDrawerState extends State<CommonDrawer> {
   }
 
   void handleLogout() async {
-    final userProvider = context.read<UserProvider>(); /// TODO: 이거 나중에 provider를 매개변수로 받을지 말지 고민해보자
+    final userProvider = context.read<UserProvider>();
+
+    /// TODO: 이거 나중에 provider를 매개변수로 받을지 말지 고민해보자
     await userProvider.signOut();
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/');

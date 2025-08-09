@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -18,32 +19,59 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  StreamSubscription<AuthState>? _authSub;
+  bool _handled = false;
+
   @override
   void initState() {
     super.initState();
 
     // 로그인 후 앱이 다시 열렸을 때 세션 감지
     Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+      // 화면이 이미 dispose되었으면 즉시 탈출
+      if (!mounted) return;
+
       final event = data.event;
       final Session? session = data.session;
       final currentUser = session?.user;
 
       if (event == AuthChangeEvent.signedIn && currentUser != null) {
-        final userProvider = context.read<UserProvider>();
-        await userProvider.setUser(currentUser);
-        userProvider.justSignedIn = true;
+        if (_handled) return; // 중복 방지
+        _handled = true;
 
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/');
+        // context를 쓰는 시점 이전에 provider reference를 잡아두고,
+        // await 이후에도 mounted 재확인
+        final userProvider = context.read<UserProvider>();
+        try {
+          await userProvider.setUser(currentUser);
+          userProvider.justSignedIn = true;
+
+          if (!mounted) return; // await 후 재확인
+          // 안전한 내비게이션 (원하면 pushNamedAndRemoveUntil로 전환)
+          Navigator.of(context).pushReplacementNamed('/');
+        } catch (e, st) {
+          // 디버깅용 로그
+          // ignore: avoid_print
+          print('auth listener error: $e\n$st');
+          _handled = false; // 실패 시 다시 시도 가능하게
         }
       }
     });
   }
 
   @override
+  void dispose() {
+    // ✅ 반드시 구독 해제
+    _authSub?.cancel();
+    _authSub = null;
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     if (widget.message != null && widget.message!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return; // 안전
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(widget.message!)),
         );
@@ -52,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final isIOS = Platform.isIOS;
 
     return Scaffold(
-      appBar: CommonAppBar(isMainScreen: false,),
+      appBar: const CommonAppBar(isMainScreen: false,),
       backgroundColor: const Color(0xFFF5F6FA),
       body: Center(
         child: SingleChildScrollView(
@@ -138,6 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
         redirectTo: 'wonmore://login-callback',
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('로그인 실패: $e')),
       );
