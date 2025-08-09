@@ -5,7 +5,7 @@ import 'package:share_plus/share_plus.dart';
 class InviteCodeService {
   /// 1. 초대코드 생성 (예: YH3G9K)
   static String generateInviteCode([int length = 6]) {
-    const chars = 'ABC123456789'; // 헷갈리는 글자 제거
+    const chars = '123456789'; // 헷갈리는 글자 제거
     final rand = Random();
     return List.generate(length, (_) => chars[rand.nextInt(chars.length)]).join();
   }

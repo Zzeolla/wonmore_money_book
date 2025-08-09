@@ -364,22 +364,23 @@ class UserProvider extends ChangeNotifier {
     final uid = _userId;
     if (uid == null) return;
 
-    final fullUserIds = {...selectedUserIds, uid};
     final supabase = Supabase.instance.client;
-
     final newBudgetId = const Uuid().v4();
+
     await supabase.from('budgets').insert(
         {'id': newBudgetId, 'owner_id': uid, 'name': title, 'updated_by': uid, 'is_main': false});
 
-    if (fullUserIds.isNotEmpty) {
-      final rows = fullUserIds
-          .map((u) => {
-                'budget_id': newBudgetId,
-                'user_id': u,
-              })
-          .toList();
+    // 2) owner는 제외하고 나머지 사용자만 권한 부여 (중복 안전)
+    final others = selectedUserIds.where((u) => u != uid).toSet();
+    if (others.isNotEmpty) {
+      final rows = others.map((u) => {
+        'budget_id': newBudgetId,
+        'user_id': u,
+      }).toList();
 
-      await supabase.from('budget_permissions').insert(rows);
+      await supabase
+          .from('budget_permissions')
+          .upsert(rows, onConflict: 'budget_id,user_id'); // ★ 중복 insert 방지
     }
 
     await loadBudgets();
@@ -390,7 +391,6 @@ class UserProvider extends ChangeNotifier {
     final uid = _userId;
     if (uid == null) return;
 
-    final fullUserIds = {...selectedUserIds, uid};
     final supabase = Supabase.instance.client;
 
     // 1. budgets 테이블에서 제목 업데이트
@@ -399,21 +399,46 @@ class UserProvider extends ChangeNotifier {
       'updated_by': uid,
     }).eq('id', budgetId);
 
+    // 2) 현재 권한 조회
+    final currentRows = await supabase
+        .from('budget_permissions')
+        .select('user_id')
+        .eq('budget_id', budgetId);
+
+    final current = currentRows
+        .map<String>((r) => r['user_id'] as String)
+        .toSet();
+
     // 2. 기존 권한 삭제
     await supabase.from('budget_permissions').delete().eq('budget_id', budgetId);
 
-    // 3. 새로운 권한 삽입
-    if (fullUserIds.isNotEmpty) {
-      final rows = fullUserIds
-          .map((u) => {
-                'budget_id': budgetId,
-                'user_id': u,
-              })
-          .toList();
+    // 3) 최종 목표 권한 집합 = 선택 + owner(항상 포함)
+    final desired = {...selectedUserIds, uid};
+    final desiredOthers = desired.where((u) => u != uid).toSet(); // owner 제외한 나머지
 
-      await supabase.from('budget_permissions').insert(rows);
+    // 4) diff 계산 (owner는 항상 유지되므로 current에 있어도 제거하지 않음)
+    final currentOthers = current.where((u) => u != uid).toSet();
+    final toAdd = desiredOthers.difference(currentOthers);
+    final toRemove = currentOthers.difference(desiredOthers);
+
+    if (toAdd.isNotEmpty) {
+      final rows = toAdd.map((u) => {
+        'budget_id': budgetId,
+        'user_id': u,
+      }).toList();
+
+      await supabase
+          .from('budget_permissions')
+          .upsert(rows, onConflict: 'budget_id,user_id'); // ★ 안전
     }
 
+    if (toRemove.isNotEmpty) {
+      await supabase
+          .from('budget_permissions')
+          .delete()
+          .eq('budget_id', budgetId)
+          .inFilter('user_id', toRemove.toList());
+    }
     await loadBudgets();
     notifyListeners();
   }

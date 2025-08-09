@@ -539,7 +539,7 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                 memoController,
                                 TextInputType.multiline,
                                 maxLines: 3,
-                                textInputAction: TextInputAction.done,
+                                textInputAction: TextInputAction.newline,
                                 onSubmitted: (_) => FocusScope.of(context).unfocus(),
                               )),
                           const SizedBox(height: 12),
