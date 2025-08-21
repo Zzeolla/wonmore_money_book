@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
+import 'package:wonmore_money_book/dialog/monthly_summary_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/home_screen_tab.dart';
 import 'package:wonmore_money_book/model/subscription_model.dart';
+import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/home_screen_tab_provider.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/favorite_screen.dart';
 import 'package:wonmore_money_book/screen/todo_list_screen.dart';
-import 'package:wonmore_money_book/service/record_ad_service.dart';
 import 'package:wonmore_money_book/service/interstitial_ad_service.dart';
 import 'package:wonmore_money_book/util/record_ad_handler.dart';
 import 'package:wonmore_money_book/widget/calendar_widget.dart';
@@ -18,7 +19,6 @@ import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/common_drawer.dart';
 import 'package:wonmore_money_book/widget/custom_bottom_sheet.dart';
 import 'package:wonmore_money_book/widget/year_month_header.dart';
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -84,8 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // ),
           IconButton(
             icon: Icon(Icons.star_border_purple500, color: Color(0xFFF2F4F6), size: 30),
-            onPressed: () =>
-                context.read<HomeScreenTabProvider>().setTab(HomeTab.favorite),
+            onPressed: () => context.read<HomeScreenTabProvider>().setTab(HomeTab.favorite),
           ),
           IconButton(
             icon: Icon(Icons.checklist, color: Color(0xFFF2F4F6), size: 30),
@@ -111,6 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       /// 연도.월 + 화살표 구현
                       YearMonthHeader(),
+
                       /// 수입/지출/잔액 정보
                       Padding(
                         padding: const EdgeInsets.all(8.0),
@@ -124,12 +124,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Expanded(
-                                      child: _buildSummaryItem('수입', provider.monthlyIncome, '\u20A9')),
-                                  Expanded(
-                                      child: _buildSummaryItem('지출', provider.monthlyExpense, '\u20A9')),
+                                      child: _buildSummaryItem(
+                                          '수입', provider.monthlyIncome, '\u20A9', () => _openMonthlyTxModal(TransactionType.income),)),
                                   Expanded(
                                       child: _buildSummaryItem(
-                                          '잔액', provider.monthlyBalance, '\u20A9')),
+                                          '지출', provider.monthlyExpense, '\u20A9', () => _openMonthlyTxModal(TransactionType.expense),)),
+                                  Expanded(
+                                      child: _buildSummaryItem(
+                                          '잔액', provider.monthlyBalance, '\u20A9', () => _openMonthlyTxModal(null),)),
                                 ],
                               );
                             },
@@ -160,7 +162,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     bottom: kMinAdHeight + 16,
                     child: FloatingActionButton(
                       onPressed: () {
-                        final myPlan = context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
+                        final myPlan =
+                            context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
                         final adsEnabled = myPlan.adsEnabled ?? true;
 
                         if (adsEnabled) {
@@ -185,7 +188,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSummaryItem(String label, int amount, [String prefix = '\\']) {
+  Widget _buildSummaryItem(
+    String label,
+    int amount, [
+    String prefix = '\\',
+    VoidCallback? onTap,
+  ]) {
     final formattedAmount = NumberFormat('#,###').format(amount);
     final displayAmount = '$prefix $formattedAmount';
     final Color amountColor = switch (label) {
@@ -193,28 +201,32 @@ class _HomeScreenState extends State<HomeScreen> {
       '지출' => Colors.red,
       _ => Colors.black,
     };
-    return Column(
+
+    final content = Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
-              fontSize: 18, // 폰트 크기 축소
-              color: Color(0xFF7C7C7C),
-              fontWeight: FontWeight.bold),
+          style:
+              const TextStyle(fontSize: 18, color: Color(0xFF7C7C7C), fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 4), // 간격 축소
+        const SizedBox(height: 4),
         Text(
           displayAmount,
-          style: TextStyle(
-            fontSize: 16, // 폰트 크기 축소
-            color: amountColor,
-          ),
+          style: TextStyle(fontSize: 16, color: amountColor),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
       ],
+    );
+
+    // 탭 가능하도록 GestureDetector로 감싸기
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: content,
     );
   }
 
@@ -228,6 +240,18 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return CustomBottomSheet(selectedDay: selectedDay, rowHeight: rowHeight);
       },
+    );
+  }
+
+  void _openMonthlyTxModal(TransactionType? type) {
+    final base = context.read<MoneyProvider>().focusedDay;
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => MonthlySummaryDialog(
+        type: type,              // null이면 수입+지출 전체
+        monthBase: base,
+      ),
     );
   }
 

@@ -1,10 +1,87 @@
 workflows:
-  ios_release_build:
-    name: iOS Release Build
+  ios_release:
+    name: iOS Release (verbose upload)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
     environment:
-      flutter: "3.29.2"  # 너가 사용하는 버전 확인 후 맞춰줘
-      xcode: latest
+      flutter: 3.29.2
+      xcode: 16.4
+      cocoapods: default
+      # 네 앱 번들 ID 확인해서 필요 시 수정
       vars:
         BUNDLE_ID: com.zlabo.wonmoremoneybook
-      groups:
-        - app_store_credentials
+
+    cache:
+      cache_default_paths: true
+
+    # ====== 빌드 순서 ======
+    scripts:
+      # 1) 서명 파일 자동 준비 (프로파일/인증서 생성·다운로드 + Xcode 프로젝트에 적용)
+      - name: Prepare iOS code signing
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+
+      # 2) Flutter로 "앱 IPA" 생성 (Runner.app이 들어있는 정상 IPA)
+      - name: Flutter build IPA (App Store export)
+        script: |
+          flutter clean
+          flutter pub get
+          : "${BUILD_NUMBER:=1}"
+          # xcode-project use-profiles가 만들어 둔 export_options.plist 사용
+          flutter build ipa --release \
+            --build-number=$BUILD_NUMBER \
+            --export-options-plist $HOME/export_options.plist
+
+      # 3) IPA 구조 확인 + App Store Connect에 --verbose로 업로드
+      - name: Publish to App Store Connect (verbose)
+        script: |
+          # 필수 환경변수 체크
+          : "${APP_STORE_CONNECT_KEY_ID:?Set APP_STORE_CONNECT_KEY_ID in Environment variables}"
+          : "${APP_STORE_CONNECT_ISSUER_ID:?Set APP_STORE_CONNECT_ISSUER_ID in Environment variables}"
+          : "${APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY:?Set APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY (multiline)}"
+
+          # IPA 찾기
+          IPA="$(/usr/bin/find "$PWD" -type f -name '*.ipa' -print -quit || true)"
+          [ -n "$IPA" ] || IPA="$(/usr/bin/find /Users/builder -type f -name '*.ipa' -print -quit || true)"
+          [ -f "$IPA" ] || { echo "❌ IPA not found"; exit 1; }
+          echo "✅ Found IPA: $IPA"
+
+          echo "📦 IPA contents (first lines):"
+          unzip -l "$IPA" | sed -n '1,120p' || true
+
+          # .app의 Info.plist만 확인
+          TMP_DIR="$(mktemp -d)"
+          unzip -q "$IPA" -d "$TMP_DIR"
+          PLIST="$(find "$TMP_DIR/Payload" -type f -path '*/.app/Info.plist' | head -1 || true)"
+          if [ -z "$PLIST" ]; then
+            echo "❌ App .app/Info.plist not found. This is NOT a valid app IPA."
+            exit 2
+          fi
+          echo "ℹ️ From App Info.plist:"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$PLIST" || true
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST" || true
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST" || true
+
+          # 업로드 (자세한 실패 원인 보기 위해 --verbose)
+          app-store-connect publish \
+            --path "$IPA" \
+            --key-id "$APP_STORE_CONNECT_KEY_ID" \
+            --issuer-id "$APP_STORE_CONNECT_ISSUER_ID" \
+            --private-key @env:APP_STORE_CONNECT_PUBLISHER_PRIVATE_KEY \
+            --verbose
+
+    # 산출물 보관
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - build/ios/ipa/*.dSYM.zip
+
+    # 기본 퍼블리셔는 끔(중복 업로드 방지) — 우리 스크립트에서 업로드함
+    publishing:
+      app_store_connect:
+        submit_to_testflight: false
+        submit_to_app_store: false
