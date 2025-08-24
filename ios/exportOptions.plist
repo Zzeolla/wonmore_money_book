@@ -4,14 +4,8 @@
 <dict>
   <key>method</key><string>app-store</string>
   <key>signingStyle</key><string>automatic</string>
+  <key>teamID</key><string>U4J3G589PV</string>
   <key>destination</key><string>export</string>
   <key>compileBitcode</key><true/>
-  <!-- (선택) 프로파일 이름을 고정하고 싶다면 아래 주석 해제 후 값 바꿔서 사용
-  <key>provisioningProfiles</key>
-  <dict>
-    <key>com.zlabo.wonmoremoneybook</key>
-    <string>wonmoreappstoreprofile</string>
-  </dict>
-  -->
 </dict>
 </plist>
