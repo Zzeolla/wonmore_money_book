@@ -1,1 +1,7 @@
 #include "Generated.xcconfig"
+CODE_SIGN_STYLE=Manual
+DEVELOPMENT_TEAM=U4J3G589PV
+PRODUCT_BUNDLE_IDENTIFIER=com.zlabo.wonmoremoneybook
+PROVISIONING_PROFILE_SPECIFIER=wonmoreappstoreprofile
+CODE_SIGN_IDENTITY=Apple Distribution
+CODE_SIGN_IDENTITY[sdk=iphoneos*]=Apple Distribution

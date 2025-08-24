@@ -367,7 +367,6 @@
                 DEVELOPMENT_TEAM = U4J3G589PV;
                 CODE_SIGN_STYLE = Manual;
                 CODE_SIGN_IDENTITY = "Apple Distribution";
-                CODE_SIGN_IDENTITY[sdk=iphoneos*] = "Apple Distribution";
                 PROVISIONING_PROFILE_SPECIFIER = wonmoreappstoreprofile;
 
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -575,7 +574,6 @@
                 DEVELOPMENT_TEAM = U4J3G589PV;
                 CODE_SIGN_STYLE = Manual;
                 CODE_SIGN_IDENTITY = "Apple Distribution";
-                CODE_SIGN_IDENTITY[sdk=iphoneos*] = "Apple Distribution";
                 PROVISIONING_PROFILE_SPECIFIER = wonmoreappstoreprofile;
 
 				LD_RUNPATH_SEARCH_PATHS = (
