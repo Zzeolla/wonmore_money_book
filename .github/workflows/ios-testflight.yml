@@ -73,6 +73,39 @@ jobs:
           xcodebuild -showBuildSettings -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release | \
             /usr/bin/grep -E "DEVELOPMENT_TEAM|CODE_SIGN|PRODUCT_BUNDLE_IDENTIFIER" || true
 
+      - name: Force Distribution signing for Release (patch pbxproj)
+        run: |
+          P=ios/Runner.xcodeproj/project.pbxproj
+
+          # 1) Automatic -> Manual
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$P"
+
+          # 2) Development -> Distribution
+          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$P"
+          sed -i '' 's/CODE_SIGN_IDENTITY = Apple Development;/CODE_SIGN_IDENTITY = "Apple Distribution";/g' "$P"
+
+          # 3) 팀 ID 고정
+          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]\{10\}/DEVELOPMENT_TEAM = U4J3G589PV/g' "$P"
+
+          # 4) Release 빌드셋에 프로파일 명시 (없으면 추가)
+          #   - PROVISIONING_PROFILE_SPECIFIER 줄이 없으면 추가
+          #   - 존재하면 값 교체
+          if grep -q "PROVISIONING_PROFILE_SPECIFIER" "$P"; then
+            sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = .*/PROVISIONING_PROFILE_SPECIFIER = wonmoreappstoreprofile;/g' "$P"
+          else
+            # Release 섹션 중 하나에 줄 추가 (간단 삽입: CODE_SIGN_IDENTITY 바로 아래에 붙임)
+            awk '
+              { print }
+              /CODE_SIGN_IDENTITY = "Apple Distribution";/ && !added {
+                print "				PROVISIONING_PROFILE_SPECIFIER = wonmoreappstoreprofile;";
+                added=1
+              }' "$P" > "$P.tmp" && mv "$P.tmp" "$P"
+          fi
+
+      - name: Effective signing settings (debug, after patch)
+        run: |
+          xcodebuild -showBuildSettings -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release | \
+            /usr/bin/grep -E "DEVELOPMENT_TEAM|CODE_SIGN|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER" || true
 
       # 8. IPA 빌드
       - name: Build IPA
