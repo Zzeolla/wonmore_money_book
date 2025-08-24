@@ -77,6 +77,18 @@ jobs:
             -destination 'generic/platform=iOS' | \
             /usr/bin/grep -E "DEVELOPMENT_TEAM|CODE_SIGN|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER" || true
 
+      # (선택) 명시적으로 Xcode 버전 고정 — macos-14 러너는 Xcode 16 계열
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+      
+      # iOS 플랫폼 런타임 설치 (iOS 18.0)
+      - name: Install iOS platform runtime
+        run: |
+          sudo xcodebuild -downloadPlatform iOS
+          sudo xcodebuild -runFirstLaunch || true
+
       # 8. IPA 빌드
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=ios/exportOptions.plist --build-number $GITHUB_RUN_NUMBER
