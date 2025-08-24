@@ -68,7 +68,7 @@ jobs:
           uuid=$(grep -A1 UUID ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -n1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
           echo "One UUID: $uuid" || true
 
-      - name: Effective signing settings (debug, after patch)
+      - name: Effective signing settings (debug)
         run: |
           xcodebuild -showBuildSettings \
             -workspace ios/Runner.xcworkspace \
@@ -76,7 +76,6 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' | \
             /usr/bin/grep -E "DEVELOPMENT_TEAM|CODE_SIGN|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER" || true
-
 
       # 8. IPA 빌드
       - name: Build IPA
