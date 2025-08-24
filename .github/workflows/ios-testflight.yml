@@ -1,0 +1,81 @@
+name: iOS → TestFlight
+
+on:
+  workflow_dispatch:   # 수동 실행
+  push:
+    tags:
+      - 'ios-v*'       # 예: ios-v1.0.0
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest
+
+    steps:
+      # 1. 소스코드 가져오기
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Flutter 세팅
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+
+      # 3. 패키지 복원
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # 4. .env 파일 생성 (Secrets → 실제 .env 파일로)
+      - name: Create .env from secret
+        run: |
+          rm -f .env
+          cat > .env << 'EOF'
+          ${{ secrets.APP_ENV_FILE }}
+          EOF
+
+      # 5. 배포 인증서 설치 (p12)
+      - name: Import code signing certs
+        uses: apple-actions/import-codesign-certs@v5
+        with:
+          p12-file-base64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
+          p12-password: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
+
+      # 6. 프로비저닝 프로파일 자동 다운로드
+      - name: Download provisioning profiles
+        uses: apple-actions/download-provisioning-profiles@v1
+        with:
+          bundle-id: ${{ vars.BUNDLE_ID }}
+          profile-type: IOS_APP_STORE
+          issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
+      # 7. (필요 시) CocoaPods 업데이트
+      - name: Pod install (if needed)
+        run: |
+          cd ios
+          pod install --repo-update || true
+          cd ..
+
+      # 8. IPA 빌드
+      - name: Build IPA
+        run: flutter build ipa --release \
+             --export-options-plist=ios/exportOptions.plist \
+             --build-number $GITHUB_RUN_NUMBER
+
+
+      # 9. 결과물 업로드 (디버깅용)
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/*.ipa
+
+      # 10. TestFlight 업로드
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@v3
+        with:
+          app-path: build/ios/ipa/*.ipa
+          issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
