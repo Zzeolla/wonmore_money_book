@@ -3,28 +3,29 @@ name: iOS → TestFlight
 on:
   workflow_dispatch:   # 수동 실행
   push:
-    tags: ['ios-v*']   # ios-v1.0.0 형태의 태그 push 시 실행
+    tags:
+      - 'ios-v*'       # 예: ios-v1.0.0
 
 jobs:
   build-and-upload:
-    runs-on: macos-latest   # GitHub macOS 빌드 머신 사용
+    runs-on: macos-latest
 
     steps:
-      # 1. 소스코드 체크아웃
+      # 1. 소스코드 가져오기
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. Flutter SDK 설치
+      # 2. Flutter 세팅
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.29.2'
 
-      # 3. 패키지 의존성 다운로드
+      # 3. 패키지 복원
       - name: Flutter pub get
         run: flutter pub get
 
-      # 4. .env 파일 생성 (Secrets에서 불러옴)
+      # 4. .env 파일 생성 (Secrets → 실제 .env 파일로)
       - name: Create .env from secret
         run: |
           rm -f .env
@@ -32,20 +33,14 @@ jobs:
           ${{ secrets.APP_ENV_FILE }}
           EOF
 
-      # 5. Xcode 버전 고정 (16.0)
-      - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16.0'
-      
-      # 6. 배포 인증서(p12) 설치
+      # 5. 배포 인증서 설치 (p12)
       - name: Import code signing certs
         uses: apple-actions/import-codesign-certs@v5
         with:
           p12-file-base64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
           p12-password: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
 
-      # 7. App Store Connect에서 프로비저닝 프로파일 다운로드
+      # 6. 프로비저닝 프로파일 자동 다운로드
       - name: Download provisioning profiles
         uses: apple-actions/download-provisioning-profiles@v1
         with:
@@ -55,25 +50,24 @@ jobs:
           api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
-      # 8. CocoaPods 설치/업데이트 (필요시)
+      # 7. (필요 시) CocoaPods 업데이트
       - name: Pod install (if needed)
         run: |
           cd ios
           pod install --repo-update || true
           cd ..
 
-      # 9. 설치된 인증서/키체인 확인 (디버깅용)
       - name: Keychains / Identities (debug)
         run: |
           security list-keychains
           security find-identity -p codesigning -v || true
-
-      # 10. 다운로드된 프로비저닝 프로파일 확인 (디버깅용)
+      
       - name: Provisioning profiles (debug)
         run: |
           ls -al ~/Library/MobileDevice/Provisioning\ Profiles || true
+          uuid=$(grep -A1 UUID ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision | head -n1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+          echo "One UUID: $uuid" || true
 
-      # 11. Xcode 빌드 세팅 확인 (서명 정보 디버깅)
       - name: Effective signing settings (debug)
         run: |
           xcodebuild -showBuildSettings \
@@ -81,13 +75,25 @@ jobs:
             -scheme Runner \
             -configuration Release \
             -destination 'generic/platform=iOS' | \
-            /usr/bin/grep -E "DEVELOPMENT_TEAM|CODE_SIGN|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER|CODE_SIGN_IDENTITY" || true
+            /usr/bin/grep -E "DEVELOPMENT_TEAM|CODE_SIGN|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER" || true
 
-      # 12. IPA 빌드 (Release, exportOptions.plist 사용)
+      # (선택) 명시적으로 Xcode 버전 고정 — macos-14 러너는 Xcode 16 계열
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+      
+      # iOS 플랫폼 런타임 설치 (iOS 18.0)
+      - name: Install iOS platform runtime
+        run: |
+          sudo xcodebuild -downloadPlatform iOS
+          sudo xcodebuild -runFirstLaunch || true
+
+      # 8. IPA 빌드
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=ios/exportOptions.plist --build-number $GITHUB_RUN_NUMBER
 
-      # 13. 빌드 결과물에서 .ipa 파일 경로 찾기
+      # (새 스텝) IPA 경로 찾기
       - name: Locate IPA
         id: locate_ipa
         run: |
@@ -98,17 +104,16 @@ jobs:
             echo "No IPA found under build/ios/ipa"
             exit 1
           fi
-          echo "ipa_path=$IPA_PATH" >> $GITHUB_OUTPUT
           echo "Found IPA: $IPA_PATH"
+          echo "ipa_path=$IPA_PATH" >> $GITHUB_OUTPUT
 
-      # 14. 빌드된 IPA 파일을 GitHub Actions artifact로 업로드 (디버깅/백업용)
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
           path: ${{ steps.locate_ipa.outputs.ipa_path }}
-      
-      # 15. TestFlight에 IPA 업로드
+
+      # (기존 스텝 수정) TestFlight 업로드
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@v3
         with:
