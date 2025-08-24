@@ -33,6 +33,18 @@ jobs:
           ${{ secrets.APP_ENV_FILE }}
           EOF
 
+      # (선택) 명시적으로 Xcode 버전 고정 — macos-14 러너는 Xcode 16 계열
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.0'
+      
+      # iOS 플랫폼 런타임 설치 (iOS 18.0)
+      - name: Install iOS platform runtime
+        run: |
+          sudo xcodebuild -downloadPlatform iOS
+          sudo xcodebuild -runFirstLaunch || true
+
       # 5. 배포 인증서 설치 (p12)
       - name: Import code signing certs
         uses: apple-actions/import-codesign-certs@v5
@@ -77,34 +89,36 @@ jobs:
             -destination 'generic/platform=iOS' | \
             /usr/bin/grep -E "DEVELOPMENT_TEAM|CODE_SIGN|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER" || true
 
-      # (선택) 명시적으로 Xcode 버전 고정 — macos-14 러너는 Xcode 16 계열
-      - name: Select Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '16.0'
-      
-      # iOS 플랫폼 런타임 설치 (iOS 18.0)
-      - name: Install iOS platform runtime
-        run: |
-          sudo xcodebuild -downloadPlatform iOS
-          sudo xcodebuild -runFirstLaunch || true
-
       # 8. IPA 빌드
       - name: Build IPA
         run: flutter build ipa --release --export-options-plist=ios/exportOptions.plist --build-number $GITHUB_RUN_NUMBER
 
-      # 9. 결과물 업로드 (디버깅용)
+      # (새 스텝) IPA 경로 찾기
+      - name: Locate IPA
+        id: locate_ipa
+        run: |
+          set -e
+          ls -al build/ios/ipa || true
+          IPA_PATH=$(ls -1 build/ios/ipa/*.ipa | head -n 1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "No IPA found under build/ios/ipa"
+            exit 1
+          fi
+          echo "Found IPA: $IPA_PATH"
+          echo "ipa_path=$IPA_PATH" >> $GITHUB_OUTPUT
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ios-ipa
-          path: build/ios/ipa/*.ipa
-
-      # 10. TestFlight 업로드
+          path: ${{ steps.locate_ipa.outputs.ipa_path }}
+      
+      # (기존 스텝 수정) TestFlight 업로드
       - name: Upload to TestFlight
         uses: apple-actions/upload-testflight-build@v3
         with:
-          app-path: build/ios/ipa/*.ipa
+          app-path: ${{ steps.locate_ipa.outputs.ipa_path }}
           issuer-id: ${{ vars.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
