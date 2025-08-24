@@ -59,10 +59,7 @@ jobs:
 
       # 8. IPA 빌드
       - name: Build IPA
-        run: flutter build ipa --release \
-             --export-options-plist=ios/exportOptions.plist \
-             --build-number $GITHUB_RUN_NUMBER
-
+        run: flutter build ipa --release --export-options-plist=ios/exportOptions.plist --build-number $GITHUB_RUN_NUMBER
 
       # 9. 결과물 업로드 (디버깅용)
       - name: Upload artifact
