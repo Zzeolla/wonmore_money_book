@@ -10,7 +10,8 @@ import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/common_drawer.dart';
 
 class MoreScreen extends StatelessWidget {
-  const MoreScreen({super.key});
+  final Future<void> Function() onRestartTutorial;
+  const MoreScreen({super.key, required this.onRestartTutorial});
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +42,7 @@ class MoreScreen extends StatelessWidget {
         children: [
           Expanded(
             child: ListTileTheme(
-              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 0),
               dense: false,
               minLeadingWidth: 0,
               child: ListView(
@@ -74,6 +75,7 @@ class MoreScreen extends StatelessWidget {
                       );
                     }
                   ),
+                  const Divider(),
                   ListTile(
                       leading: Padding(
                         padding: const EdgeInsets.only(right: 8.0),
@@ -95,6 +97,7 @@ class MoreScreen extends StatelessWidget {
                       );
                     }
                   ),
+                  const Divider(),
                   ListTile(
                       leading: Padding(
                         padding: const EdgeInsets.only(right: 8.0),
@@ -116,6 +119,7 @@ class MoreScreen extends StatelessWidget {
                       );
                     }
                   ),
+                  const Divider(),
                   ListTile(
                       leading: Padding(
                         padding: const EdgeInsets.only(right: 8.0),
@@ -137,6 +141,7 @@ class MoreScreen extends StatelessWidget {
                       );
                     }
                   ),
+                  const Divider(),
                   ListTile(
                     leading: Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -153,6 +158,7 @@ class MoreScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  const Divider(),
                   ListTile(
                     leading: Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -174,6 +180,7 @@ class MoreScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  const Divider(),
                   ListTile(
                     leading: Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -190,6 +197,63 @@ class MoreScreen extends StatelessWidget {
                       );
                     },
                   ),
+                  const Divider(),
+                  ListTile(
+                    leading: Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: CircleAvatar(
+                        radius: 14,
+                        backgroundColor: Colors.deepPurple.shade300,
+                        child: const Icon(Icons.school, size: 16, color: Colors.white,),
+                      ),
+                    ),
+                    title: const Text('튜토리얼 다시보기'),
+                    onTap: () async => await onRestartTutorial(), // ✅ 호출만 비동기
+                  ),
+                  // ListTile(
+                  //   leading: Padding(
+                  //     padding: const EdgeInsets.only(right: 8.0),
+                  //     child: CircleAvatar(
+                  //       radius: 14,
+                  //       backgroundColor: Colors.deepPurple.shade300,
+                  //       child: const Icon(Icons.refresh_outlined, size: 16, color: Colors.white),
+                  //     ),
+                  //   ),
+                  //   title: const Text('다음 실행 시 온보딩 다시 보기'),
+                  //   onTap: () async {
+                  //     final prefs = await SharedPreferences.getInstance();
+                  //     await prefs.setBool('onboarding_seen', false); // ← 플래그 되돌리기
+                  //     if (!context.mounted) return;
+                  //     ScaffoldMessenger.of(context).showSnackBar(
+                  //       const SnackBar(content: Text('다음 실행 시 온보딩이 표시됩니다.')),
+                  //     );
+                  //   },
+                  // ),
+                  // ListTile(
+                  //   leading: Padding(
+                  //     padding: const EdgeInsets.only(right: 8.0),
+                  //     child: CircleAvatar(
+                  //       radius: 14,
+                  //       backgroundColor: Colors.deepPurple.shade300,
+                  //       child: const Icon(Icons.school_outlined, size: 16, color: Colors.white),
+                  //     ),
+                  //   ),
+                  //   title: const Text('사용 방법 다시 보기'),
+                  //   onTap: () {
+                  //     Navigator.push(
+                  //       context,
+                  //       MaterialPageRoute(
+                  //         builder: (_) => OnboardingScreen(
+                  //           // ❗ 콜백 시그니처가 (BuildContext ctx) 이므로 이렇게 받아서
+                  //           // 온보딩 자신의 context로 pop 해야 언마운트 오류가 안 납니다.
+                  //           onFinished: (ctx) => Navigator.of(ctx).pop(),
+                  //           showProSlide: true, // 원하면 isPro 여부로 제어
+                  //         ),
+                  //       ),
+                  //     );
+                  //   },
+                  // ),
+                  const Divider(),
                   ListTile(
                     leading: Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -204,6 +268,7 @@ class MoreScreen extends StatelessWidget {
                       // TODO: 설정 화면으로 이동
                     },
                   ),
+                  const Divider(),
                   ListTile(
                     leading: Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -225,6 +290,7 @@ class MoreScreen extends StatelessWidget {
                       }
                     },
                   ),
+                  const Divider(),
                   ListTile(
                     leading: Padding(
                       padding: const EdgeInsets.only(right: 8.0),
@@ -239,6 +305,7 @@ class MoreScreen extends StatelessWidget {
                       // 예: Share.share('원모아 가계부 앱을 사용해보세요!\nhttps://...');
                     },
                   ),
+                  const Divider(),
                   ListTile(
                     leading: Padding(
                       padding: const EdgeInsets.only(right: 8.0),

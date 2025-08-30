@@ -10,36 +10,55 @@ class RecordAdHandler {
 
     final adService = InterstitialAdService();
 
-    if (todayCount == 0) {
-      await RecordAdService.incrementCount();
-      openDialog();
-      return;
-    }
+    final requiredAds = (todayCount + 3) ~/ 4;
 
-    if (adWatched == 0 && todayCount < 5) {
+    // if (todayCount == 0) {
+    //   await RecordAdService.incrementCount();
+    //   openDialog();
+    //   return;
+    // }
+    //
+    // if (adWatched == 0 && todayCount < 5) {
+    //   if (adService.isReady) {
+    //     adService.showAd(() async {
+    //       await RecordAdService.incrementAdCount();
+    //       await RecordAdService.incrementCount();
+    //       openDialog();
+    //     });
+    //   } else {
+    //     openDialog();
+    //   }
+    //   return;
+    // }
+    //
+    // if (adWatched == 1 && todayCount >= 5) {
+    //   if (adService.isReady) {
+    //     adService.showAd(() async {
+    //       await RecordAdService.incrementAdCount();
+    //       await RecordAdService.incrementCount();
+    //       openDialog();
+    //     });
+    //   } else {
+    //     openDialog();
+    //   }
+    //   return;
+    // }
+
+    // 아직 필요한 광고를 다 보지 않았다면
+    if (adWatched < requiredAds) {
       if (adService.isReady) {
         adService.showAd(() async {
           await RecordAdService.incrementAdCount();
           await RecordAdService.incrementCount();
           openDialog();
         });
+        return;
       } else {
+        // 광고 준비 안 됐으면 그냥 열기
+        await RecordAdService.incrementCount();
         openDialog();
+        return;
       }
-      return;
-    }
-
-    if (adWatched == 1 && todayCount >= 5) {
-      if (adService.isReady) {
-        adService.showAd(() async {
-          await RecordAdService.incrementAdCount();
-          await RecordAdService.incrementCount();
-          openDialog();
-        });
-      } else {
-        openDialog();
-      }
-      return;
     }
 
     await RecordAdService.incrementCount();

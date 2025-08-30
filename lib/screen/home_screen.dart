@@ -20,14 +20,49 @@ import 'package:wonmore_money_book/widget/common_drawer.dart';
 import 'package:wonmore_money_book/widget/custom_bottom_sheet.dart';
 import 'package:wonmore_money_book/widget/year_month_header.dart';
 
+class DrawerTutorialBridge {
+  final VoidCallback openDrawer;
+  final VoidCallback closeDrawer;
+  final GlobalKey groupSyncKey;
+  final GlobalKey currentBudgetKey;
+  final GlobalKey shareJoinKey;
+
+  DrawerTutorialBridge({
+    required this.openDrawer,
+    required this.closeDrawer,
+    required this.groupSyncKey,
+    required this.currentBudgetKey,
+    required this.shareJoinKey,
+  });
+}
+
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final GlobalKey? starKey;
+  final GlobalKey? todoKey;
+  final GlobalKey? fabKey;
+
+  final void Function(DrawerTutorialBridge bridge)? registerDrawerTutorialBridge;
+
+  const HomeScreen({
+    super.key,
+    this.starKey,
+    this.todoKey,
+    this.fabKey,
+    this.registerDrawerTutorialBridge,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // ✅ Drawer 튜토 타겟 키 3개
+  final _keyDrawerSync = GlobalKey();       // 그룹 선택(↻)
+  final _keyDrawerBudget = GlobalKey();     // 현재 가계부 드롭다운
+  final _keyDrawerShare = GlobalKey();      // 그룹 공유/참여
+
   // 상수 정의
   static const double kAppBarHeight = 56.0;
   static const double kYearMonthBoxHeight = 40.0;
@@ -43,6 +78,18 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     InterstitialAdService().loadAd();
     // 앱 시작 시 현재 달의 거래내역만 로드
+
+    // ✅ MainScreen이 Drawer를 열고/닫고, 타겟 키를 쓰게 해주는 브릿지 등록
+    widget.registerDrawerTutorialBridge?.call(
+      DrawerTutorialBridge(
+        openDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+        closeDrawer: () => Navigator.of(context).maybePop(),
+        groupSyncKey: _keyDrawerSync,
+        currentBudgetKey: _keyDrawerBudget,
+        shareJoinKey: _keyDrawerShare,
+      ),
+    );
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<MoneyProvider>().changeFocusedDay(DateTime.now());
     });
@@ -72,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isMainScreen = context.watch<HomeScreenTabProvider>().isMainScreen;
 
     return Scaffold(
+      key: _scaffoldKey,
       resizeToAvoidBottomInset: false,
       appBar: CommonAppBar(
         isMainScreen: isMainScreen,
@@ -83,17 +131,23 @@ class _HomeScreenState extends State<HomeScreen> {
           //   },
           // ),
           IconButton(
+            key: widget.starKey,
             icon: Icon(Icons.star_border_purple500, color: Color(0xFFF2F4F6), size: 30),
             onPressed: () => context.read<HomeScreenTabProvider>().setTab(HomeTab.favorite),
           ),
           IconButton(
+            key: widget.todoKey,
             icon: Icon(Icons.checklist, color: Color(0xFFF2F4F6), size: 30),
             onPressed: () => context.read<HomeScreenTabProvider>().setTab(HomeTab.todo),
             // 장보기 목록, 처리해야 할 금융 업무(이체, 납부 등), 기념일 체크
           ),
         ],
       ),
-      drawer: CommonDrawer(),
+      drawer: CommonDrawer(
+        groupSyncKey: _keyDrawerSync,
+        currentBudgetKey: _keyDrawerBudget,
+        shareJoinKey: _keyDrawerShare,
+      ),
       body: Builder(
         builder: (context) {
           switch (tab) {
@@ -125,13 +179,25 @@ class _HomeScreenState extends State<HomeScreen> {
                                 children: [
                                   Expanded(
                                       child: _buildSummaryItem(
-                                          '수입', provider.monthlyIncome, '\u20A9', () => _openMonthlyTxModal(TransactionType.income),)),
+                                    '수입',
+                                    provider.monthlyIncome,
+                                    '\u20A9',
+                                    () => _openMonthlyTxModal(TransactionType.income),
+                                  )),
                                   Expanded(
                                       child: _buildSummaryItem(
-                                          '지출', provider.monthlyExpense, '\u20A9', () => _openMonthlyTxModal(TransactionType.expense),)),
+                                    '지출',
+                                    provider.monthlyExpense,
+                                    '\u20A9',
+                                    () => _openMonthlyTxModal(TransactionType.expense),
+                                  )),
                                   Expanded(
                                       child: _buildSummaryItem(
-                                          '잔액', provider.monthlyBalance, '\u20A9', () => _openMonthlyTxModal(null),)),
+                                    '잔액',
+                                    provider.monthlyBalance,
+                                    '\u20A9',
+                                    () => _openMonthlyTxModal(null),
+                                  )),
                                 ],
                               );
                             },
@@ -161,6 +227,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     right: 16,
                     bottom: kMinAdHeight + 16,
                     child: FloatingActionButton(
+                      key: widget.fabKey,
                       onPressed: () {
                         final myPlan =
                             context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
@@ -249,7 +316,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       barrierDismissible: true,
       builder: (_) => MonthlySummaryDialog(
-        type: type,              // null이면 수입+지출 전체
+        type: type, // null이면 수입+지출 전체
         monthBase: base,
       ),
     );

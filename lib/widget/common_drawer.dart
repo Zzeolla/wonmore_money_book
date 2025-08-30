@@ -6,7 +6,16 @@ import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/login_screen.dart';
 
 class CommonDrawer extends StatefulWidget {
-  const CommonDrawer({super.key});
+  final GlobalKey? groupSyncKey;
+  final GlobalKey? currentBudgetKey;
+  final GlobalKey? shareJoinKey;
+
+  const CommonDrawer({
+    super.key,
+    this.groupSyncKey,
+    this.currentBudgetKey,
+    this.shareJoinKey,
+  });
 
   @override
   State<CommonDrawer> createState() => _CommonDrawerState();
@@ -159,6 +168,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
                           TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
                     ),
                     IconButton(
+                      key: widget.groupSyncKey,
                       icon: const Icon(Icons.sync, size: 20, color: Colors.grey),
                       onPressed: () async {
                         if (sharedOwnerUsers == null || sharedOwnerUsers.isEmpty) return;
@@ -211,6 +221,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
+                      key: widget.currentBudgetKey,
                       isExpanded: true,
                       value: budgets?.any((b) => b.id == budgetId) == true ? budgetId : null,
                       icon: const Icon(Icons.keyboard_arrow_down),
@@ -329,6 +340,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
 
           // 사용자 초대 버튼
           ListTile(
+            key: widget.shareJoinKey,
             leading: const Icon(Icons.person_add),
             title: const Text('가계부 그룹 공유/참여'),
             onTap: handleInviteUser,

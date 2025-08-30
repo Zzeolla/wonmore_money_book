@@ -25,7 +25,7 @@ class _SplashScreenState extends State<SplashScreen> {
   bool _navigated = false;
   bool _error = false;
   int _retryCount = 0;
-  static const _maxRetries = 3;
+  static const _maxRetries = 1;
 
   @override
   void initState() {
@@ -52,7 +52,7 @@ class _SplashScreenState extends State<SplashScreen> {
     super.dispose();
   }
 
-  Future<T> _withTimeout<T>(Future<T> future, {Duration timeout = const Duration(seconds: 8)}) {
+  Future<T> _withTimeout<T>(Future<T> future, {Duration timeout = const Duration(seconds: 4)}) {
     return future.timeout(timeout, onTimeout: () {
       throw TimeoutException('Splash init timed out');
     });
@@ -68,13 +68,13 @@ class _SplashScreenState extends State<SplashScreen> {
 
     try {
       // 1) 네트워크 체크 (타임아웃)
-      final connectivity = await _withTimeout(Connectivity().checkConnectivity(), timeout: const Duration(seconds: 5));
+      final connectivity = await _withTimeout(Connectivity().checkConnectivity(), timeout: const Duration(seconds: 2));
       if (connectivity == ConnectivityResult.none) {
         throw Exception('No internet');
       }
 
       // 2) 메인 초기화 (기존 로직을 함수로 분리)
-      await _withTimeout(_initAppCore());
+      await _withTimeout(_initAppCore(), timeout: const Duration(seconds: 6));
 
       // 3) 성공 시 단 1회만 이동
       if (mounted && !_navigated) {
@@ -116,23 +116,32 @@ class _SplashScreenState extends State<SplashScreen> {
     if (supabaseUser != null) {
       await userProvider.setUser(supabaseUser);
 
-      // users 레코드 확인/생성 (타임아웃 보호)
-      final userRow = await _withTimeout(
+      // 1) users 레코드 확인/생성 + UserProvider 초기화 동시 실행
+      final email = supabaseUser.email ?? '';
+      final name = email.contains('@') ? email.split('@').first : '사용자';
+      final profileImageUrl = Supabase.instance.client.storage
+          .from('avatars')
+          .getPublicUrl('${supabaseUser.id}/profile.png');
+
+      // users 조회 Future
+      final userRowFut = _withTimeout(
         Supabase.instance.client
             .from('users')
             .select()
             .eq('id', supabaseUser.id)
             .maybeSingle(),
-        timeout: const Duration(seconds: 8),
+        timeout: const Duration(seconds: 4),
       );
 
-      if (userRow == null) {
-        final email = supabaseUser.email ?? '';
-        final name = email.contains('@') ? email.split('@').first : '사용자';
-        final profileImageUrl = Supabase.instance.client.storage
-            .from('avatars')
-            .getPublicUrl('${supabaseUser.id}/profile.png');
+      // UserProvider 초기화 Future (동시에 시작)
+      final initUserProvFut = _withTimeout(
+        userProvider.initializeUserProvider(),
+        timeout: const Duration(seconds: 4),
+      );
 
+      final userRow = await userRowFut;
+      if (userRow == null) {
+        // 없는 경우 insert 3개는 순서 필요 → 그대로 두되, 각 호출은 타임아웃만 짧게
         await _withTimeout(
           Supabase.instance.client.from('users').insert({
             'id': supabaseUser.id,
@@ -143,7 +152,7 @@ class _SplashScreenState extends State<SplashScreen> {
             'profile_url': profileImageUrl,
             'is_profile': false,
           }),
-          timeout: const Duration(seconds: 8),
+          timeout: const Duration(seconds: 4),
         );
 
         await _withTimeout(
@@ -153,7 +162,7 @@ class _SplashScreenState extends State<SplashScreen> {
             'start_date': DateTime.now().toIso8601String(),
             'is_active': true,
           }),
-          timeout: const Duration(seconds: 8),
+          timeout: const Duration(seconds: 4),
         );
 
         final newBudgetId = const Uuid().v4();
@@ -165,46 +174,40 @@ class _SplashScreenState extends State<SplashScreen> {
             'updated_by': supabaseUser.id,
             'is_main': true,
           }),
-          timeout: const Duration(seconds: 8),
+          timeout: const Duration(seconds: 4),
         );
       }
 
-      // Provider 초기화
-      await _withTimeout(userProvider.initializeUserProvider(), timeout: const Duration(seconds: 8));
+      // UserProvider 초기화 완료 대기 (이미 병렬로 돌아가는 중이었음)
+      await initUserProvFut;
 
-      final ownerId = userProvider.ownerId;
-      final budgetId = userProvider.budgetId;
+      // 2) ownerId/budgetId 결정
+      final ownerId = userProvider.ownerId ?? supabaseUser.id;
+      var budgetId = userProvider.budgetId;
 
-      if (budgetId != null && ownerId != null) {
-        await _withTimeout(
-          moneyProvider.setInitialUserId(supabaseUser.id, ownerId, budgetId),
-          timeout: const Duration(seconds: 8),
-        );
-      } else {
+      // 없으면 budgets 조회 (이것도 짧은 타임아웃)
+      if (budgetId == null) {
         final response = await _withTimeout(
           Supabase.instance.client
               .from('budgets')
               .select('id')
-              .eq('owner_id', ownerId ?? supabaseUser.id)
+              .eq('owner_id', ownerId)
               .eq('is_main', true)
               .maybeSingle(),
-          timeout: const Duration(seconds: 8),
+          timeout: const Duration(seconds: 4),
         );
-
-        final mainBudgetId = response?['id'] as String?;
-        if (mainBudgetId != null) {
-          await Future.wait([
-            _withTimeout(userProvider.setBudgetId(mainBudgetId), timeout: const Duration(seconds: 8)),
-            _withTimeout(moneyProvider.setInitialUserId(supabaseUser.id, ownerId ?? supabaseUser.id, mainBudgetId),
-                timeout: const Duration(seconds: 8)),
-          ]);
+        budgetId = response?['id'] as String?;
+        if (budgetId != null) {
+          // UserProvider에 budgetId 기록도 병렬로 수행
+          unawaited(_withTimeout(userProvider.setBudgetId(budgetId!), timeout: const Duration(seconds: 3)));
         }
       }
 
-      await _withTimeout(
-        todoProvider.setUserId(supabaseUser.id, ownerId ?? supabaseUser.id),
-        timeout: const Duration(seconds: 8),
-      );
+      // 3) moneytodo 세팅은 **동시에**
+      await Future.wait([
+        _withTimeout(moneyProvider.setInitialUserId(supabaseUser.id, ownerId, budgetId), timeout: const Duration(seconds: 4)),
+        _withTimeout(todoProvider.setUserId(supabaseUser.id, ownerId), timeout: const Duration(seconds: 4)),
+      ]);
     } else {
       await _withTimeout(
         Future.wait([
@@ -212,7 +215,7 @@ class _SplashScreenState extends State<SplashScreen> {
           moneyProvider.setInitialUserId(null, null, null),
           todoProvider.setUserId(null, null),
         ]),
-        timeout: const Duration(seconds: 8),
+        timeout: const Duration(seconds: 4),
       );
     }
   }
@@ -242,4 +245,16 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Center(child: CircularProgressIndicator()),
     );
   }
+
+  Future<T> _timed<T>(String label, Future<T> fut) async {
+    final sw = Stopwatch()..start();
+    try {
+      final r = await fut;
+      debugPrint('⏱️ $label: ${sw.elapsedMilliseconds}ms');
+      return r;
+    } finally {
+      sw.stop();
+    }
+  }
+
 }

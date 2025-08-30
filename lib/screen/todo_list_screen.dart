@@ -5,7 +5,11 @@ import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/dialog/custom_confirm_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/dialog/todo_input_dialog.dart';
+import 'package:wonmore_money_book/model/subscription_model.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
+import 'package:wonmore_money_book/service/interstitial_ad_service.dart';
+import 'package:wonmore_money_book/util/record_ad_handler.dart';
 
 class TodoListScreen extends StatefulWidget {
   final VoidCallback onClose;
@@ -25,6 +29,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<TodoProvider>().loadTodos();
     });
+    InterstitialAdService().loadAd();
   }
 
   void _showFlushBar(BuildContext context, String todoId, String title) {
@@ -208,14 +213,27 @@ class _TodoListScreenState extends State<TodoListScreen> {
         ),
         bottomNavigationBar: BannerAdWidget(),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => showDialog(
-            context: context,
-            builder: (_) => const TodoInputDialog(),
-          ),
+          onPressed: () {
+            final myPlan = context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
+            final adsEnabled = myPlan.adsEnabled ?? true;
+
+            if (adsEnabled) {
+              RecordAdHandler.tryAddTransaction(context, _openTodoDialog);
+            } else {
+              _openTodoDialog();
+            }
+          },
           backgroundColor: Color(0xFFA79BFF),
           child: Icon(Icons.add, color: Colors.white, size: 36),
         ),
       ),
+    );
+  }
+
+  void _openTodoDialog() {
+    showDialog(
+      context: context,
+      builder: (_) => const TodoInputDialog(),
     );
   }
 

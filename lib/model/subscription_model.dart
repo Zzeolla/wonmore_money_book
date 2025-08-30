@@ -4,7 +4,6 @@ class SubscriptionModel {
   final String? planName;
   final DateTime? startDate;
   final DateTime? endDate;
-  final bool? isActive;
   final bool? adsEnabled;
   final int? maxBudgets;
   final int? maxSharedUsers;
@@ -15,7 +14,6 @@ class SubscriptionModel {
     this.planName,
     this.startDate,
     this.endDate,
-    this.isActive,
     this.adsEnabled,
     this.maxBudgets,
     this.maxSharedUsers,
@@ -28,7 +26,6 @@ class SubscriptionModel {
       'plan_name': planName,
       'start_date': startDate?.toIso8601String(),
       'end_date': endDate?.toIso8601String(),
-      'is_active': isActive,
       'ads_enabled': adsEnabled,
       'max_budgets': maxBudgets,
       'max_shared_users': maxSharedUsers,
@@ -42,7 +39,6 @@ class SubscriptionModel {
       planName: json['plan_name'],
       startDate: DateTime.parse(json['start_date']),
       endDate: DateTime.parse(json['end_date']),
-      isActive: json['is_active'],
       adsEnabled: json['ads_enabled'],
       maxBudgets: json['max_budgets'],
       maxSharedUsers: json['max_shared_users'],

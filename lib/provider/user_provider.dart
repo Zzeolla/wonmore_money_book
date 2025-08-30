@@ -71,7 +71,7 @@ class UserProvider extends ChangeNotifier {
           await Supabase.instance.client.from('users').select('*').eq('id', _userId!).single();
 
       _myInfo = UserModel.fromJson(response);
-      _myPlan = await loadUserSubscription(_userId!);
+      _myPlan = await loadUserSubscription(_userId!) ?? SubscriptionModel.free();
 
       _ownerId = (response['last_owner_id'] as String?) ?? _userId;
       _budgetId = response['last_budget_id'] as String?;
@@ -88,7 +88,7 @@ class UserProvider extends ChangeNotifier {
       _budgetId = null;
       _profileImageUrl = null;
       _myInfo = UserModel();
-      _myPlan = SubscriptionModel();
+      _myPlan = SubscriptionModel.free();
       _imageExists = false;
       _budgets = [];
       _myBudgets = [];
@@ -178,6 +178,7 @@ class UserProvider extends ChangeNotifier {
     _userId = null;
     _ownerId = null;
     _budgetId = null;
+    _myPlan = SubscriptionModel.free(); // ← 여기!
     notifyListeners();
   }
 
@@ -501,38 +502,44 @@ class UserProvider extends ChangeNotifier {
     try {
       final supabase = Supabase.instance.client;
 
-      // 1. 활성 구독 가져오기
-      final response = await supabase
-          .from('subscriptions')
-          .select('*')
-          .eq('user_id', userId)
-          .eq('is_active', true)
-          .single();
+      final nowIso = DateTime.now().toUtc().toIso8601String();
 
-      final planName = response['plan_name'];
+      // 1) 현재 유효한 구독 1건 찾기: start_date <= now < end_date
+      final sub = await supabase
+          .from('subscriptions')
+          .select('id, user_id, plan_id, start_date, end_date') // 필요한 것만
+          .eq('user_id', userId)
+          .lte('start_date', nowIso)
+          .gt('end_date', nowIso)
+          .order('end_date', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      // 레코드 없으면 free
+      if (sub == null) return null;
+
+      final String planId = sub['plan_id'];
 
       // 2. 요금제 정보 가져오기
       final planInfo = await supabase
           .from('subscription_plans')
-          .select('ads_enabled, max_budgets, max_shared_users')
-          .eq('name', planName)
+          .select('name, ads_enabled, max_budgets, max_shared_users')
+          .eq('id', planId)
           .single();
 
-      // 3. 통합 모델 생성
       return SubscriptionModel(
-        id: response['id'],
-        userId: response['user_id'],
-        planName: response['plan_name'],
-        startDate: DateTime.parse(response['start_date']),
-        endDate: response['end_date'] != null ? DateTime.parse(response['end_date']) : null,
-        isActive: response['is_active'],
+        id: sub['id'],
+        userId: sub['user_id'],
+        planName: planInfo['name'],               // ← 여기서 name을 planName으로
+        startDate: DateTime.parse(sub['start_date']),
+        endDate: DateTime.parse(sub['end_date']),
         adsEnabled: planInfo['ads_enabled'],
         maxBudgets: planInfo['max_budgets'],
-        maxSharedUsers: planInfo['max_shared_users'],
+        maxSharedUsers: planInfo['max_shared_users'] ?? 10000,
       );
-    } catch (e) {
-      print('구독 정보 로드 실패: $e');
-      return null;
+    } catch (e, st) {
+      debugPrint('❌ loadUserSubscription error: $e\n$st');
+      return null; // 실패 시 free()로 대체되도록
     }
   }
 }

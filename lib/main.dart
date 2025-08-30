@@ -144,7 +144,6 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/assets': (context) => AssetsScreen(),
         '/analysis': (context) => const AnalysisScreen(),
-        '/more': (context) => const MoreScreen(),
         '/more/my-info': (context) => const MyInfoScreen(),
         '/more/join-group': (context) => const JoinGroupScreen(),
         '/more/edit-budget': (context) => const BudgetListScreen(),

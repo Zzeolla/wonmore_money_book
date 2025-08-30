@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'package:wonmore_money_book/model/shared_user_model.dart';
 import 'package:wonmore_money_book/model/subscription_model.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
@@ -18,6 +19,11 @@ class JoinGroupScreen extends StatefulWidget {
 }
 
 class _JoinGroupScreenState extends State<JoinGroupScreen> {
+  TutorialCoachMark? _tutorial;
+  List<TargetFocus> _targets = [];
+
+  final _keyInviteCode = GlobalKey();
+  final _keyJoinGroup = GlobalKey();
   final _codeController = TextEditingController();
   bool _isLoading = false;
   String? _error;
@@ -28,6 +34,10 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
   void initState() {
     super.initState();
     _loadOrCreateInviteCode();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _buildTargets(); // 레이아웃 잡힌 뒤 포커스 영역 계산
+    });
   }
 
   Future<void> _loadOrCreateInviteCode({bool force = false}) async {
@@ -119,6 +129,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
     setState(() {
       _myInviteCode = code;
     });
+    _buildTargets();
   }
 
   Future<void> _joinGroup() async {
@@ -203,7 +214,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
           .from('budgets')
           .select('id')
           .eq('owner_id', ownerId)
-          .eq('is_main', true)         // 없으면 .order('created_at').limit(1) 로 변경
+          .eq('is_main', true) // 없으면 .order('created_at').limit(1) 로 변경
           .maybeSingle();
 
       String? mainBudgetId = mainBudget?['id'];
@@ -263,14 +274,25 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
     final moneyProvider = context.watch<MoneyProvider>();
     final myPlan = userProvider.myPlan ?? SubscriptionModel.free();
     return Scaffold(
-      appBar: CommonAppBar(isMainScreen: false, label: '그룹 공유 및 참여'),
+      appBar: CommonAppBar(
+        isMainScreen: false,
+        label: '그룹 공유 및 참여',
+        actions: [
+          if (userProvider.ownerId == userProvider.userId)
+            IconButton(
+              icon: Icon(Icons.help_outline, color: Color(0xFFF2F4F6), size: 30),
+              onPressed: _showTutorial,
+            ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // 🔼 내가 그룹장일 때
-            const Text(
+            Text(
+              key: _keyInviteCode,
               '내 그룹 초대하기',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
@@ -315,7 +337,10 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
                       Expanded(
                         child: _customButton(
                           label: '코드 새로 생성',
-                          onPressed: () => _loadOrCreateInviteCode(force: true),
+                          onPressed: () async {
+                            await _loadOrCreateInviteCode(force: true);
+                            _buildTargets();
+                          }
                         ),
                       ),
                       Expanded(
@@ -335,7 +360,8 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
             const Divider(height: 40),
 
             // 🔽 초대 코드 입력
-            const Text('초대 코드로 참여하기', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('초대 코드로 참여하기',
+                key: _keyJoinGroup,style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Center(
               child: TextField(
@@ -378,4 +404,94 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
       ),
     );
   }
+
+  void _buildTargets() {
+    final targets = <TargetFocus>[];
+
+    // 1) 초대코드 섹션 (오너일 때만 표기되는 컬럼에 key 달림)
+    if (_keyInviteCode.currentContext != null) {
+      targets.add(
+        TargetFocus(
+          keyTarget: _keyInviteCode,
+          identify: "invite",
+          shape: ShapeLightFocus.RRect,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              child: _tip(
+                title: "초대 코드 공유하기",
+                body: "가족/지인에게 초대하기 위해 6자리 초대 코드를 공유해주세요.",
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // 2) 참여 섹션 (헤더 텍스트에 key 달았으니 그걸로 잡기)
+    if (_keyJoinGroup.currentContext != null) {
+      targets.add(
+        TargetFocus(
+          keyTarget: _keyJoinGroup,
+          identify: "join",
+          shape: ShapeLightFocus.RRect,
+          enableOverlayTab: true,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              child: _tip(
+                title: "그룹 참여하기",
+                body: "전달받은 6자리 초대 코드를 입력 후 버튼을 누르면 그룹에 참여합니다.",
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // ✅ 실제로 저장!
+    setState(() {
+      _targets = targets;
+    });
+  }
+
+  void _showTutorial() {
+    if (_targets.isEmpty) _buildTargets(); // 혹시 비어있으면 한 번 더
+    _tutorial = TutorialCoachMark(
+      targets: _targets,
+      colorShadow: Colors.black.withOpacity(0.6),
+      focusAnimationDuration: Duration.zero,   // ✅ 포커스 인
+      unFocusAnimationDuration: Duration.zero, // ✅ 포커스 아웃
+      textSkip: "건너뛰기",
+      hideSkip: false,
+      pulseEnable: true,
+      onClickOverlay: (target) {
+        _tutorial?.next();
+      },
+      onClickTarget: (target) {
+        _tutorial?.next();
+      },
+    )..show(context: context);
+  }
+
+
+  Widget _tip({required String title, required String body}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text(body, style: const TextStyle(fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
 }
