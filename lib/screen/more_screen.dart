@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
@@ -210,49 +213,6 @@ class MoreScreen extends StatelessWidget {
                     title: const Text('튜토리얼 다시보기'),
                     onTap: () async => await onRestartTutorial(), // ✅ 호출만 비동기
                   ),
-                  // ListTile(
-                  //   leading: Padding(
-                  //     padding: const EdgeInsets.only(right: 8.0),
-                  //     child: CircleAvatar(
-                  //       radius: 14,
-                  //       backgroundColor: Colors.deepPurple.shade300,
-                  //       child: const Icon(Icons.refresh_outlined, size: 16, color: Colors.white),
-                  //     ),
-                  //   ),
-                  //   title: const Text('다음 실행 시 온보딩 다시 보기'),
-                  //   onTap: () async {
-                  //     final prefs = await SharedPreferences.getInstance();
-                  //     await prefs.setBool('onboarding_seen', false); // ← 플래그 되돌리기
-                  //     if (!context.mounted) return;
-                  //     ScaffoldMessenger.of(context).showSnackBar(
-                  //       const SnackBar(content: Text('다음 실행 시 온보딩이 표시됩니다.')),
-                  //     );
-                  //   },
-                  // ),
-                  // ListTile(
-                  //   leading: Padding(
-                  //     padding: const EdgeInsets.only(right: 8.0),
-                  //     child: CircleAvatar(
-                  //       radius: 14,
-                  //       backgroundColor: Colors.deepPurple.shade300,
-                  //       child: const Icon(Icons.school_outlined, size: 16, color: Colors.white),
-                  //     ),
-                  //   ),
-                  //   title: const Text('사용 방법 다시 보기'),
-                  //   onTap: () {
-                  //     Navigator.push(
-                  //       context,
-                  //       MaterialPageRoute(
-                  //         builder: (_) => OnboardingScreen(
-                  //           // ❗ 콜백 시그니처가 (BuildContext ctx) 이므로 이렇게 받아서
-                  //           // 온보딩 자신의 context로 pop 해야 언마운트 오류가 안 납니다.
-                  //           onFinished: (ctx) => Navigator.of(ctx).pop(),
-                  //           showProSlide: true, // 원하면 isPro 여부로 제어
-                  //         ),
-                  //       ),
-                  //     );
-                  //   },
-                  // ),
                   const Divider(),
                   ListTile(
                     leading: Padding(
@@ -265,6 +225,9 @@ class MoreScreen extends StatelessWidget {
                     ),
                     title: const Text('설정'),
                     onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('설정 화면은 추후 지원할 예정입니다.'))
+                      );
                       // TODO: 설정 화면으로 이동
                     },
                   ),
@@ -301,9 +264,7 @@ class MoreScreen extends StatelessWidget {
                       ),
                     ),
                     title: const Text('앱 공유하기'),
-                    onTap: () {
-                      // 예: Share.share('원모아 가계부 앱을 사용해보세요!\nhttps://...');
-                    },
+                    onTap: () => shareApp(context),
                   ),
                   const Divider(),
                   ListTile(
@@ -342,4 +303,26 @@ class MoreScreen extends StatelessWidget {
       ),
     );
   }
-} 
+
+  Future<void> shareApp(BuildContext context) async {
+    final String androidLink = 'https://play.google.com/store/apps/details?id=com.zlabo.wonmoremoneybook';
+    final String iosLink     = 'https://apps.apple.com/app/idXXXXXXXXXX'; // 실제 앱 ID로 교체
+
+    final String link = Platform.isIOS ? iosLink : androidLink;
+
+    final String text = [
+      '원모아 가계부 앱을 사용해보세요!',
+      '가족 가계부 + 개인 용돈, 한 앱에서 함께 관리합니다.',
+      link, // 사용자가 좋아하는 "plain URL" 그대로
+    ].join('\n');
+
+    // iPad/웹뷰 등에서 팝오버 위치 지정 시 안전
+    final box = context.findRenderObject() as RenderBox?;
+    await Share.share(
+      text,
+      subject: '원모아 가계부',
+      sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : Rect.zero,
+    );
+  }
+
+}
