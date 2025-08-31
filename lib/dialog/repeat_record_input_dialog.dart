@@ -207,19 +207,19 @@ class _RepeatRecordInputDialogState extends State<RepeatRecordInputDialog> {
                                   });
                                 },
                               ),
-                              const SizedBox(width: 8),
-                              TransactionTypeButton(
-                                label: '이체',
-                                type: TransactionType.transfer,
-                                selectedType: _selectedType,
-                                onSelected: (type) {
-                                  setState(() {
-                                    _selectedType = type;
-                                    selectedCategory = null;
-                                  });
-                                },
-                                enabled: false,
-                              ),
+                              // const SizedBox(width: 8),
+                              // TransactionTypeButton(
+                              //   label: '이체',
+                              //   type: TransactionType.transfer,
+                              //   selectedType: _selectedType,
+                              //   onSelected: (type) {
+                              //     setState(() {
+                              //       _selectedType = type;
+                              //       selectedCategory = null;
+                              //     });
+                              //   },
+                              //   enabled: false,
+                              // ),
                             ],
                           ),
                           const SizedBox(height: 32),

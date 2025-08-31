@@ -10,12 +10,15 @@ import 'package:wonmore_money_book/model/asset_model.dart';
 import 'package:wonmore_money_book/model/category_model.dart';
 import 'package:wonmore_money_book/model/favorite_record_model.dart';
 import 'package:wonmore_money_book/model/period_type.dart';
+import 'package:wonmore_money_book/model/subscription_model.dart';
 import 'package:wonmore_money_book/model/transaction_model.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
+import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
 import 'package:wonmore_money_book/util/custom_datetime_picker.dart';
 import 'package:wonmore_money_book/util/icon_map.dart';
+import 'package:wonmore_money_book/util/record_ad_handler.dart';
 import 'package:wonmore_money_book/widget/custom_circle_button.dart';
 import 'package:wonmore_money_book/widget/transaction_type_button.dart';
 
@@ -394,19 +397,19 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                   });
                                 },
                               ),
-                              const SizedBox(width: 8),
-                              TransactionTypeButton(
-                                label: '이체',
-                                type: TransactionType.transfer,
-                                selectedType: _selectedType,
-                                onSelected: (type) {
-                                  setState(() {
-                                    _selectedType = type;
-                                    selectedCategory = null;
-                                  });
-                                },
-                                enabled: false,
-                              ),
+                              // const SizedBox(width: 8),
+                              // TransactionTypeButton(
+                              //   label: '이체',
+                              //   type: TransactionType.transfer,
+                              //   selectedType: _selectedType,
+                              //   onSelected: (type) {
+                              //     setState(() {
+                              //       _selectedType = type;
+                              //       selectedCategory = null;
+                              //     });
+                              //   },
+                              //   enabled: false,
+                              // ),
                             ],
                           ),
                           const SizedBox(height: 32),
@@ -557,35 +560,104 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                             color: Colors.black54,
                             backgroundColor: const Color(0xFFE5E6EB),
                             onTap: () => Navigator.pop(context)),
-                        CustomCircleButton(
-                          icon: Icons.star_border_purple500,
-                          color: Colors.white,
-                          backgroundColor: const Color(0xFFA79BFF),
-                          onTap: () async {
-                            final favoriteRecords = context.read<MoneyProvider>().favoriteRecords
-                                .where((f) => f.period == PeriodType.none).toList();
-                            final selected = await showFavoritePickerDialog(context, favoriteRecords);
+                        if (widget.transactionId == null)
+                          CustomCircleButton(
+                            icon: Icons.star_border_purple500,
+                            color: Colors.white,
+                            backgroundColor: const Color(0xFFA79BFF),
+                            onTap: () async {
+                              final favoriteRecords = context.read<MoneyProvider>().favoriteRecords
+                                  .where((f) => f.period == PeriodType.none).toList();
+                              final selected = await showFavoritePickerDialog(context, favoriteRecords);
 
-                            if (selected != null) {
-                              setState(() {
-                                amountController.text = selected.amount.toString();
-                                titleController.text = selected.title ?? '';
-                                memoController.text = selected.memo ?? '';
-                                _selectedType = selected.type;
+                              if (selected != null) {
+                                setState(() {
+                                  amountController.text = selected.amount.toString();
+                                  titleController.text = selected.title ?? '';
+                                  memoController.text = selected.memo ?? '';
+                                  _selectedType = selected.type;
 
-                                selectedCategory = context.read<MoneyProvider>().categories.firstWhere(
-                                      (c) => c.id == selected.categoryId,
-                                  orElse: () => context.read<MoneyProvider>().categories.first,
-                                );
+                                  selectedCategory = context.read<MoneyProvider>().categories.firstWhere(
+                                        (c) => c.id == selected.categoryId,
+                                    orElse: () => context.read<MoneyProvider>().categories.first,
+                                  );
 
-                                selectedAsset = context.read<MoneyProvider>().assets.firstWhere(
-                                      (a) => a.id == selected.assetId,
-                                  orElse: () => context.read<MoneyProvider>().assets.first,
-                                ).name;
-                              });
-                            }
-                          },
-                        ),
+                                  selectedAsset = context.read<MoneyProvider>().assets.firstWhere(
+                                        (a) => a.id == selected.assetId,
+                                    orElse: () => context.read<MoneyProvider>().assets.first,
+                                  ).name;
+                                });
+                              }
+                            },
+                          ),
+                        if (widget.transactionId != null)
+                          CustomCircleButton(
+                            icon: Icons.content_copy,
+                            color: Colors.white,
+                            backgroundColor: const Color(0xFFA79BFF),
+                            onTap: () async {
+                              // 0) 팝업을 다시 띄우기 위한 상위(overlay) 컨텍스트를 먼저 잡아둡니다.
+                              final navigator = Navigator.of(context);
+                              final overlayContext = navigator.overlay!.context;
+
+                              // 1) 현재 폼 상태 스냅샷 (사용자가 입력/수정한 값들)
+                              final provider = context.read<MoneyProvider>();
+
+                              final rawAmount = amountController.text.replaceAll(',', '');
+                              final amount = rawAmount.isEmpty ? null : int.tryParse(rawAmount) ?? 0;
+
+                              final title = titleController.text.trim();
+                              final memo  = memoController.text.trim().isEmpty ? null : memoController.text.trim();
+
+                              final type = _selectedType;
+                              final categoryId = selectedCategory?.id;
+
+                              String? assetId;
+                              if (selectedAsset != null) {
+                                try {
+                                  assetId = provider.assets.firstWhere((a) => a.name == selectedAsset).id;
+                                } catch (_) {
+                                  assetId = null;
+                                }
+                              }
+
+                              // 1) 현재 다이얼로그 닫기 + 키보드 닫기
+                              FocusScope.of(context).unfocus();
+                              navigator.pop();
+
+                              // 3) 공통으로 쓸 오픈 함수
+                              void openClonedDialog() {
+                                showDialog<bool>(
+                                  context: overlayContext,
+                                  builder: (_) => RecordInputDialog(
+                                    initialDate: DateTime.now(),
+                                    initialTitle: title.isEmpty ? null : title,
+                                    initialAmount: amount,
+                                    initialType: type,
+                                    initialCategoryId: categoryId,
+                                    initialAssetId: assetId,
+                                    initialMemo: memo,
+                                  ),
+                                ).then((result) {
+                                  if (result == true) {
+                                    ScaffoldMessenger.of(overlayContext).showSnackBar(
+                                      const SnackBar(content: Text('저장되었습니다!')),
+                                    );
+                                  }
+                                });
+                              }
+
+                              final myPlan = context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
+                              final adsEnabled = myPlan.adsEnabled ?? true;
+
+                              if (adsEnabled) {
+                                // tryAddTransaction 이 콜백을 "나중에" 실행
+                                RecordAdHandler.tryAddTransaction(context, openClonedDialog);
+                              } else {
+                                openClonedDialog();
+                              }
+                            },
+                          ),
                         if (widget.transactionId != null)
                           CustomCircleButton(
                             icon: Icons.delete_outline,
