@@ -15,6 +15,7 @@ class TransactionModel {
   final String? budgetId;
   final String? ownerId;
   final DateTime? updatedAt;
+  final bool isAuto;
 
   TransactionModel({
     this.id,
@@ -29,6 +30,7 @@ class TransactionModel {
     this.budgetId,
     this.ownerId,
     this.updatedAt,
+    this.isAuto = false,
   });
 
   // Model → Supabase
@@ -46,6 +48,7 @@ class TransactionModel {
       'budget_id': budgetId,
       'owner_id': ownerId,
       'updated_at': updatedAt?.toIso8601String(),
+      'is_auto': isAuto,
     };
   }
 
@@ -64,6 +67,7 @@ class TransactionModel {
       budgetId: json['budget_id'],
       ownerId: json['owner_id'],
       updatedAt: DateTime.parse(json['updated_at']),
+      isAuto: json['is_auto'] ?? false,
     );
   }
 
@@ -82,6 +86,7 @@ class TransactionModel {
       budgetId: row.budgetId,
       ownerId: row.ownerId,
       updatedAt: row.updatedAt,
+      isAuto: row.isAuto,
     );
   }
 
@@ -100,6 +105,7 @@ class TransactionModel {
       budgetId: budgetId == null ? const Value.absent() : Value(budgetId!),
       ownerId: ownerId == null ? const Value.absent() : Value(ownerId!),
       updatedAt: updatedAt == null ? const Value.absent() : Value(updatedAt!),
+      isAuto: Value(isAuto),
     );
   }
 
@@ -117,6 +123,7 @@ class TransactionModel {
     String? budgetId,
     String? ownerId,
     DateTime? updatedAt,
+    bool? isAuto,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -131,6 +138,7 @@ class TransactionModel {
       budgetId: budgetId ?? this.budgetId,
       ownerId: ownerId ?? this.ownerId,
       updatedAt: updatedAt ?? this.updatedAt,
+      isAuto: isAuto ?? this.isAuto,
     );
   }
 }

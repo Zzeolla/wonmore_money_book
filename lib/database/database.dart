@@ -20,7 +20,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
@@ -35,6 +35,12 @@ class AppDatabase extends _$AppDatabase {
         if (from < 3) {
           // Todos 테이블 추가
           await m.createTable(todos);
+        }
+        // ✅ 10 버전에서 is_auto 컬럼 추가
+        if (from < 10) {
+          await m.addColumn(transactions, transactions.isAuto);
+          // 기존 행의 NULL 을 false(0)로 정리 (안전망)
+          await customStatement('UPDATE transactions SET is_auto = 0 WHERE is_auto IS NULL');
         }
       },
       beforeOpen: (details) async {

@@ -6,6 +6,7 @@ import 'package:wonmore_money_book/model/budget_model.dart';
 import 'package:wonmore_money_book/model/shared_user_model.dart';
 import 'package:wonmore_money_book/model/subscription_model.dart';
 import 'package:wonmore_money_book/model/user_model.dart';
+import 'package:wonmore_money_book/service/fcm_token_service.dart';
 
 class UserProvider extends ChangeNotifier {
   User? _currentUser;
@@ -174,7 +175,19 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void> signOut() async {
+    final uid = _userId;
+    if (uid != null) {
+      try {
+        final fcm = FcmTokenService(Supabase.instance.client);
+        await fcm.unregister(uid);
+        await fcm.stop();
+      } catch (e, st) {
+        debugPrint('FCM cleanup failed: $e\n$st');
+      }
+    }
+
     await Supabase.instance.client.auth.signOut();
+
     _userId = null;
     _ownerId = null;
     _budgetId = null;

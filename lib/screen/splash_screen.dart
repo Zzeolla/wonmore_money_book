@@ -11,6 +11,7 @@ import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/no_internet_screen.dart';
+import 'package:wonmore_money_book/service/fcm_token_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -208,6 +209,15 @@ class _SplashScreenState extends State<SplashScreen> {
         _withTimeout(moneyProvider.setInitialUserId(supabaseUser.id, ownerId, budgetId), timeout: const Duration(seconds: 4)),
         _withTimeout(todoProvider.setUserId(supabaseUser.id, ownerId), timeout: const Duration(seconds: 4)),
       ]);
+      final userId = supabaseUser.id; // FK가 보장된 시점
+      final fcm = FcmTokenService(Supabase.instance.client);
+      try {
+        await fcm.register(userId);      // 현재 기기 토큰 upsert
+        fcm.listenRefresh(userId);       // 앱 켜져있는 동안 토큰 회전 자동 반영
+      } catch (e) {
+        // 토큰 못 올려도 앱 진행에는 영향 없게 로깅만
+        debugPrint('FCM register failed: $e');
+      }
     } else {
       await _withTimeout(
         Future.wait([

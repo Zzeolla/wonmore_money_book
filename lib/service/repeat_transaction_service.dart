@@ -58,6 +58,7 @@ class RepeatTransactionService {
           assetId: (record.assetId?.isEmpty ?? true) ? null : record.assetId,
           title: record.title,
           memo: record.memo,
+          isAuto: true,
         ));
 
         prevDate = current;

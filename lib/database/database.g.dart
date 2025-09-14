@@ -1573,6 +1573,15 @@ class $TransactionsTable extends Transactions
       type: DriftSqlType.dateTime,
       requiredDuringInsert: false,
       defaultValue: currentDateAndTime);
+  static const VerificationMeta _isAutoMeta = const VerificationMeta('isAuto');
+  @override
+  late final GeneratedColumn<bool> isAuto = GeneratedColumn<bool>(
+      'is_auto', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("is_auto" IN (0, 1))'),
+      defaultValue: const Constant(false));
   @override
   List<GeneratedColumn> get $columns => [
         id,
@@ -1587,7 +1596,8 @@ class $TransactionsTable extends Transactions
         ownerId,
         budgetId,
         createdAt,
-        updatedAt
+        updatedAt,
+        isAuto
       ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1654,6 +1664,10 @@ class $TransactionsTable extends Transactions
       context.handle(_updatedAtMeta,
           updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta));
     }
+    if (data.containsKey('is_auto')) {
+      context.handle(_isAutoMeta,
+          isAuto.isAcceptableOrUnknown(data['is_auto']!, _isAutoMeta));
+    }
     return context;
   }
 
@@ -1690,6 +1704,8 @@ class $TransactionsTable extends Transactions
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
       updatedAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}updated_at'])!,
+      isAuto: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}is_auto'])!,
     );
   }
 
@@ -1716,6 +1732,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String? budgetId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isAuto;
   const Transaction(
       {required this.id,
       required this.date,
@@ -1729,7 +1746,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       this.ownerId,
       this.budgetId,
       required this.createdAt,
-      required this.updatedAt});
+      required this.updatedAt,
+      required this.isAuto});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
@@ -1763,6 +1781,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['is_auto'] = Variable<bool>(isAuto);
     return map;
   }
 
@@ -1792,6 +1811,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           : Value(budgetId),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      isAuto: Value(isAuto),
     );
   }
 
@@ -1813,6 +1833,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       budgetId: serializer.fromJson<String?>(json['budgetId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      isAuto: serializer.fromJson<bool>(json['isAuto']),
     );
   }
   @override
@@ -1833,6 +1854,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'budgetId': serializer.toJson<String?>(budgetId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'isAuto': serializer.toJson<bool>(isAuto),
     };
   }
 
@@ -1849,7 +1871,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           Value<String?> ownerId = const Value.absent(),
           Value<String?> budgetId = const Value.absent(),
           DateTime? createdAt,
-          DateTime? updatedAt}) =>
+          DateTime? updatedAt,
+          bool? isAuto}) =>
       Transaction(
         id: id ?? this.id,
         date: date ?? this.date,
@@ -1865,6 +1888,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
         budgetId: budgetId.present ? budgetId.value : this.budgetId,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
+        isAuto: isAuto ?? this.isAuto,
       );
   Transaction copyWithCompanion(TransactionsCompanion data) {
     return Transaction(
@@ -1884,6 +1908,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       budgetId: data.budgetId.present ? data.budgetId.value : this.budgetId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      isAuto: data.isAuto.present ? data.isAuto.value : this.isAuto,
     );
   }
 
@@ -1902,14 +1927,28 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('ownerId: $ownerId, ')
           ..write('budgetId: $budgetId, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('isAuto: $isAuto')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, date, amount, type, categoryId, assetId,
-      title, memo, installmentId, ownerId, budgetId, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+      id,
+      date,
+      amount,
+      type,
+      categoryId,
+      assetId,
+      title,
+      memo,
+      installmentId,
+      ownerId,
+      budgetId,
+      createdAt,
+      updatedAt,
+      isAuto);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1926,7 +1965,8 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.ownerId == this.ownerId &&
           other.budgetId == this.budgetId &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.isAuto == this.isAuto);
 }
 
 class TransactionsCompanion extends UpdateCompanion<Transaction> {
@@ -1943,6 +1983,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String?> budgetId;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<bool> isAuto;
   final Value<int> rowid;
   const TransactionsCompanion({
     this.id = const Value.absent(),
@@ -1958,6 +1999,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.budgetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.isAuto = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   TransactionsCompanion.insert({
@@ -1974,6 +2016,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.budgetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.isAuto = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : date = Value(date),
         amount = Value(amount),
@@ -1992,6 +2035,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? budgetId,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<bool>? isAuto,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -2008,6 +2052,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (budgetId != null) 'budget_id': budgetId,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (isAuto != null) 'is_auto': isAuto,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2026,6 +2071,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       Value<String?>? budgetId,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
+      Value<bool>? isAuto,
       Value<int>? rowid}) {
     return TransactionsCompanion(
       id: id ?? this.id,
@@ -2041,6 +2087,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       budgetId: budgetId ?? this.budgetId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isAuto: isAuto ?? this.isAuto,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2088,6 +2135,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (isAuto.present) {
+      map['is_auto'] = Variable<bool>(isAuto.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -2110,6 +2160,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('budgetId: $budgetId, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
+          ..write('isAuto: $isAuto, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4757,6 +4808,7 @@ typedef $$TransactionsTableCreateCompanionBuilder = TransactionsCompanion
   Value<String?> budgetId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<bool> isAuto,
   Value<int> rowid,
 });
 typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
@@ -4774,6 +4826,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder = TransactionsCompanion
   Value<String?> budgetId,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
+  Value<bool> isAuto,
   Value<int> rowid,
 });
 
@@ -4866,6 +4919,9 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get isAuto => $composableBuilder(
+      column: $table.isAuto, builder: (column) => ColumnFilters(column));
 
   $$CategoriesTableFilterComposer get categoryId {
     final $$CategoriesTableFilterComposer composer = $composerBuilder(
@@ -4967,6 +5023,9 @@ class $$TransactionsTableOrderingComposer
   ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
       column: $table.updatedAt, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<bool> get isAuto => $composableBuilder(
+      column: $table.isAuto, builder: (column) => ColumnOrderings(column));
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
         composer: this,
@@ -5067,6 +5126,9 @@ class $$TransactionsTableAnnotationComposer
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
 
+  GeneratedColumn<bool> get isAuto =>
+      $composableBuilder(column: $table.isAuto, builder: (column) => column);
+
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
         composer: this,
@@ -5165,6 +5227,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String?> budgetId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<bool> isAuto = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               TransactionsCompanion(
@@ -5181,6 +5244,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             budgetId: budgetId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isAuto: isAuto,
             rowid: rowid,
           ),
           createCompanionCallback: ({
@@ -5197,6 +5261,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             Value<String?> budgetId = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
+            Value<bool> isAuto = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
               TransactionsCompanion.insert(
@@ -5213,6 +5278,7 @@ class $$TransactionsTableTableManager extends RootTableManager<
             budgetId: budgetId,
             createdAt: createdAt,
             updatedAt: updatedAt,
+            isAuto: isAuto,
             rowid: rowid,
           ),
           withReferenceMapper: (p0) => p0

@@ -21,6 +21,7 @@ class Transactions extends Table {
   TextColumn get budgetId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isAuto => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
