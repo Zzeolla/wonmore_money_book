@@ -50,6 +50,35 @@ jobs:
           api-key-id: ${{ vars.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
 
+      # ✅ Podfile 없으면 여기서 만들어 줌 (Pod install 전에 위치해야 함)
+      - name: Ensure Podfile (iOS 15.0)
+        run: |
+          mkdir -p ios
+          cat > ios/Podfile <<'POD'
+          platform :ios, '15.0'
+          ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+          use_frameworks! :linkage => :static
+          use_modular_headers!
+
+          require_relative 'Flutter/podhelper'
+          flutter_ios_podfile_setup
+
+          target 'Runner' do
+            flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+          end
+
+          post_install do |installer|
+            flutter_additional_ios_build_settings(installer)
+            # 모든 Pods에도 15.0 강제
+            installer.pods_project.targets.each do |t|
+              t.build_configurations.each do |config|
+                config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+              end
+            end
+          end
+          POD
+
       # 7. (필요 시) CocoaPods 업데이트
       - name: Pod install (if needed)
         run: |
