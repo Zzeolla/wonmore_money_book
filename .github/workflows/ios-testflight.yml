@@ -81,7 +81,6 @@ jobs:
           end
 
           post_install do |installer|
-            flutter_additional_ios_build_settings(installer)
             # 모든 Pods에도 15.0 강제
             installer.pods_project.targets.each do |t|
               t.build_configurations.each do |config|
