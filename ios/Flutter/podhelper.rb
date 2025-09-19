@@ -47,7 +47,12 @@ def flutter_install_ios_plugin_pods(ios_application_path = nil)
   plugin_pods['plugins']['ios'].each do |plugin_hash|
     name = plugin_hash['name']
     path = File.join(symlink_dir, 'plugins', name)
-    pod name, :path => File.join(path, 'ios')
+    podspec_path = File.join(path, 'ios')
+    # iOS 폴더에 podspec이 없으면 darwin 폴더를 사용 (google_sign_in_ios 등)
+    unless File.exist?(File.join(podspec_path, "#{name}.podspec")) || Dir.exist?(podspec_path)
+      podspec_path = File.join(path, 'darwin')
+    end
+    pod name, :path => podspec_path
   end
 end
 
