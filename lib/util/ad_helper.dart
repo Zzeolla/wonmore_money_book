@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:wonmore_money_book/util/ad_config.dart'; // for kDebugMode
 /// TODO : 출시 전에는 반드시 옵션으로 false 지정 필요 flutter build appbundle --release --dart-define=USE_TEST_ADS=false
+/// TODO : net._http_response를 청소 필요
 class AdHelper {
   static String get bannerAdUnitId {
     if (AdConfig.useTestAds) {

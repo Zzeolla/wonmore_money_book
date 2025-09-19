@@ -740,8 +740,6 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                   Navigator.pop(context, false);
                                 }
                               } else {
-                                // 새로운 거래내역 추가
-                                print('내역 추가');
                                 await provider.addTransaction(
                                   TransactionModel(
                                     date: selectedDate,
@@ -755,7 +753,9 @@ class _RecordInputDialogState extends State<RecordInputDialog> {
                                 );
                                 Navigator.pop(context, true);
                               }
-                            } catch (e) {
+                            } catch (e, st) {
+                              debugPrint('[TX][ERROR] $e');
+                              debugPrint(st.toString());
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text('저장에 실패했습니다. 다시 시도해 주세요.')),
                               );
