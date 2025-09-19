@@ -25,6 +25,14 @@ jobs:
       - name: Flutter pub get
         run: flutter pub get
 
+
+      - name: Copy plugin deps for iOS
+        run: |
+          if [ -f .flutter-plugins-dependencies ]; then
+            cp .flutter-plugins-dependencies ios/.flutter-plugins-dependencies
+          fi
+
+
       # 4. .env 파일 생성 (Secrets → 실제 .env 파일로)
       - name: Create .env from secret
         run: |
