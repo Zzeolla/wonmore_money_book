@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:wonmore_money_book/screen/paywell_screen.dart';
 import 'firebase_options.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:path_provider/path_provider.dart';
@@ -166,6 +167,7 @@ class MyApp extends StatelessWidget {
         '/more/edit-budget': (context) => const BudgetListScreen(),
         '/more/edit-user': (context) => const UserListScreen(),
         '/login': (context) => const LoginScreen(),
+        '/more/paywall': (_) => const PaywallScreen(),
       },
     );
   }

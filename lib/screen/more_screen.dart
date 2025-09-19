@@ -156,9 +156,7 @@ class MoreScreen extends StatelessWidget {
                     ),
                     title: const Text('Pro 구독하기 (광고 제거 포함)'),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('구독 기능은 추후 제공될 예정입니다.')),
-                      );
+                      Navigator.pushNamed(context, '/more/paywall');
                     },
                   ),
                   const Divider(),

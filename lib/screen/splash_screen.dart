@@ -12,6 +12,7 @@ import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/no_internet_screen.dart';
 import 'package:wonmore_money_book/service/fcm_token_service.dart';
+import 'package:wonmore_money_book/service/iap_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -209,6 +210,20 @@ class _SplashScreenState extends State<SplashScreen> {
         _withTimeout(moneyProvider.setInitialUserId(supabaseUser.id, ownerId, budgetId), timeout: const Duration(seconds: 4)),
         _withTimeout(todoProvider.setUserId(supabaseUser.id, ownerId), timeout: const Duration(seconds: 4)),
       ]);
+
+      // 🔔 [IAP] 앱 시작 시 1회: 가벼운 리스너만 켜두기 (상품조회 없음)
+      await IapService().startListener(
+        onEntitlementChanged: (ok) async {
+          // 낙관 승인 직후, DB 기준으로 재동기화
+          try {
+            await userProvider.loadUserSubscription(supabaseUser.id);
+          } catch (e) {
+            debugPrint('loadUserSubscription failed: $e');
+          }
+        },
+        doOneTimeRestore: true,  // 앱 첫 실행 시 미결제/복원 이벤트 흡수
+      );
+
       final userId = supabaseUser.id; // FK가 보장된 시점
       final fcm = FcmTokenService(Supabase.instance.client);
       try {
