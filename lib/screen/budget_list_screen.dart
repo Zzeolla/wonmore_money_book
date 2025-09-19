@@ -75,7 +75,7 @@ class BudgetListScreen extends StatelessWidget {
                         TextButton(onPressed: () => Navigator.pop(context), child: const Text('닫기')),
                         TextButton(onPressed: () {
                           Navigator.pop(context);
-                          Navigator.pushNamed(context, '/more/plan'); /// Todo: 업그레이드 화면으로 이동하는 스크린도 만들어야겠다
+                          Navigator.pushNamed(context, '/more/paywall');
                         }, child: const Text('업그레이드')),
                       ],
                     ),

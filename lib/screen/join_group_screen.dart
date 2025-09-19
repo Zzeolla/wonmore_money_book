@@ -64,9 +64,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  Navigator.pushNamed(context, '/more/plan');
-
-                  /// TODO: 이것도 동일하게 업그레이드 화면 만들어줘
+                  Navigator.pushNamed(context, '/more/paywall');
                 },
                 child: const Text('업그레이드'),
               ),
