@@ -19,6 +19,7 @@ class UserProvider extends ChangeNotifier {
   bool _justSignedIn = false;
   List<BudgetModel>? _budgets;
   List<BudgetModel>? _myBudgets;
+  List<BudgetModel>? _allBudgets;
   List<String>? _permissionBudgets;
   List<String>? _sharedOwnerIds;
   List<String>? _sharedUserIds;
@@ -28,39 +29,23 @@ class UserProvider extends ChangeNotifier {
   SubscriptionModel? _myPlan;
 
   User? get currentUser => _currentUser;
-
   String? get userId => _userId;
-
   String? get ownerId => _ownerId;
-
   String? get budgetId => _budgetId;
-
   String? get profileImageUrl => _profileImageUrl;
-
   UserModel? get myInfo => _myInfo;
-
   bool get imageExists => _imageExists;
-
   bool get isLoggedIn => _userId != null;
-
   bool get justSignedIn => _justSignedIn;
-
   List<BudgetModel>? get budgets => _budgets;
-
   List<BudgetModel>? get myBudgets => _myBudgets;
-
+  List<BudgetModel>? get allBudgets => _allBudgets;
   List<String>? get permissionBudgets => _permissionBudgets;
-
   List<String>? get sharedOwnerIds => _sharedOwnerIds;
-
   List<String>? get sharedUserIds => _sharedUserIds;
-
   List<UserModel>? get sharedUsers => _sharedUsers;
-
   List<UserModel>? get mySharedUsers => _mySharedUsers;
-
   List<UserModel>? get sharedOwnerUsers => _sharedOwnerUsers;
-
   SubscriptionModel? get myPlan => _myPlan;
 
   Future<void> initializeUserProvider() async {
@@ -93,6 +78,7 @@ class UserProvider extends ChangeNotifier {
       _imageExists = false;
       _budgets = [];
       _myBudgets = [];
+      _allBudgets = [];
       _permissionBudgets = [];
       _sharedOwnerIds = [];
       _sharedUserIds = [];
@@ -310,8 +296,10 @@ class UserProvider extends ChangeNotifier {
     try {
       final uid = _userId;
       final oid = _ownerId;
-      if (oid == null || uid == null) {
-        debugPrint('[loadBudgets] skip: ownerId/userId is null');
+
+      if (uid == null) {
+        debugPrint('[loadBudgets] skip: userId is null');
+        _allBudgets = [];
         _budgets = [];
         _myBudgets = [];
         _permissionBudgets = [];
@@ -319,39 +307,53 @@ class UserProvider extends ChangeNotifier {
         return;
       }
 
-      // owner의 모든 budget id
-      final idRows =
-          await Supabase.instance.client.from('budgets').select('id').eq('owner_id', oid);
-      final allBudgetIds =
-          (idRows as List).map((e) => BudgetModel.fromJson(e)).map((e) => e.id!).toList();
+      final supabase = Supabase.instance.client;
 
-      // 내가 권한 가진 budget id
-      final permRows = await Supabase.instance.client
+      // 1) 내가 권한 가진 모든 budget_id (모든 owner)
+      final permRows = await supabase
           .from('budget_permissions')
           .select('budget_id')
           .eq('user_id', uid);
-      final permittedIds = (permRows as List).map((e) => e['budget_id'] as String).toList();
 
-      _permissionBudgets = allBudgetIds.where((id) => permittedIds.contains(id)).toList();
+      final permittedIds = (permRows as List)
+          .map((e) => e['budget_id'] as String)
+          .toSet()
+          .toList();
 
-      // 권한 있는 budget 상세
-      if ((_permissionBudgets ?? []).isNotEmpty) {
-        final budgetsRows = await Supabase.instance.client
-            .from('budgets')
-            .select('*')
-            .inFilter('id', _permissionBudgets!);
-        _budgets = (budgetsRows as List).map((e) => BudgetModel.fromJson(e)).toList();
-      } else {
+      _permissionBudgets = permittedIds;
+
+      if (permittedIds.isEmpty) {
+        _allBudgets = [];
         _budgets = [];
+        _myBudgets = [];
+        notifyListeners();
+        return;
       }
 
-      // 내가 owner인 budgets
-      final myRows = await Supabase.instance.client.from('budgets').select('*').eq('owner_id', uid);
-      _myBudgets = (myRows as List).map((e) => BudgetModel.fromJson(e)).toList();
+      // 2) budgets에서 '모든 owner' 포함하여 한 번에 조회 → _allBudgets
+      final budgetsRows = await supabase
+          .from('budgets')
+          .select('*')
+          .inFilter('id', permittedIds);
+
+      final all = (budgetsRows as List)
+          .map((e) => BudgetModel.fromJson(e))
+          .toList();
+
+      _allBudgets = all; // ✅ 전역(다이얼로그 등에서 전체 리스트로 사용)
+
+      // 3) 현재 ownerId의 가계부만 → _budgets (기존 화면 호환)
+      _budgets = (oid == null)
+          ? []
+          : all.where((b) => b.ownerId == oid).toList();
+
+      // 4) 내가 owner인 가계부만 → _myBudgets (기존 로직 유지)
+      _myBudgets = all.where((b) => b.ownerId == uid).toList();
 
       notifyListeners();
     } catch (e, st) {
       debugPrint('❌ loadBudgets error: $e\n$st');
+      _allBudgets ??= [];
       _budgets ??= [];
       _myBudgets ??= [];
       _permissionBudgets ??= [];
@@ -554,5 +556,107 @@ class UserProvider extends ChangeNotifier {
       debugPrint('❌ loadUserSubscription error: $e\n$st');
       return null; // 실패 시 free()로 대체되도록
     }
+  }
+
+  List<Map<String, dynamic>> get budgetEntries {
+    final out = <Map<String, dynamic>>[];
+
+    // _allBudgets가 가장 완전한 소스. 없으면 기존 것들로 최대한 구성
+    final all = _allBudgets ??
+        ([
+          ...?_budgets,
+          ...?_myBudgets,
+        ]);
+
+    if (all.isEmpty) return out;
+
+    // ownerId -> 표시 이름 매핑 (내 정보 + 공유 owner들)
+    final Map<String, String> ownerNameMap = {
+      if (myInfo?.id != null) myInfo!.id!: myInfo!.name ?? "나",
+      for (final u in (_sharedOwnerUsers ?? [])) u.id!: u.name ?? "사용자",
+    };
+
+    // 평탄화
+    for (final b in all) {
+      final groupId = b.ownerId ?? "";
+      out.add({
+        'groupId': groupId,
+        'groupName': ownerNameMap[groupId] ?? "그룹",
+        'budgetId': b.id ?? "",
+        'budgetName': b.name ?? "가계부",
+        'isMine': groupId == _userId,                 // 내 소유 그룹
+        'isCurrentGroup': groupId == _ownerId,        // 현재 선택된 그룹
+        'isCurrentBudget': b.id == _budgetId,         // 현재 선택된 가계부
+        'isMain': b.isMain == true,                   // 메인 가계부
+      });
+    }
+
+    // 혹시 모를 중복 제거 (budgetId 기준)
+    final seen = <String>{};
+    final dedup = <Map<String, dynamic>>[];
+    for (final e in out) {
+      final id = (e['budgetId'] as String?) ?? '';
+      if (id.isEmpty || seen.contains(id)) continue;
+      seen.add(id);
+      dedup.add(e);
+    }
+
+    // 정렬 규칙:
+    // 1) 현재 가계부
+    // 2) 현재 그룹 (내부: 메인 먼저 → 가계부명 가나다)
+    // 3) 내 소유 그룹 (내부: 메인 먼저 → 가계부명 가나다)
+    // 4) 나머지: 그룹명 가나다 → 가계부명 가나다
+    dedup.sort((a, b) {
+      // 1) 현재 가계부
+      final ab = a['isCurrentBudget'] == true;
+      final bb = b['isCurrentBudget'] == true;
+      if (ab != bb) return ab ? -1 : 1;
+
+      // 2) 현재 그룹 우선
+      final ag = a['isCurrentGroup'] == true;
+      final bg = b['isCurrentGroup'] == true;
+      if (ag != bg) return ag ? -1 : 1;
+
+      // 현재 그룹 내부: 메인 먼저 → 가계부명 가나다
+      if (ag && bg) {
+        final amain = a['isMain'] == true;
+        final bmain = b['isMain'] == true;
+        if (amain != bmain) return amain ? -1 : 1;
+
+        final an = (a['budgetName'] as String).toLowerCase();
+        final bn = (b['budgetName'] as String).toLowerCase();
+        final nameCmp = an.compareTo(bn);
+        if (nameCmp != 0) return nameCmp;
+      }
+
+      // 3) 내 소유 그룹 우선
+      final am = a['isMine'] == true;
+      final bm = b['isMine'] == true;
+      if (am != bm) return am ? -1 : 1;
+
+      // 내 소유 그룹 내부: 메인 먼저 → 가계부명 가나다
+      if (am && bm) {
+        final amain = a['isMain'] == true;
+        final bmain = b['isMain'] == true;
+        if (amain != bmain) return amain ? -1 : 1;
+
+        final an = (a['budgetName'] as String).toLowerCase();
+        final bn = (b['budgetName'] as String).toLowerCase();
+        final nameCmp = an.compareTo(bn);
+        if (nameCmp != 0) return nameCmp;
+      }
+
+      // 4) 그룹명 가나다 → 가계부명 가나다
+      final agn = (a['groupName'] as String).toLowerCase();
+      final bgn = (b['groupName'] as String).toLowerCase();
+      final gCmp = agn.compareTo(bgn);
+      if (gCmp != 0) return gCmp;
+
+      final an = (a['budgetName'] as String).toLowerCase();
+      final bn = (b['budgetName'] as String).toLowerCase();
+      return an.compareTo(bn);
+    });
+
+    return dedup;
   }
 }

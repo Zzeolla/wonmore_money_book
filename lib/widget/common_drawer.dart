@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:wonmore_money_book/model/user_model.dart';
 import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/todo_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
@@ -87,7 +88,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
     final ownerId = userProvider.ownerId;
     final budgetId = userProvider.budgetId;
     final sharedOwnerIds = userProvider.sharedOwnerIds;
-    final sharedOwnerUsers = userProvider.sharedOwnerUsers;
+    final sharedOwnerUsers = userProvider.sharedOwnerUsers ?? [];
     final budgets = userProvider.budgets;
     final selectedBudgetName = (budgets != null && budgets.isNotEmpty)
         ? budgets
@@ -98,14 +99,15 @@ class _CommonDrawerState extends State<CommonDrawer> {
             .name
         : '(가계부 없음)';
 
-    final selectedGroupName = (sharedUser != null && sharedUser.isNotEmpty)
-        ? sharedUser
-            .firstWhere(
-              (u) => u.id == ownerId,
-              orElse: () => sharedUser.first,
-            )
-            .groupName
-        : '(그룹 없음)';
+    final ownerName = () {
+      final hit = sharedOwnerUsers.firstWhere(
+            (u) => u.id == ownerId,
+        orElse: () => myInfo ?? UserModel(),
+      );
+      return hit.name ?? (myInfo?.name ?? '사용자');
+    }();
+
+    final selectedGroupName = '$ownerName의 그룹'; // ← 이렇게 표시
 
     return Drawer(
       backgroundColor: const Color(0xFFF2F4F6),
@@ -171,24 +173,29 @@ class _CommonDrawerState extends State<CommonDrawer> {
                       key: widget.groupSyncKey,
                       icon: const Icon(Icons.sync, size: 20, color: Colors.grey),
                       onPressed: () async {
-                        if (sharedOwnerUsers == null || sharedOwnerUsers.isEmpty) return;
+                        if (sharedOwnerUsers.isEmpty) return;
 
                         final selectedId = await showDialog<String>(
                           context: context,
                           builder: (BuildContext context) {
+                            // ✅ 오너 목록 (내 오너 정보가 리스트에 없을 수 있으니 보정)
+                            final owners = [...(userProvider.sharedOwnerUsers ?? [])];
+                            if (!owners.any((u) => u.id == userProvider.userId) && userProvider.myInfo != null) {
+                              owners.insert(0, userProvider.myInfo!);
+                            }
                             return SimpleDialog(
                               title: const Text('그룹 선택'),
-                              children: sharedOwnerUsers.map((user) {
+                              children: owners.map((user) {
+                                final gid = user.id ?? '';
+                                final title = '${(user.name ?? '사용자')}의 그룹';
+                                final isCurrent = gid == ownerId;
                                 return SimpleDialogOption(
-                                  onPressed: () {
-                                    Navigator.pop(context, user.id); // 해당 user의 id를 선택 결과로 반환
-                                  },
+                                  onPressed: () => Navigator.pop(context, gid),
                                   child: Row(
                                     children: [
-                                      if (user.id == ownerId)
-                                        const Icon(Icons.check, color: Colors.green, size: 20),
+                                      if (isCurrent) const Icon(Icons.check, color: Colors.green, size: 20),
                                       const SizedBox(width: 4),
-                                      Text(user.groupName ?? '(이름 없음)'),
+                                      Text(title),
                                     ],
                                   ),
                                 );

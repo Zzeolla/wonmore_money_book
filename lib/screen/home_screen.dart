@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
+import 'package:wonmore_money_book/dialog/budget_chooser_dialog.dart';
 import 'package:wonmore_money_book/dialog/monthly_summary_dialog.dart';
 import 'package:wonmore_money_book/dialog/record_input_dialog.dart';
 import 'package:wonmore_money_book/model/home_screen_tab.dart';
@@ -226,25 +227,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   Positioned(
                     right: 16,
                     bottom: kMinAdHeight + 16,
-                    child: FloatingActionButton(
-                      key: widget.fabKey,
-                      onPressed: () {
-                        final myPlan =
-                            context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
-                        final adsEnabled = myPlan.adsEnabled ?? true;
+                    child: Row(
+                      children: [
+                        FloatingActionButton(
+                          heroTag: 'fabSwap',
+                          onPressed: _onTapChange,
+                          backgroundColor: const Color(0xFFA79BFF),
+                          child: const Icon(Icons.swap_horiz, color: Colors.white, size: 36),
+                        ),
+                        const SizedBox(width: 12),
+                        FloatingActionButton(
+                          heroTag: 'fabAdd',
+                          key: widget.fabKey,
+                          onPressed: () {
+                            final myPlan =
+                                context.read<UserProvider>().myPlan ?? SubscriptionModel.free();
+                            final adsEnabled = myPlan.adsEnabled ?? true;
 
-                        if (adsEnabled) {
-                          RecordAdHandler.tryAddTransaction(context, _openRecordDialog);
-                        } else {
-                          _openRecordDialog();
-                        }
-                      },
-                      backgroundColor: Color(0xFFA79BFF),
-                      child: Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 36,
-                      ),
+                            if (adsEnabled) {
+                              RecordAdHandler.tryAddTransaction(context, _openRecordDialog);
+                            } else {
+                              _openRecordDialog();
+                            }
+                          },
+                          backgroundColor: Color(0xFFA79BFF),
+                          child: Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -333,5 +346,9 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       }
     });
+  }
+
+  void _onTapChange() async {
+    await showBudgetChooserDialog(context);
   }
 }

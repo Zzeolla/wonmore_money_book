@@ -5,10 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wonmore_money_book/component/banner_ad_widget.dart';
+import 'package:wonmore_money_book/dialog/budget_chooser_dialog.dart';
 import 'package:wonmore_money_book/model/transaction_type.dart';
+import 'package:wonmore_money_book/provider/money/money_provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
 import 'package:wonmore_money_book/screen/login_screen.dart';
+import 'package:wonmore_money_book/service/export_service.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/common_drawer.dart';
 
@@ -192,10 +195,116 @@ class MoreScreen extends StatelessWidget {
                       ),
                     ),
                     title: const Text('내보내기'),
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('내보내기 기능은 추후 제공될 예정입니다.')),
+                    onTap: () async {
+                      final ctx   = context;
+                      final user  = ctx.read<UserProvider>();
+                      final money = ctx.read<MoneyProvider>();
+
+                      // 1) (로그인 시) 내보낼 가계부 선택
+                      String titleSuffix = '전체(게스트)';
+                      String? selectedBudgetId;
+                      String? selectedGroupId;
+
+                      if (user.isLoggedIn) {
+                        final picked = await showBudgetChooserDialog(
+                          ctx,
+                          title: '내보낼 가계부 선택',
+                          performSwitch: false, // 전환하지 않고 선택만
+                        );
+                        if (picked == null) return;
+
+                        selectedBudgetId = picked['budgetId'];
+                        selectedGroupId = picked['groupId'];
+                        final groupName  = picked['groupName'] ?? '그룹';
+                        final budgetName = picked['budgetName'] ?? '가계부';
+                        titleSuffix = '{$groupName}·{$budgetName}';
+
+                        if (selectedBudgetId == null || selectedBudgetId.isEmpty) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(content: Text('가계부 식별자가 없습니다. 다시 시도해 주세요.')),
+                          );
+                          return;
+                        }
+                      }
+
+                      // 2) 기간 선택 (초기값: 최근 30일)
+                      final now = DateTime.now();
+                      final initialRange = DateTimeRange(
+                        start: now.subtract(const Duration(days: 30)),
+                        end: now,
                       );
+                      final range = await showDateRangePicker(
+                        context: ctx,
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                        initialDateRange: initialRange,
+                      );
+                      if (range == null) return;
+
+                      // 3) 조회 → 엑셀 생성 → 공유 (로딩 표시)
+                      await _withLoading(ctx, () async {
+                        // 네가 수정해둔 시그니처에 맞춤 (게스트면 null 전달)
+                        try {
+                          final txs = await money.getTransactionsByPeriod(
+                            range.start,
+                            range.end,
+                            selectedBudgetId: selectedBudgetId,
+                          );
+
+                          if (txs.isEmpty) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('선택한 기간에 내보낼 거래가 없습니다.')),
+                            );
+                            return;
+                          }
+
+                          final categoryMap = await money.getCategoryNameMapForBudget(selectedBudgetId, ownerId: selectedGroupId!,);
+                          final assetMap    = await money.getAssetNameMapForBudget(selectedBudgetId, ownerId: selectedGroupId,);
+
+                          final result = await ExportService.buildExcelAndSaveToDownloads(
+                            txs: txs,
+                            titleSuffix: titleSuffix,
+                            categoryNameById: categoryMap,
+                            assetNameById: assetMap,
+                          );
+
+                          // 저장 안내
+                          if (result.savedPathOrUri != null && result.savedPathOrUri!.isNotEmpty) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(content: Text('다운로드에 저장됨: ${result.filename}')),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('저장 경로 확인 불가(기기 정책). 공유/열기로 사용하세요.')),
+                            );
+                          }
+
+                          // 공유 여부 묻기
+                          final share = await showDialog<bool>(
+                            context: ctx,
+                            builder: (_) => AlertDialog(
+                              title: const Text('내보내기 완료'),
+                              content: const Text('공용 Downloads 폴더에 저장했습니다.\n추가로 공유하시겠습니까?'),
+                              actions: [
+                                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('아니오')),
+                                TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('공유하기')),
+                              ],
+                            ),
+                          );
+
+                          if (share == true) {
+                            await ExportService.shareExport(
+                              result,
+                              shareText: '원모아 가계부 내보내기: $titleSuffix',
+                              shareSubject: '원모아 가계부 내보내기',
+                            );
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('파일 저장에 실패했습니다: $e')),
+                          );
+                        }
+                      });
                     },
                   ),
                   const Divider(),
@@ -322,5 +431,19 @@ class MoreScreen extends StatelessWidget {
       sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : Rect.zero,
     );
   }
+
+  Future<T?> _withLoading<T>(BuildContext context, Future<T> Function() task) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    try {
+      return await task();
+    } finally {
+      if (context.mounted) Navigator.of(context).pop(); // close loading
+    }
+  }
+
 
 }

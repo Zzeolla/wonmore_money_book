@@ -236,8 +236,12 @@ class MoneyProvider extends ChangeNotifier {
     return await _transactionService.hasAnyTransactions();
   }
 
-  Future<List<TransactionModel>> getTransactionsByPeriod(DateTime start, DateTime end) async {
-    return await _transactionService.getTransactionsByPeriod(start, end);
+  Future<List<TransactionModel>> getTransactionsByPeriod(
+    DateTime start,
+    DateTime end, {
+    String? selectedBudgetId
+    }) async {
+    return await _transactionService.getTransactionsByPeriod(start, end, selectedBudgetId: selectedBudgetId,);
   }
 
   Future<void> addTransaction(TransactionModel model) async {
@@ -514,5 +518,76 @@ class MoneyProvider extends ChangeNotifier {
       await _loadAllCategories();
     }
     notifyListeners();
+  }
+
+  Future<Map<String, String>> getCategoryNameMapForBudget(
+      String? budgetId, { // <- 남겨두지만 사용 안 함(호출부 호환용)
+        required String ownerId, // ✅ 반드시 넘어와야 함
+      }) async {
+    // 1) 게스트(로컬)
+    if (_currentUserId == null) {
+      return {
+        for (final c in _categories)
+          if (c.id != null) c.id!: c.name,
+      };
+    }
+
+    // 2) 현재 로드된 owner와 같으면 캐시 사용
+    if (ownerId == _ownerId) {
+      return {
+        for (final c in _categories)
+          if (c.id != null) c.id!: c.name,
+      };
+    }
+
+    // 3) Supabase: owner 기준 조회 (budget_id 필터 없음)
+    final rows = await Supabase.instance.client
+        .from('categories')             // 스키마에 맞게 테이블명 확인
+        .select('id,name')
+        .eq('owner_id', ownerId);
+
+    final map = <String, String>{};
+    for (final r in (rows as List)) {
+      final id = r['id'] as String?;
+      final name = r['name'] as String?;
+      if (id != null && name != null) map[id] = name;
+    }
+    return map;
+  }
+
+  /// 자산 id→name 맵 (ownerId 기준, budgetId는 무시)
+  Future<Map<String, String>> getAssetNameMapForBudget(
+      String? budgetId, { // <- 남겨두지만 사용 안 함(호출부 호환용)
+        required String ownerId, // ✅ 반드시 넘어와야 함
+      }) async {
+    // 1) 게스트(로컬)
+    if (_currentUserId == null) {
+      return {
+        for (final a in _assets)
+          if (a.id != null) a.id!: a.name,
+      };
+    }
+
+    // 2) 현재 로드된 owner와 같으면 캐시 사용
+    if (ownerId == _ownerId) {
+      return {
+        for (final a in _assets)
+          if (a.id != null) a.id!: a.name,
+      };
+    }
+
+    // 3) Supabase: owner 기준 조회
+    final rows = await Supabase.instance.client
+        .from('assets')                 // 스키마에 맞게 테이블명 확인
+        .select('id,name')
+        .eq('owner_id', ownerId);
+
+    final map = <String, String>{};
+    for (final r in (rows as List)) {
+      final id = r['id'] as String?;
+      final name = r['name'] as String?;
+      if (id != null && name != null) map[id] = name;
+    }
+    return map;
   }
 }

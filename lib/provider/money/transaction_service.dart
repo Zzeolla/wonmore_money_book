@@ -20,20 +20,23 @@ class TransactionService {
     return result.isNotEmpty;
   }
 
-  Future<List<TransactionModel>> getTransactionsByPeriod(DateTime start, DateTime end) async {
+  Future<List<TransactionModel>> getTransactionsByPeriod(DateTime start, DateTime end, {String? selectedBudgetId}) async {
     if (userId == null) {
       final rows = await (_db.select(_db.transactions)
             ..where((t) => t.date.isBetweenValues(start, end)))
           .get();
       return rows.map(TransactionModel.fromDriftRow).toList();
     } else {
+      if (selectedBudgetId == null || selectedBudgetId.isEmpty) {
+        throw ArgumentError('budgetId is required when using Supabase (logged-in).');
+      }
       final response = await supabase
           .from('transactions')
           .select()
           .gte('date', start.toIso8601String())
           .lte('date', end.toIso8601String())
           .eq('owner_id', ownerId!)
-          .eq('budget_id', budgetId!);
+          .eq('budget_id', selectedBudgetId);
 
       return response.map(TransactionModel.fromJson).toList();
     }
