@@ -54,7 +54,7 @@ class UserProvider extends ChangeNotifier {
 
     if (_currentUser != null) {
       final response =
-          await Supabase.instance.client.from('users').select('*').eq('id', _userId!).single();
+      await Supabase.instance.client.from('users').select('*').eq('id', _userId!).single();
 
       _myInfo = UserModel.fromJson(response);
       _myPlan = await loadUserSubscription(_userId!) ?? SubscriptionModel.free();
@@ -129,7 +129,7 @@ class UserProvider extends ChangeNotifier {
         _budgetId = lastBudgetId;
       } else {
         final mainBudget = (_budgets ?? []).firstWhere(
-          (b) => b.isMain == true,
+              (b) => b.isMain == true,
           orElse: () => (_budgets?.isNotEmpty ?? false) ? _budgets!.first : BudgetModel(),
         );
         _budgetId = mainBudget.id;
@@ -223,7 +223,7 @@ class UserProvider extends ChangeNotifier {
 
       // 1) 내가 속한 ownerIds
       final ownerRows =
-          await Supabase.instance.client.from('shared_users').select('owner_id').eq('user_id', uid);
+      await Supabase.instance.client.from('shared_users').select('owner_id').eq('user_id', uid);
 
       final sharedOwnerGroup = (ownerRows as List).map((e) => SharedUserModel.fromJson(e)).toList();
       _sharedOwnerIds = sharedOwnerGroup.map((e) => e.ownerId!).toList();
@@ -247,7 +247,7 @@ class UserProvider extends ChangeNotifier {
             .eq('owner_id', oid);
 
         final sharedUserGroup =
-            (userIdRows as List).map((e) => SharedUserModel.fromJson(e)).toList();
+        (userIdRows as List).map((e) => SharedUserModel.fromJson(e)).toList();
         _sharedUserIds = sharedUserGroup.map((e) => e.userId!).toList();
 
         if ((_sharedUserIds ?? []).isNotEmpty) {
@@ -267,14 +267,14 @@ class UserProvider extends ChangeNotifier {
 
       // 3) 내가 owner인 그룹(owner_id == _userId)의 공유 대상
       final mySharedRows =
-          await Supabase.instance.client.from('shared_users').select('user_id').eq('owner_id', uid);
+      await Supabase.instance.client.from('shared_users').select('user_id').eq('owner_id', uid);
 
       final mySharedGroup = (mySharedRows as List).map((e) => SharedUserModel.fromJson(e)).toList();
       final mySharedIds = mySharedGroup.map((e) => e.userId!).toList();
 
       if (mySharedIds.isNotEmpty) {
         final myUsers =
-            await Supabase.instance.client.from('users').select('*').inFilter('id', mySharedIds);
+        await Supabase.instance.client.from('users').select('*').inFilter('id', mySharedIds);
         _mySharedUsers = (myUsers as List).map((e) => UserModel.fromJson(e)).toList();
       } else {
         _mySharedUsers = [];
@@ -296,10 +296,8 @@ class UserProvider extends ChangeNotifier {
     try {
       final uid = _userId;
       final oid = _ownerId;
-
-      if (uid == null) {
-        debugPrint('[loadBudgets] skip: userId is null');
-        _allBudgets = [];
+      if (oid == null || uid == null) {
+        debugPrint('[loadBudgets] skip: ownerId/userId is null');
         _budgets = [];
         _myBudgets = [];
         _permissionBudgets = [];
@@ -307,31 +305,23 @@ class UserProvider extends ChangeNotifier {
         return;
       }
 
-      final supabase = Supabase.instance.client;
+      // owner의 모든 budget id
+      final idRows =
+      await Supabase.instance.client.from('budgets').select('id').eq('owner_id', oid);
+      final allBudgetIds =
+      (idRows as List).map((e) => BudgetModel.fromJson(e)).map((e) => e.id!).toList();
 
-      // 1) 내가 권한 가진 모든 budget_id (모든 owner)
-      final permRows = await supabase
+      // 내가 권한 가진 budget id
+      final permRows = await Supabase.instance.client
           .from('budget_permissions')
           .select('budget_id')
           .eq('user_id', uid);
+      final permittedIds = (permRows as List).map((e) => e['budget_id'] as String).toList();
 
-      final permittedIds = (permRows as List)
-          .map((e) => e['budget_id'] as String)
-          .toSet()
-          .toList();
-
-      _permissionBudgets = permittedIds;
-
-      if (permittedIds.isEmpty) {
-        _allBudgets = [];
-        _budgets = [];
-        _myBudgets = [];
-        notifyListeners();
-        return;
-      }
+      _permissionBudgets = allBudgetIds.where((id) => permittedIds.contains(id)).toList();
 
       // 2) budgets에서 '모든 owner' 포함하여 한 번에 조회 → _allBudgets
-      final budgetsRows = await supabase
+      final budgetsRows = await Supabase.instance.client
           .from('budgets')
           .select('*')
           .inFilter('id', permittedIds);
@@ -342,18 +332,24 @@ class UserProvider extends ChangeNotifier {
 
       _allBudgets = all; // ✅ 전역(다이얼로그 등에서 전체 리스트로 사용)
 
-      // 3) 현재 ownerId의 가계부만 → _budgets (기존 화면 호환)
-      _budgets = (oid == null)
-          ? []
-          : all.where((b) => b.ownerId == oid).toList();
+      // 권한 있는 budget 상세
+      if ((_permissionBudgets ?? []).isNotEmpty) {
+        final budgetsRows = await Supabase.instance.client
+            .from('budgets')
+            .select('*')
+            .inFilter('id', _permissionBudgets!);
+        _budgets = (budgetsRows as List).map((e) => BudgetModel.fromJson(e)).toList();
+      } else {
+        _budgets = [];
+      }
 
-      // 4) 내가 owner인 가계부만 → _myBudgets (기존 로직 유지)
-      _myBudgets = all.where((b) => b.ownerId == uid).toList();
+      // 내가 owner인 budgets
+      final myRows = await Supabase.instance.client.from('budgets').select('*').eq('owner_id', uid);
+      _myBudgets = (myRows as List).map((e) => BudgetModel.fromJson(e)).toList();
 
       notifyListeners();
     } catch (e, st) {
       debugPrint('❌ loadBudgets error: $e\n$st');
-      _allBudgets ??= [];
       _budgets ??= [];
       _myBudgets ??= [];
       _permissionBudgets ??= [];
@@ -464,7 +460,7 @@ class UserProvider extends ChangeNotifier {
 
     // 1. 이 budget을 참조하는 user 모두 가져오기
     final referencingUsers =
-        await supabase.from('users').select('id').eq('last_budget_id', budgetId);
+    await supabase.from('users').select('id').eq('last_budget_id', budgetId);
 
     for (final user in referencingUsers) {
       final userId = user['id'];
@@ -659,4 +655,5 @@ class UserProvider extends ChangeNotifier {
 
     return dedup;
   }
+
 }

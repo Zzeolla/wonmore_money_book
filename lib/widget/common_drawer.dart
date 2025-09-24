@@ -92,11 +92,11 @@ class _CommonDrawerState extends State<CommonDrawer> {
     final budgets = userProvider.budgets;
     final selectedBudgetName = (budgets != null && budgets.isNotEmpty)
         ? budgets
-            .firstWhere(
-              (b) => b.id == budgetId,
-              orElse: () => budgets.first,
-            )
-            .name
+        .firstWhere(
+          (b) => b.id == budgetId,
+      orElse: () => budgets.first,
+    )
+        .name
         : '(가계부 없음)';
 
     final ownerName = () {
@@ -167,7 +167,7 @@ class _CommonDrawerState extends State<CommonDrawer> {
                     Text(
                       selectedGroupName ?? '(그룹 없음)',
                       style:
-                          TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
+                      TextStyle(fontSize: 16, color: Colors.black, fontWeight: FontWeight.bold),
                     ),
                     IconButton(
                       key: widget.groupSyncKey,
@@ -268,55 +268,55 @@ class _CommonDrawerState extends State<CommonDrawer> {
             child: (sharedUser == null || sharedUser.isEmpty)
                 ? Center(child: Text('로그인이 필요합니다'))
                 : Builder(builder: (context) {
-                    final sortedUsers = [...sharedUser]; // 원본 리스트 복사
-                    final ownerId = context.read<UserProvider>().ownerId;
+              final sortedUsers = [...sharedUser]; // 원본 리스트 복사
+              final ownerId = context.read<UserProvider>().ownerId;
 
-                    // 정렬 로직
-                    sortedUsers.sort((a, b) {
-                      if (a.id == ownerId) return -1;
-                      if (b.id == ownerId) return 1;
-                      return a.name!.compareTo(b.name!);
-                    });
+              // 정렬 로직
+              sortedUsers.sort((a, b) {
+                if (a.id == ownerId) return -1;
+                if (b.id == ownerId) return 1;
+                return a.name!.compareTo(b.name!);
+              });
 
-                    return SingleChildScrollView(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: List.generate(sortedUsers.length, (index) {
-                          print(sortedUsers.length);
-                          final user = sortedUsers[index];
-                          final isOwner = user.id == ownerId;
+              return SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: List.generate(sortedUsers.length, (index) {
+                    print(sortedUsers.length);
+                    final user = sortedUsers[index];
+                    final isOwner = user.id == ownerId;
 
-                          return ListTile(
-                            leading: CircleAvatar(
-                              radius: 24,
-                              backgroundColor: Colors.white,
-                              backgroundImage:
-                                  user.isProfile! ? NetworkImage(user.profileUrl!) : null,
-                              child: !user.isProfile!
-                                  ? Icon(Icons.group, color: Colors.black, size: 40)
-                                  : null,
+                    return ListTile(
+                      leading: CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Colors.white,
+                        backgroundImage:
+                        user.isProfile! ? NetworkImage(user.profileUrl!) : null,
+                        child: !user.isProfile!
+                            ? Icon(Icons.group, color: Colors.black, size: 40)
+                            : null,
+                      ),
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              user.name!,
+                              style: TextStyle(
+                                fontWeight: isOwner ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              softWrap: false,
                             ),
-                            title: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    user.name!,
-                                    style: TextStyle(
-                                      fontWeight: isOwner ? FontWeight.bold : FontWeight.normal,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1,
-                                    softWrap: false,
-                                  ),
-                                ),
-                                if (isOwner) const Text('👑'), // 오른쪽 끝에 왕관
-                              ],
-                            ),
-                          );
-                        }),
+                          ),
+                          if (isOwner) const Text('👑'), // 오른쪽 끝에 왕관
+                        ],
                       ),
                     );
                   }),
+                ),
+              );
+            }),
           ),
           // Expanded(
           //   child: (sharedUser == null || sharedUser.isEmpty)
