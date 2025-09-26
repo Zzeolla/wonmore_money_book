@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
@@ -123,6 +124,13 @@ class _PaywallScreenState extends State<PaywallScreen> {
               onPressed: _restore,
               child: const Text('구매 복원'),
             ),
+            if (kDebugMode)
+              ElevatedButton(
+                onPressed: () async {
+                  await IapService().testInsertDummy();
+                },
+                child: const Text("DB 더미 Insert 테스트"),
+              )
           ],
         ),
       ),

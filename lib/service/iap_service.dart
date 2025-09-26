@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -169,7 +170,7 @@ class IapService {
       'transaction_id': p.purchaseID,
       'purchase_token': purchaseToken,
       'status': 'pending',
-      'is_sandbox': null,
+      'is_sandbox': kDebugMode,
       'start_date': now.toIso8601String(),
       'end_date': null, // 검증 후 실제 만료일로 업데이트
       'last_verified_date': now.toIso8601String(),
@@ -179,5 +180,53 @@ class IapService {
       data,
       onConflict: 'purchase_token',
     );
+  }
+
+  Future<void> testInsertDummy() async {
+    final supa = Supabase.instance.client;
+    final userId = supa.auth.currentUser?.id;
+
+    if (userId == null) {
+      print('[TEST] user not logged in!');
+      return;
+    }
+
+    final now = DateTime.now().toUtc();
+
+    // 2) plan_id 조회 (name='pro')
+    String? planId;
+    try {
+      final plan = await supa
+          .from('subscription_plans')
+          .select('id')
+          .eq('name', 'pro')
+          .maybeSingle();
+      planId = plan?['id'] as String?;
+    } catch (e) {
+      // 로깅만 하고 null 허용
+      // print('plan query error: $e');
+    }
+
+    final data = <String, dynamic>{
+      'user_id': userId,
+      'plan_id': planId, // 실제 plan_id 조회 안 하고 null로 둠
+      'store': 'google_play',
+      'product_id': 'pro_monthly',
+      'transaction_id': 'TEST_TXN_${DateTime.now().millisecondsSinceEpoch}',
+      'purchase_token': 'TEST_TOKEN_${DateTime.now().millisecondsSinceEpoch}',
+      'status': 'pending',
+      'is_sandbox': kDebugMode,
+      'start_date': now.toIso8601String(),
+      'end_date': null,
+      'last_verified_date': now.toIso8601String(),
+    };
+
+    try {
+      print('[TEST] insert payload: $data');
+      final resp = await supa.from('subscriptions').insert(data);
+      print('[TEST] insert resp: $resp');
+    } catch (e, st) {
+      print('[TEST] insert error: $e\n$st');
+    }
   }
 }
