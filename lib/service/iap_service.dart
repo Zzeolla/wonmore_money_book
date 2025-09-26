@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:in_app_purchase/in_app_purchase.dart';
@@ -125,30 +126,53 @@ class IapService {
     if (userId == null) return;
 
     final now = DateTime.now().toUtc();
-    final productId = p.productID;
-    final purchaseTokenAndroid = p.verificationData.serverVerificationData; // AND
-    final receiptIos = p.verificationData.localVerificationData;            // iOS
 
-    // 네 스키마에 맞춰 조정
-    final plan = await supa
-        .from('subscription_plans')
-        .select('id')
-        .eq('name', 'pro')
-        .maybeSingle();
-    final planId = plan?['id'];
+    // 1) Android/iOS별 토큰 추출
+    String? purchaseToken;
+    try {
+      if (Platform.isAndroid) {
+        // 보통은 토큰 문자열이 바로 오지만, 일부 버전에선 JSON 문자열일 수 있음
+        final raw = p.verificationData.serverVerificationData;
+        if (raw.trim().startsWith('{')) {
+          final obj = jsonDecode(raw);
+          purchaseToken = obj['purchaseToken'] ?? obj['token'] ?? raw;
+        } else {
+          purchaseToken = raw;
+        }
+      } else {
+        // iOS는 영수증(base64) 전체
+        purchaseToken = p.verificationData.localVerificationData;
+      }
+    } catch (_) {
+      purchaseToken = p.verificationData.serverVerificationData;
+    }
+
+    // 2) plan_id 조회 (name='pro')
+    String? planId;
+    try {
+      final plan = await supa
+          .from('subscription_plans')
+          .select('id')
+          .eq('name', 'pro')
+          .maybeSingle();
+      planId = plan?['id'] as String?;
+    } catch (e) {
+      // 로깅만 하고 null 허용
+      // print('plan query error: $e');
+    }
 
     final data = <String, dynamic>{
       'user_id': userId,
       'plan_id': planId,
-      'store': Platform.isAndroid ? 'google' : 'apple',
-      'product_id': productId,
+      'store': Platform.isAndroid ? 'google_play' : 'apple_app_store',
+      'product_id': p.productID,
       'transaction_id': p.purchaseID,
-      'purchase_token': Platform.isAndroid ? purchaseTokenAndroid : receiptIos,
+      'purchase_token': purchaseToken,
       'status': 'pending',
       'is_sandbox': null,
       'start_date': now.toIso8601String(),
       'end_date': null, // 검증 후 실제 만료일로 업데이트
-      'last_verified_at': now.toIso8601String(),
+      'last_verified_date': now.toIso8601String(),
     };
 
     await supa.from('subscriptions').upsert(
