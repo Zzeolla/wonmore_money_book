@@ -57,7 +57,7 @@ class UserProvider extends ChangeNotifier {
       await Supabase.instance.client.from('users').select('*').eq('id', _userId!).single();
 
       _myInfo = UserModel.fromJson(response);
-      _myPlan = await loadUserSubscription(_userId!) ?? SubscriptionModel.free();
+      _myPlan = await loadUserSubscription() ?? SubscriptionModel.free();
 
       _ownerId = (response['last_owner_id'] as String?) ?? _userId;
       _budgetId = response['last_budget_id'] as String?;
@@ -509,9 +509,12 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<SubscriptionModel?> loadUserSubscription(String userId) async {
+  Future<SubscriptionModel?> loadUserSubscription({String? userId}) async {
     try {
       final supabase = Supabase.instance.client;
+
+      final targetUserId = userId ?? _userId;
+      if (targetUserId == null) return null;
 
       final nowIso = DateTime.now().toUtc().toIso8601String();
 
@@ -519,7 +522,7 @@ class UserProvider extends ChangeNotifier {
       final sub = await supabase
           .from('subscriptions')
           .select('id, user_id, plan_id, start_date, end_date') // 필요한 것만
-          .eq('user_id', userId)
+          .eq('user_id', targetUserId)
           .lte('start_date', nowIso)
           .gt('end_date', nowIso)
           .order('end_date', ascending: false)

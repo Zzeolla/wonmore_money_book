@@ -188,6 +188,9 @@ class _SplashScreenState extends State<SplashScreen> {
         todoProvider.setUserId(supabaseUser.id, ownerId),
       ]);
 
+      await IapService().verifyNow();
+      await userProvider.loadUserSubscription();
+
       unawaited(IapService().startListener());
 
       final fcm = FcmTokenService(Supabase.instance.client);

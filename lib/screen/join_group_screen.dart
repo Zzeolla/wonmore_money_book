@@ -171,7 +171,7 @@ class _JoinGroupScreenState extends State<JoinGroupScreen> {
       }
 
       // ✅ 2. 해당 owner의 현재 플랜과 공유 유저 수 확인
-      final ownerPlan = await userProvider.loadUserSubscription(ownerId);
+      final ownerPlan = await userProvider.loadUserSubscription(userId: ownerId);
       final maxAllowed = ownerPlan?.maxSharedUsers;
 
       final responseGetUser = await Supabase.instance.client

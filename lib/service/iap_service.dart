@@ -3,11 +3,15 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class IapService {
+  void Function()? onVerified;
   static final IapService _instance = IapService._internal();
+  static const String _verifyFnName = 'verify-subscription';
+  static final String _edgeSecret = dotenv.env['EDGE_SECRET']!;
   factory IapService() => _instance;
   IapService._internal();
 
@@ -15,10 +19,14 @@ class IapService {
   StreamSubscription<List<PurchaseDetails>>? _subscription;
 
   bool available = false;
+  bool _listenerStarted = false;
   List<ProductDetails> products = [];
 
   /// 앱 시작 시 1회만 호출 (Splash 등에서)
   Future<void> startListener() async {
+    if (_listenerStarted) return;
+    _listenerStarted = true;
+
     available = await _iap.isAvailable();
     if (!available) return;
 
@@ -29,6 +37,8 @@ class IapService {
             case PurchaseStatus.purchased:
             case PurchaseStatus.restored:
               await _recordPurchaseToDb(p);
+              await verifyNow();
+              onVerified?.call();
               break;
             case PurchaseStatus.pending:
             case PurchaseStatus.canceled:
@@ -162,6 +172,22 @@ class IapService {
       // print('plan query error: $e');
     }
 
+    // ✅ 이미 같은 purchase_token 행이 있으면 덮어쓰지 않음
+    final existing = await supa
+        .from('subscriptions')
+        .select('id,status,end_date')
+        .eq('purchase_token', purchaseToken!)
+        .maybeSingle();
+
+    if (existing != null) {
+      // 옵션) 정말 처음 기록해야 할 게 있으면 '안전 업데이트'만 수행:
+      // 예: transaction_id가 비어있고 이번에 생겼다면 채우기
+      // await supa.from('subscriptions').update({'transaction_id': p.purchaseID})
+      //   .eq('purchase_token', purchaseToken)
+      //   .is_('transaction_id', null);
+      return;
+    }
+
     final data = <String, dynamic>{
       'user_id': userId,
       'plan_id': planId,
@@ -176,10 +202,7 @@ class IapService {
       'last_verified_date': now.toIso8601String(),
     };
 
-    await supa.from('subscriptions').upsert(
-      data,
-      onConflict: 'purchase_token',
-    );
+    await supa.from('subscriptions').insert(data);
   }
 
   Future<void> testInsertDummy() async {
@@ -227,6 +250,31 @@ class IapService {
       print('[TEST] insert resp: $resp');
     } catch (e, st) {
       print('[TEST] insert error: $e\n$st');
+    }
+  }
+
+  Future<void> verifyNow({String? purchaseToken}) async {
+    final supa = Supabase.instance.client;
+    final userId = supa.auth.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      final resp = await supa.functions.invoke(
+        _verifyFnName,
+        headers: {
+          'x-api-key': _edgeSecret,
+          'Content-Type': 'application/json',
+        },
+        body: {
+          'user_id': userId,
+          if (purchaseToken != null) 'purchase_token': purchaseToken,
+          'is_sandbox': kDebugMode,
+          'store': 'google_play',
+        },
+      );
+      // print('[VERIFY] ${resp.data}');
+    } catch (e) {
+      // print('[VERIFY][ERR] $e');
     }
   }
 }

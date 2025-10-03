@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -21,7 +23,19 @@ class _PaywallScreenState extends State<PaywallScreen> {
   @override
   void initState() {
     super.initState();
+    IapService().onVerified = () async {
+      if (!mounted) return;
+      await context.read<UserProvider>().loadUserSubscription();
+      if (!mounted) return;
+      setState(() {}); // 화면 반영용 (옵션)
+    };
     _init();
+  }
+
+  @override
+  void dispose() {
+    IapService().onVerified = null;
+    super.dispose();
   }
 
   Future<void> _init() async {
@@ -108,6 +122,8 @@ class _PaywallScreenState extends State<PaywallScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('구매 진행 중…')),
                     );
+                    // B) 폴백: 딜레이 + 재시도
+                    unawaited(_waitAndRefreshPlan(retries: 3));
                   } catch (e) {
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -135,6 +151,30 @@ class _PaywallScreenState extends State<PaywallScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _waitAndRefreshPlan({int retries = 3}) async {
+    for (var i = 0; i < retries; i++) {
+      // 첫 시도는 3초 기다렸다가, 이후 2초 간격
+      await Future.delayed(Duration(seconds: i == 0 ? 3 : 2));
+      await IapService().verifyNow();
+      final sub = await context.read<UserProvider>().loadUserSubscription(); // 기본 내 유저
+      if (!mounted) return;
+
+      if (sub?.planName == 'pro') {
+        // 필요하면 setState(...) or 스낵바
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PRO 활성화 완료')),
+        );
+        return;
+      }
+    }
+    // 마지막까지 실패 시 안내(선택)
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('구매 확인이 지연되고 있어요. 잠시 후 다시 시도해주세요.')),
+      );
+    }
   }
 }
 

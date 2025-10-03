@@ -16,6 +16,16 @@ function toBase64Url(obj: unknown): string {
   return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
+function toIsoDate(v: unknown): string | null {
+  if (!v) return null;
+  if (typeof v === "number") return new Date(v).toISOString();
+  if (typeof v === "string") {
+    const onlyDigits = /^\d+$/.test(v.trim());
+    return new Date(onlyDigits ? parseInt(v, 10) : v).toISOString();
+  }
+  return null;
+}
+
 interface ServiceAccount {
   project_id: string;
   client_email: string;
@@ -33,8 +43,7 @@ async function getAccessToken(sa: ServiceAccount): Promise<string> {
     iat: now,
     exp: now + 3600,
   };
-    console.log('SA email:', sa.client_email);
-    console.log('PKG:', ANDROID_PACKAGE_NAME);
+
   const headerB64 = toBase64Url(header);
   const payloadB64 = toBase64Url(payload);
   const unsigned = `${headerB64}.${payloadB64}`;
@@ -74,6 +83,7 @@ const PROJECT_URL           = Deno.env.get("PROJECT_URL")!;                 // h
 const SERVICE_ROLE_KEY      = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const ANDROID_PACKAGE_NAME  = Deno.env.get("ANDROID_PACKAGE_NAME")!;
 const SA_B64                = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_JSON_BASE64")!;
+const EDGE_SECRET           = Deno.env.get("WONMORE_PUSH_SECRET")!; // 인증에 사용
 
 /** Supabase REST helper(Service Role로 호출) */
 function supa(path: string, init?: RequestInit) {
@@ -93,14 +103,41 @@ type VerifyPayload = {
   user_id: string;
   purchase_token?: string;  // 없으면 DB에서 최신 row 찾아 사용
   product_id?: string;
-  is_sandbox?: boolean;
+  is_sandbox?: boolean;     // (선택) 클라이언트 힌트, 최종 판단은 Google 응답의 testPurchase 사용
   store?: "google_play";
 };
 
+/** 구글 상태 → 내부 상태 매핑 */
+function mapState(s?: string) {
+  type S = "pending" | "active" | "canceled" | "expired" | "paused" | "past_due" | "unknown";
+  let status: S = "unknown";
+  let canceledPeriodEnd = false;
+
+  switch (s) {
+    case "SUBSCRIPTION_STATE_PENDING":
+      status = "pending"; break;
+    case "SUBSCRIPTION_STATE_ACTIVE":
+      status = "active"; break;
+    case "SUBSCRIPTION_STATE_PAUSED":
+      status = "paused"; break;
+    case "SUBSCRIPTION_STATE_IN_GRACE_PERIOD":
+    case "SUBSCRIPTION_STATE_ON_HOLD":
+      status = "past_due"; break; // 연체/보류 범주
+    case "SUBSCRIPTION_STATE_CANCELED":
+      status = "canceled"; canceledPeriodEnd = true; break; // 만료 전 해지
+    case "SUBSCRIPTION_STATE_EXPIRED":
+      status = "expired"; break;
+    case "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED":
+      status = "canceled"; break; // 보류 결제 취소
+    default:
+      status = "unknown";
+  }
+  return { status, canceledPeriodEnd };
+}
+
 Deno.serve(async (req) => {
   // 간단 인증 (x-api-key)
-  const requiredKey = Deno.env.get("WONMORE_PUSH_SECRET"); // 기존 키 재사용
-  if (!requiredKey || req.headers.get("x-api-key") !== requiredKey) {
+  if (!EDGE_SECRET || req.headers.get("x-api-key") !== EDGE_SECRET) {
     return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
       status: 401, headers: { "Content-Type": "application/json" },
     });
@@ -112,13 +149,18 @@ Deno.serve(async (req) => {
     // 서비스계정 로드(Base64 → JSON)
     const sa: ServiceAccount = JSON.parse(new TextDecoder().decode(b64ToBytes(SA_B64)));
 
-    // 0) purchase_token이 없으면 최신 구독 row에서 보충
+    // 0) purchase_token 보정 (없으면 가장 최근 row)
     let { user_id, purchase_token, product_id } = body;
+    if (!user_id) {
+      return new Response(JSON.stringify({ ok: false, error: "user_id required" }), {
+        status: 400, headers: { "Content-Type": "application/json" },
+      });
+    }
     if (!purchase_token) {
       const r = await supa(`subscriptions?user_id=eq.${user_id}&order=created_at.desc&limit=1`);
       const rows = await r.json();
       if (!rows?.length) {
-        return new Response(JSON.stringify({ ok: false, error: "No subscription row" }), {
+        return new Response(JSON.stringify({ ok: false, error: "No subscription row for user" }), {
           status: 400, headers: { "Content-Type": "application/json" },
         });
       }
@@ -133,37 +175,33 @@ Deno.serve(async (req) => {
 
     const gText = await gRes.text();
     if (!gRes.ok) {
+      // 구글 실패시, 기존 pending 그대로 둘 수 있으니 에러 내용 반환
       return new Response(JSON.stringify({ ok: false, source: "google", status: gRes.status, body: gText }), {
         status: 502, headers: { "Content-Type": "application/json" },
       });
     }
     const gp = JSON.parse(gText);
 
-    // 2) 상태/시간 파싱
-    const lineItems = gp?.lineItems?.[0];
-    const startMs  = lineItems?.startTime  ?? gp?.startTime;
-    const expiryMs = lineItems?.expiryTime ?? gp?.expiryTime ?? gp?.latestOrder?.expiryTime;
+    // 2) 상태/시간 파싱 (lineItems[0] 우선)
+    const item = Array.isArray(gp?.lineItems) ? gp.lineItems[0] : undefined;
 
-    const startIso = startMs  ? new Date(Number(startMs)).toISOString()  : null;
-    const endIso   = expiryMs ? new Date(Number(expiryMs)).toISOString() : null;
+    const startIso = toIsoDate(item?.startTime ?? gp?.startTime);
+    const endIso   = toIsoDate(item?.expiryTime ?? gp?.expiryTime);
 
-    const state = gp?.subscriptionState; // SUBSCRIPTION_STATE_ACTIVE / _CANCELED / _EXPIRED / _ON_HOLD / _IN_GRACE_PERIOD...
-    let status = "pending";
-    if (state === "SUBSCRIPTION_STATE_ACTIVE") status = "active";
-    else if (state === "SUBSCRIPTION_STATE_CANCELED" || state === "SUBSCRIPTION_STATE_EXPIRED") status = "canceled";
-    else if (state === "SUBSCRIPTION_STATE_ON_HOLD" || state === "SUBSCRIPTION_STATE_IN_GRACE_PERIOD") status = "past_due";
-
-    const canceledPeriodEnd = state === "SUBSCRIPTION_STATE_CANCELED";
+    const { status, canceledPeriodEnd } = mapState(gp?.subscriptionState);
+    const ackState = gp?.acknowledgementState; // 참고용
+    const isSandbox = !!gp?.testPurchase;      // 테스트 구매 여부
 
     // 3) DB 갱신 (purchase_token 기준)
     const payload = {
-      status,
+      status,                               // 'pending'|'active'|'canceled'|'expired'|'paused'|'past_due'|'unknown'
       start_date: startIso,
       end_date: endIso,
       last_verified_date: new Date().toISOString(),
       canceled_date_period_end: canceledPeriodEnd,
-      is_sandbox: body.is_sandbox ?? false,
+      is_sandbox: isSandbox ?? false,                // 최종 판단은 Google 응답
       product_id,
+      // acknowledgement_state: ackState,   // (원하면 컬럼 추가하여 저장)
     };
 
     const pRes = await supa(
@@ -178,7 +216,15 @@ Deno.serve(async (req) => {
       });
     }
 
-    return new Response(JSON.stringify({ ok: true, status, end_date: endIso }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      status,
+      end_date: endIso,
+      start_date: startIso,
+      subscriptionState: gp?.subscriptionState,
+      acknowledgementState: ackState,
+      is_sandbox: isSandbox,
+    }), {
       status: 200, headers: { "Content-Type": "application/json" },
     });
   } catch (err) {
