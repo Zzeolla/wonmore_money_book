@@ -141,14 +141,6 @@ class _SplashScreenState extends State<SplashScreen> {
           'is_profile': false,
         });
 
-        // subscriptions
-        await Supabase.instance.client.from('subscriptions').insert({
-          'user_id': supabaseUser.id,
-          'plan_name': 'free',
-          'start_date': DateTime.now().toIso8601String(),
-          'is_active': true,
-        });
-
         // budgets
         final newBudgetId = const Uuid().v4();
         await Supabase.instance.client.from('budgets').insert({

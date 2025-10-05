@@ -514,7 +514,11 @@ class UserProvider extends ChangeNotifier {
       final supabase = Supabase.instance.client;
 
       final targetUserId = userId ?? _userId;
-      if (targetUserId == null) return null;
+      if (targetUserId == null) {
+        _myPlan = SubscriptionModel.free();
+        notifyListeners();
+        return null;
+      }
 
       final nowIso = DateTime.now().toUtc().toIso8601String();
 
@@ -530,7 +534,11 @@ class UserProvider extends ChangeNotifier {
           .maybeSingle();
 
       // 레코드 없으면 free
-      if (sub == null) return null;
+      if (sub == null) {
+        _myPlan = SubscriptionModel.free();
+        notifyListeners();
+        return null;
+      }
 
       final String planId = sub['plan_id'];
 
@@ -541,7 +549,7 @@ class UserProvider extends ChangeNotifier {
           .eq('id', planId)
           .single();
 
-      return SubscriptionModel(
+      final model = SubscriptionModel(
         id: sub['id'],
         userId: sub['user_id'],
         planName: planInfo['name'],               // ← 여기서 name을 planName으로
@@ -551,9 +559,14 @@ class UserProvider extends ChangeNotifier {
         maxBudgets: planInfo['max_budgets'],
         maxSharedUsers: planInfo['max_shared_users'] ?? 10000,
       );
+      _myPlan = model;
+      notifyListeners();
+      return model;
     } catch (e, st) {
       debugPrint('❌ loadUserSubscription error: $e\n$st');
-      return null; // 실패 시 free()로 대체되도록
+      _myPlan = SubscriptionModel.free();
+      notifyListeners();
+      return null;
     }
   }
 

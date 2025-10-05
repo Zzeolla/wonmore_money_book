@@ -158,8 +158,15 @@ class MoreScreen extends StatelessWidget {
                       ),
                     ),
                     title: const Text('Pro 구독하기 (광고 제거 포함)'),
-                    onTap: () {
+                    onTap: isLoggedIn ? () {
                       Navigator.pushNamed(context, '/more/paywall');
+                    } : () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LoginScreen(message: '이 기능은 로그인 후 사용할 수 있습니다.'),
+                        ),
+                      );
                     },
                   ),
                   const Divider(),

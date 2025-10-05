@@ -229,12 +229,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     bottom: kMinAdHeight + 16,
                     child: Row(
                       children: [
-                        FloatingActionButton(
-                          heroTag: 'fabSwap',
-                          onPressed: _onTapChange,
-                          backgroundColor: const Color(0xFFA79BFF),
-                          child: const Icon(Icons.swap_horiz, color: Colors.white, size: 36),
-                        ),
+                        if (context.read<UserProvider>().isLoggedIn)
+                          FloatingActionButton(
+                            heroTag: 'fabSwap',
+                            onPressed: _onTapChange,
+                            backgroundColor: const Color(0xFFA79BFF),
+                            child: const Icon(Icons.swap_horiz, color: Colors.white, size: 36),
+                          ),
                         const SizedBox(width: 12),
                         FloatingActionButton(
                           heroTag: 'fabAdd',

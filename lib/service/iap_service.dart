@@ -233,7 +233,7 @@ class IapService {
     final data = <String, dynamic>{
       'user_id': userId,
       'plan_id': planId, // 실제 plan_id 조회 안 하고 null로 둠
-      'store': 'google_play',
+      'store': Platform.isAndroid ? 'google_play' : 'apple_app_store',
       'product_id': 'pro_monthly',
       'transaction_id': 'TEST_TXN_${DateTime.now().millisecondsSinceEpoch}',
       'purchase_token': 'TEST_TOKEN_${DateTime.now().millisecondsSinceEpoch}',
@@ -258,6 +258,8 @@ class IapService {
     final userId = supa.auth.currentUser?.id;
     if (userId == null) return;
 
+    final store = Platform.isAndroid ? 'google_play' : 'apple_app_store';
+
     try {
       final resp = await supa.functions.invoke(
         _verifyFnName,
@@ -269,7 +271,7 @@ class IapService {
           'user_id': userId,
           if (purchaseToken != null) 'purchase_token': purchaseToken,
           'is_sandbox': kDebugMode,
-          'store': 'google_play',
+          'store': store,
         },
       );
       // print('[VERIFY] ${resp.data}');
