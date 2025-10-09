@@ -22,6 +22,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
   bool? isProfileDelete;
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _groupController = TextEditingController();
+
   // 이미지 업로드 / 닉네임 수정 상태
   // 초기값은 Provider에서 받아옴
 
@@ -45,6 +46,7 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     final userProvider = context.watch<UserProvider>();
     final myInfo = userProvider.myInfo;
     final hasProfile = myInfo!.isProfile ?? false;
+    final profileUrl = myInfo.profileUrl ?? '';
 
     return Scaffold(
       appBar: CommonAppBar(isMainScreen: false, label: '내 정보'),
@@ -55,18 +57,19 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
             // 1. 프로필 아바타
             GestureDetector(
               onTap: () {
-                showBottomSheetProfile(
-                  hasProfile || isInterProfile!
-                );
+                showBottomSheetProfile(hasProfile || isInterProfile!);
               },
               child: Column(
                 children: [
                   CircleAvatar(
+                    key: ValueKey(profileUrl),
                     radius: 48,
                     backgroundImage: isInterProfile!
                         ? FileImage(profileImage!) // File 타입 (null 체크는 위에서 하거나 ! 사용)
-                        : (hasProfile ? NetworkImage(myInfo.profileUrl ?? '') : null),
-                    child: !hasProfile && !isInterProfile! ? Icon(Icons.person, color: Colors.black, size: 40) : null,
+                        : (hasProfile ? NetworkImage(profileUrl) : null),
+                    child: !hasProfile && !isInterProfile!
+                        ? Icon(Icons.person, color: Colors.black, size: 40)
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   Text('프로필 사진 변경'),
@@ -187,28 +190,32 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
 
     // 1. 닉네임 변경
     if (trimmedName != oldName || trimmedGroup != oldGroup) {
-      await Supabase.instance.client
-          .from('users')
-          .update({
-            'name': trimmedName,
-            'group_name': trimmedGroup,
-          })
-          .eq('id', userId!);
+      await Supabase.instance.client.from('users').update({
+        'name': trimmedName,
+        'group_name': trimmedGroup,
+      }).eq('id', userId!);
     }
 
     // 2. 프로필 사진 변경
     final storageRef = Supabase.instance.client.storage.from('avatars');
-    final imagePath = '$userId/profile.png';
+    final imagePath = '$userId/profile.jpg';
 
     if (isInterProfile == true && profileImage != null) {
-      // 새 이미지 업로드
-      await storageRef.remove([imagePath]); // 기존 이미지 삭제 (있어도 없어도 괜찮음)
-      await storageRef.upload(imagePath, profileImage!);
 
-      await Supabase.instance.client
-          .from('users')
-          .update({'is_profile': true})
-          .eq('id', userId!);
+      await storageRef.upload(
+        imagePath,
+        profileImage!,
+        fileOptions: const FileOptions(
+          upsert: true,
+          cacheControl: '0',
+          contentType: 'image/jpeg',
+        ),
+      );
+
+      final publicUrl = storageRef.getPublicUrl(imagePath);
+      final bustUrl = '$publicUrl?v=${DateTime.now().millisecondsSinceEpoch}';
+
+      await Supabase.instance.client.from('users').update({'is_profile': true, 'profile_url': bustUrl}).eq('id', userId!);
     }
 
     // 3. 프로필 정보 갱신 (Provider에도 적용)
@@ -223,10 +230,9 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     }
   }
 
-
   Future<List<BudgetModel>> _loadBudgets(userId) async {
     final response =
-    await Supabase.instance.client.from('budgets').select('*').eq('owner_id', userId);
+        await Supabase.instance.client.from('budgets').select('*').eq('owner_id', userId);
 
     return response.map(BudgetModel.fromJson).toList();
   }
@@ -266,13 +272,14 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                   ),
                 ),
               ),
-                if (setDelete)
+              if (setDelete)
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
                     deleteProfileImage();
                   },
-                  child: Text(isInterProfile! ? '선택된 프로필 취소' : '프로필 사진 삭제(즉시 삭제됨)',
+                  child: Text(
+                    isInterProfile! ? '선택된 프로필 취소' : '프로필 사진 삭제(즉시 삭제됨)',
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 18,
@@ -297,7 +304,10 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
   }
 
   void getGalleryImage() async {
-    var image = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 10,);
+    var image = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 10,
+    );
     if (image != null) {
       setState(() {
         profileImage = File(image.path);
@@ -307,43 +317,43 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
   }
 
   void deleteProfileImage() async {
-    setState(() async {
-      if (isInterProfile == true) {
+    if (isInterProfile == true) {
+      setState(() {
         profileImage = null;
         isInterProfile = false;
-      } else {
-        final confirm = await showCustomConfirmDialog(
-          context,
-          title: '프로필 사진 삭제',
-          message: '현재 등록된 프로필 사진을 정말 삭제하시겠습니까?',
-          confirmText: '삭제하기',
-        );
+      });
+      return;
+    }
 
-        if (confirm == true) {
-          final userId = context.read<UserProvider>().myInfo?.id;
-          if (userId != null) {
-            final success = await deleteProfileFromStorage(userId);
-            if (success && mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('프로필 사진이 삭제되었습니다.')),
-              );
-            }
-          }
+    final confirm = await showCustomConfirmDialog(
+      context,
+      title: '프로필 사진 삭제',
+      message: '현재 등록된 프로필 사진을 정말 삭제하시겠습니까?',
+      confirmText: '삭제하기',
+    );
+
+    if (confirm == true) {
+      final userId = context.read<UserProvider>().myInfo?.id;
+      if (userId != null) {
+        final success = await deleteProfileFromStorage(userId);
+        if (success && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('프로필 사진이 삭제되었습니다.')),
+          );
+          await context.read<UserProvider>().initializeUserProvider();
+          if (mounted) setState(() {}); // 리빌드
         }
       }
-    });
+    }
   }
 
   Future<bool> deleteProfileFromStorage(String userId) async {
     final storageRef = Supabase.instance.client.storage.from('avatars');
-    final imagePath = '$userId/profile.png';
+    final imagePath = '$userId/profile.jpg';
 
     try {
       await storageRef.remove([imagePath]);
-      await Supabase.instance.client
-          .from('users')
-          .update({'is_profile': false})
-          .eq('id', userId!);
+      await Supabase.instance.client.from('users').update({'is_profile': false, 'profile_url': null}).eq('id', userId);
       return true;
     } catch (e) {
       debugPrint('프로필 이미지 삭제 실패: $e');

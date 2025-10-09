@@ -62,8 +62,7 @@ class UserProvider extends ChangeNotifier {
       _ownerId = (response['last_owner_id'] as String?) ?? _userId;
       _budgetId = response['last_budget_id'] as String?;
 
-      _profileImageUrl =
-          Supabase.instance.client.storage.from('avatars').getPublicUrl('$_userId/profile.png');
+      _profileImageUrl = response['profile_url'] as String?;
 
       await loadSharedUsers();
       await _validationOwnerId();

@@ -128,7 +128,7 @@ class _SplashScreenState extends State<SplashScreen> {
         email.contains('@') ? email.split('@').first : '사용자';
         final profileImageUrl = Supabase.instance.client.storage
             .from('avatars')
-            .getPublicUrl('${supabaseUser.id}/profile.png');
+            .getPublicUrl('${supabaseUser.id}/profile.jpg');
 
         // users
         await Supabase.instance.client.from('users').insert({
