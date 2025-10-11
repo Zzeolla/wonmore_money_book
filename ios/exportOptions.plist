@@ -11,7 +11,7 @@
   <key>provisioningProfiles</key>
   <dict>
     <key>com.zlabo.wonmoremoneybook</key>
-    <string>wonmore-appstore-2025-10-11</string>
+    <string>wonmoreappstoreprofile</string>
   </dict>
 </dict>
 </plist>
