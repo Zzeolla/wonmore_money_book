@@ -444,6 +444,7 @@ class _RepeatRecordInputDialogState extends State<RepeatRecordInputDialog> {
                                     await provider.updateFavoriteRecord(
                                       widget.favoriteRecordId!,
                                       FavoriteRecordModel(
+                                        startDate: selectedDate,
                                         amount: amount,
                                         type: _selectedType,
                                         period: selectedPeriod,

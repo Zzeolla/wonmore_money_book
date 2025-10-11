@@ -420,9 +420,6 @@ class UserProvider extends ChangeNotifier {
         .map<String>((r) => r['user_id'] as String)
         .toSet();
 
-    // 2. 기존 권한 삭제
-    await supabase.from('budget_permissions').delete().eq('budget_id', budgetId);
-
     // 3) 최종 목표 권한 집합 = 선택 + owner(항상 포함)
     final desired = {...selectedUserIds, uid};
     final desiredOthers = desired.where((u) => u != uid).toSet(); // owner 제외한 나머지

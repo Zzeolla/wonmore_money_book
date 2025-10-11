@@ -170,10 +170,8 @@ class _BudgetInputDialogState extends State<BudgetInputDialog> {
                             selectedUserIds, // 권한 사용자 목록도 함께 전달
                           );
                         } else {
-                          await context.read<UserProvider>().addBudget(
-                            title,
-                            selectedUserIds,
-                          );
+                          Navigator.pop(context);
+                          return;
                         }
                       } else {
                         await context.read<UserProvider>().addBudget(

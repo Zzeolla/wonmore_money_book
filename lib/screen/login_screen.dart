@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:crypto/crypto.dart';
 import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/rounded_login_button.dart';
@@ -129,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       if (isIOS)
                         SignInWithAppleButton(
-                          onPressed: () => _signInWithOAuth(context, OAuthProvider.apple),
+                          onPressed: () => _signInWithAppleNative,
                           style: SignInWithAppleButtonStyle.black,
                         ),
                       const SizedBox(height: 16),
@@ -169,6 +172,50 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('로그인 실패: $e')),
+      );
+    }
+  }
+
+  String _randomNonce([int length = 32]) {
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final r = Random.secure();
+    return List.generate(length, (_) => chars[r.nextInt(chars.length)]).join();
+  }
+
+  String _sha256(String input) {
+    final bytes = utf8.encode(input);
+    return sha256.convert(bytes).toString();
+  }
+
+  Future<void> _signInWithAppleNative() async {
+    try {
+      final rawNonce = _randomNonce();
+      final hashed = _sha256(rawNonce);
+
+      // 1) iOS 네이티브 인증 창
+      final cred = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashed, // ← 중요
+      );
+
+      final idToken = cred.identityToken;
+      if (idToken == null) {
+        throw Exception('Apple identityToken is null');
+      }
+
+      // 2) Supabase에 토큰 전달 (브라우저 X)
+      await Supabase.instance.client.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+        nonce: rawNonce, // ← 해시 전의 원본
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Apple 로그인 실패: $e')),
       );
     }
   }
