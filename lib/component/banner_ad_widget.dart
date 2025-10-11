@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:provider/provider.dart';
@@ -17,17 +18,23 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
   AdSize? _adSize;
   bool _loaded = false;
 
-  Future<void> _loadAd() async {
-    // 화면 폭에 맞는 Anchored Adaptive 사이즈 계산
-    final width = MediaQuery.of(context).size.width.truncate();
-    final size = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(width);
+  // 화면 표시용 미니 로그 텍스트
+  String _status = 'init…';
 
-    if (!mounted || size == null) {
-      // iPad 등에서 null 일 수 있음 -> fallback
-      _adSize = AdSize.banner;
-    } else {
-      _adSize = size;
-    }
+  // 디버그 라벨을 언제 보일지(원하면 항상 true로)
+  bool get _showLabel => kDebugMode; // 필요하면 || AdConfig.useTestAds
+
+  Future<void> _loadAd() async {
+    final widthPx = MediaQuery.of(context).size.width.truncate();
+
+    // Adaptive 시도
+    AdSize? adaptive = await AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(widthPx);
+
+    // 폰=고정 50dp, 태블릿=Adaptive (원하면 모두 Adaptive로 바꿔도 됨)
+    final isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    _adSize = isTablet ? (adaptive ?? AdSize.banner) : AdSize.banner;
+
+    setState(() => _status = 'requesting ${_adSize!.width}x${_adSize!.height}');
 
     final ad = BannerAd(
       size: _adSize!,
@@ -35,22 +42,35 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (ad) {
-          debugPrint('[AdMob][BANNER] loaded size=${_adSize?.width}x${_adSize?.height}');
           setState(() {
             _ad = ad as BannerAd;
             _loaded = true;
+            _status = 'loaded ${_adSize!.width}x${_adSize!.height}';
           });
         },
         onAdFailedToLoad: (ad, error) {
-          debugPrint('[AdMob][BANNER] failed code=${error.code}, message=${error.message}');
           ad.dispose();
           setState(() {
             _ad = null;
             _loaded = false;
+            _status = 'failed code=${error.code} msg=${error.message}';
           });
+        },
+        onAdImpression: (ad) {
+          setState(() {
+            _status = 'impression ✅ ${_adSize!.width}x${_adSize!.height}';
+          });
+        },
+        onPaidEvent: (ad, valueMicros, precision, currencyCode) {
+          if (_showLabel) {
+            setState(() {
+              _status = 'paid ${valueMicros}µ ${currencyCode}';
+            });
+          }
         },
       ),
     );
+
     await ad.load();
   }
 
@@ -69,26 +89,37 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // 프로면 숨김
+    // PRO면 숨김
     final planName = context.watch<UserProvider>().myPlan?.planName ?? 'free';
     if (planName == 'pro') return const SizedBox.shrink();
 
-    if (!_loaded || _ad == null || _adSize == null) {
-      // 자리만 확보(0으로 줘도 되지만 iOS 레이아웃 흔들림 방지용)
-      return const SizedBox(height: 0);
-    }
-
-    // 정확한 사이즈로 감싸주기 (iOS에서 중요)
-    return SafeArea(
-      top: false,
-      left: false,
-      right: false,
-      bottom: true, // 홈 인디케이터에 안 가리게
+    final adBox = (_loaded && _ad != null && _adSize != null)
+        ? SafeArea(
+      top: false, left: false, right: false, bottom: true,
       child: SizedBox(
         height: _adSize!.height.toDouble(),
         width: _adSize!.width.toDouble(),
         child: Center(child: AdWidget(ad: _ad!)),
       ),
+    )
+        : const SizedBox(height: 0);
+
+    // 배너 + 미니 로그 한 줄
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        adBox,
+        if (_showLabel)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 2),
+            child: Text(
+              _status,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 10, color: Colors.black54),
+            ),
+          ),
+      ],
     );
   }
 }

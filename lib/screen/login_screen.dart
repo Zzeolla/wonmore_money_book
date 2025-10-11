@@ -30,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
 
     // 로그인 후 앱이 다시 열렸을 때 세션 감지
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       // 화면이 이미 dispose되었으면 즉시 탈출
       if (!mounted) return;
 
@@ -132,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       if (isIOS)
                         SignInWithAppleButton(
-                          onPressed: () => _signInWithAppleNative,
+                          onPressed: _signInWithAppleNative,
                           style: SignInWithAppleButtonStyle.black,
                         ),
                       const SizedBox(height: 16),
