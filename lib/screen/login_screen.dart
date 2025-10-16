@@ -134,6 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         SignInWithAppleButton(
                           onPressed: _signInWithAppleNative,
                           style: SignInWithAppleButtonStyle.black,
+                          text: '애플 로그인'
                         ),
                       const SizedBox(height: 16),
                       RoundedLoginButton(

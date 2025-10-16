@@ -194,63 +194,106 @@ Deno.serve(async (req) => {
         product_id = product_id ?? rows[0].product_id;
       }
 
-      // 1) StoreKit2 JSON이면 → App Store Server API
+      // === 0) 토큰 파싱: StoreKit2(JSON) 인지, base64 영수증인지 판별
       let otid: string | null = null;
-      let env: "Sandbox" | "Production" = "Production";
-      let isJson = false;
+      let tokenLooksJson = false;
       if (purchase_token && purchase_token.trim().startsWith("{")) {
-        isJson = true;
+        tokenLooksJson = true;
         try {
           const obj = JSON.parse(purchase_token);
           otid = obj.originalTransactionId || obj.original_transaction_id || obj.originalPurchaseId || null;
-          env  = (obj.environment === "Sandbox") ? "Sandbox" : "Production";
           product_id = product_id ?? obj.productId ?? obj.product_id;
         } catch {
-          // JSON 파싱 실패 시 폴백으로 내려감
+          // JSON 파싱 실패 → 아래에서 base64 여부로 이어짐
         }
       }
 
-      if (isJson && otid) {
-        // === App Store Server API 호출 ===
+      // === 1) StoreKit2(JSON)라면: App Store Server API v2 호출 (Prod → Sandbox 재시도)
+      if (tokenLooksJson && otid) {
         const key = await importAscP8Key(ASC_PRIVATE_KEY_P8);
         const jwt = await makeAscJwt(ASC_ISSUER_ID, ASC_KEY_ID, key);
-        const host = env === "Sandbox"
-          ? "https://api.storekit-sandbox.itunes.apple.com"
-          : "https://api.storekit.itunes.apple.com";
 
-        const resp = await fetch(`${host}/inApps/v1/subscriptions/${otid}`, {
-          headers: { Authorization: `Bearer ${jwt}` }
-        });
-        const j = await resp.json();
-
-        // 최신 트랜잭션 찾기 (productId 일치 우선)
-        const candidates =
-          (j?.data?.[0]?.lastTransactions ?? j?.data ?? [])
-            .filter((x: any) => !product_id || x.productId === product_id);
-
-        if (!Array.isArray(candidates) || candidates.length === 0) {
-          await supa(
-            `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,
-            { method: "PATCH", body: JSON.stringify({ status: "expired", last_verified_date: new Date().toISOString(), is_sandbox: env === "Sandbox" }) }
-          );
-          return res200({ ok: true, active: false });
+        async function fetchSub(baseUrl: string) {
+          const url = `${baseUrl}/inApps/v1/subscriptions/${otid}`;
+          const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
+          if (!res.ok) throw new Error(`ASC subscriptions ${res.status}`);
+          return await res.json();
+        }
+        async function fetchHist(baseUrl: string) {
+          const url = `${baseUrl}/inApps/v1/history/${otid}`;
+          const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
+          if (!res.ok) throw new Error(`ASC history ${res.status}`);
+          return await res.json();
         }
 
-        candidates.sort((a: any, b: any) => Number(a.expiresDate ?? 0) - Number(b.expiresDate ?? 0));
+        const PROD = "https://api.storekit.itunes.apple.com";
+        const SB   = "https://api.storekit-sandbox.itunes.apple.com";
+
+        let j: any | null = null;
+        let envIsSandbox = false;
+
+        try {
+          // 1차: 프로덕션
+          j = await fetchSub(PROD);
+        } catch {
+          // 2차: 샌드박스 재시도
+          try {
+            j = await fetchSub(SB);
+            envIsSandbox = true;
+          } catch {
+            // subscriptions가 안 나오는 앱/케이스가 있음 → history로 보조 조회
+            try {
+              j = await fetchHist(SB);
+              envIsSandbox = true;
+            } catch {
+              // 마지막으로 Prod history도 확인
+              j = await fetchHist(PROD);
+            }
+          }
+        }
+
+        // subscriptions 응답 형태 보정: data[].lastTransactions 또는 data[]
+        let candidates: any[] = [];
+        const data = Array.isArray(j?.data) ? j.data : [];
+        if (data.length && Array.isArray(data[0]?.lastTransactions)) {
+          candidates = data[0].lastTransactions;
+        } else if (data.length) {
+          candidates = data;
+        } else if (Array.isArray(j?.signedTransactions)) {
+          // history 응답 케이스(서명된 JWS 목록) → 필요한 경우 파싱 확장 가능
+          candidates = j.signedTransactions.map((x: any) => ({ /* 필요시 파싱 */ ...x }));
+        }
+
+        // productId 일치 우선 필터
+        if (product_id) {
+          candidates = candidates.filter((x: any) => x.productId === product_id || x.product_id === product_id);
+        }
+
+        if (!candidates.length) {
+          // 찾지 못하면 일단 pending 유지 + 환경만 표기
+          await supa(
+            `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,
+            { method: "PATCH", body: JSON.stringify({ status: "pending", last_verified_date: new Date().toISOString(), is_sandbox: envIsSandbox }) }
+          );
+          return res200({ ok: false, reason: "no-candidates", sandbox: envIsSandbox });
+        }
+
+        // 만료시간 정렬
+        candidates.sort((a: any, b: any) => Number(a.expiresDate ?? a.expires_date_ms ?? 0) - Number(b.expiresDate ?? b.expires_date_ms ?? 0));
         const latest = candidates[candidates.length - 1];
 
-        const expiresMs = Number(latest.expiresDate ?? 0);
-        const startMs   = Number(latest.signedDate ?? 0);
+        const expiresMs = Number(latest.expiresDate ?? latest.expires_date_ms ?? 0);
+        const startMs   = Number(latest.signedDate ?? latest.original_purchase_date_ms ?? latest.purchase_date_ms ?? 0);
         const active    = expiresMs > Date.now();
-        const canceled  = !!latest.revocationDate;
+        const canceled  = !!(latest.revocationDate || latest.cancellation_date_ms);
 
         const payload = {
-          product_id: latest.productId,
+          product_id: latest.productId ?? latest.product_id ?? product_id,
           status: canceled ? "canceled" : (active ? "active" : "expired"),
           start_date: startMs ? new Date(startMs).toISOString() : null,
-          end_date: new Date(expiresMs).toISOString(),
+          end_date: expiresMs ? new Date(expiresMs).toISOString() : null,
           last_verified_date: new Date().toISOString(),
-          is_sandbox: env === "Sandbox",
+          is_sandbox: envIsSandbox,
         };
 
         const u = await supa(
@@ -261,14 +304,12 @@ Deno.serve(async (req) => {
           const t = await u.text();
           return new Response(JSON.stringify({ ok: false, source: "supabase", status: u.status, body: t }), { status: 500 });
         }
-        return res200({ ok: true, active, isSandbox: env === "Sandbox" });
+        return res200({ ok: true, active, sandbox: envIsSandbox });
       }
 
-      // 2) (폴백) base64 앱 영수증일 가능성 → verifyReceipt
-      if (!purchase_token) return res400("no ios token");
-      const looksBase64 = !purchase_token.trim().startsWith("{") && /^[A-Za-z0-9+/=\s]+$/.test(purchase_token.trim());
+      // === 2) (폴백) base64 앱 영수증 → verifyReceipt(21007 처리)
+      const looksBase64 = !!purchase_token && !purchase_token.trim().startsWith("{") && /^[A-Za-z0-9+/=\s]+$/.test(purchase_token.trim());
       if (!looksBase64) {
-        // 영수증도 아니고 JSON도 아니면 검증 불가
         await supa(
           `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,
           { method: "PATCH", body: JSON.stringify({ last_verified_date: new Date().toISOString() }) }
@@ -276,10 +317,10 @@ Deno.serve(async (req) => {
         return res200({ ok: false, error: "invalid ios token format" });
       }
 
-      let resp = await callAppleReceipt(APPLE_PROD, purchase_token, APPLE_SHARED_SECRET);
+      let resp = await callAppleReceipt(APPLE_PROD, purchase_token!, APPLE_SHARED_SECRET);
       let isSandbox = false;
       if (resp?.status === 21007) {
-        resp = await callAppleReceipt(APPLE_SB, purchase_token, APPLE_SHARED_SECRET);
+        resp = await callAppleReceipt(APPLE_SB, purchase_token!, APPLE_SHARED_SECRET);
         isSandbox = true;
       }
       if (resp?.status !== 0) {
@@ -291,7 +332,7 @@ Deno.serve(async (req) => {
       }
 
       const infos = Array.isArray(resp?.latest_receipt_info) ? resp.latest_receipt_info : [];
-      const mine = infos.filter((it: any) => !product_id || it.product_id === product_id);
+      const mine = product_id ? infos.filter((it: any) => it.product_id === product_id) : infos;
       if (!mine.length) {
         await supa(
           `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,

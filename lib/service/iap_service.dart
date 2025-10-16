@@ -279,4 +279,25 @@ class IapService {
       // print('[VERIFY][ERR] $e');
     }
   }
+
+  // IapService 클래스 안에 추가
+  Future<bool> verifyLatestPendingOfMine() async {
+    final supa = Supabase.instance.client;
+    final uid = supa.auth.currentUser?.id;
+    if (uid == null) return false;
+
+    final rows = await supa
+        .from('subscriptions')
+        .select('purchase_token, store, status, created_at')
+        .eq('user_id', uid)
+        .isFilter('end_date', null)
+        .order('created_at', ascending: false)
+        .limit(1);
+
+    if (rows == null || rows.isEmpty) return false;
+
+    final token = rows.first['purchase_token'] as String?;
+    await verifyNow(purchaseToken: token); // 토큰 없어도 동작하도록 서버 구현했다면 token 생략 가능
+    return true;
+  }
 }
