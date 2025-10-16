@@ -132,7 +132,7 @@ jobs:
 
       # 8. IPA 빌드
       - name: Build IPA
-        run: flutter build ipa --dart-define=USE_TEST_ADS=true --release --export-options-plist=ios/exportOptions.plist --build-number $GITHUB_RUN_NUMBER
+        run: flutter build ipa --dart-define=USE_TEST_ADS=false --release --export-options-plist=ios/exportOptions.plist --build-number $GITHUB_RUN_NUMBER
 
       # (새 스텝) IPA 경로 찾기
       - name: Locate IPA
