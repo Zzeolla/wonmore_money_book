@@ -6,13 +6,13 @@ class InterstitialAdService {
   factory InterstitialAdService() => _instance;
   InterstitialAdService._internal();
 
-  InterstitialAd? _ad;
+  RewardedInterstitialAd? _ad;
 
   void loadAd() {
-    InterstitialAd.load(
-      adUnitId: AdHelper.interstitialAdUnitId,
+    RewardedInterstitialAd.load(
+      adUnitId: AdHelper.rewardedInterstitialAdUnitId,
       request: const AdRequest(),
-      adLoadCallback: InterstitialAdLoadCallback(
+      rewardedInterstitialAdLoadCallback: RewardedInterstitialAdLoadCallback(
         onAdLoaded: (ad) {
           _ad = ad;
         },
@@ -25,14 +25,20 @@ class InterstitialAdService {
 
   bool get isReady => _ad != null;
 
-  void showAd(Function onAdClosed) {
-    if (_ad == null) return;
+  /// [onRewardEarned] → 보상 획득 시 실행
+  /// [onAdClosed] → 광고 닫힌 후 실행
+  void showAd({
+    required Function onRewardEarned,
+    required Function onAdClosed,
+  }) {
+    final ad = _ad;
+    if (ad == null) return;
 
-    _ad!.fullScreenContentCallback = FullScreenContentCallback(
+    ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         loadAd();
-        onAdClosed();// 다음 광고 미리 로드
+        onAdClosed();
       },
       onAdFailedToShowFullScreenContent: (ad, error) {
         ad.dispose();
@@ -41,7 +47,11 @@ class InterstitialAdService {
       },
     );
 
-    _ad!.show();
+    ad.show(onUserEarnedReward: (ad, reward) {
+      // reward.amount / reward.type 사용 가능 (콘솔의 "1Reward"가 여기에 매핑)
+      onRewardEarned();
+    });
+
     _ad = null;
   }
 }

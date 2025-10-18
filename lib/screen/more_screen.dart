@@ -12,6 +12,7 @@ import 'package:wonmore_money_book/provider/user_provider.dart';
 import 'package:wonmore_money_book/screen/category_management_screen.dart';
 import 'package:wonmore_money_book/screen/login_screen.dart';
 import 'package:wonmore_money_book/service/export_service.dart';
+import 'package:wonmore_money_book/service/record_ad_service.dart';
 import 'package:wonmore_money_book/widget/common_app_bar.dart';
 import 'package:wonmore_money_book/widget/common_drawer.dart';
 
@@ -58,6 +59,13 @@ class MoreScreen extends StatelessWidget {
                   //   title: const Text('db삭제 개발용'),
                   //   onTap: () async {
                   //     await clearAllAppData(context);
+                  //   },
+                  // ),
+                  // ListTile(
+                  //   leading: const Icon(Icons.person_outline),
+                  //   title: const Text('광고 횟수 초기화'),
+                  //   onTap: () async {
+                  //     await RecordAdService.resetToday();
                   //   },
                   // ),
                   ListTile(

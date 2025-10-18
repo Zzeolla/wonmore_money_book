@@ -34,8 +34,9 @@ const EDGE_SECRET           = Deno.env.get("WONMORE_PUSH_SECRET")!;
 const APPLE_SHARED_SECRET   = Deno.env.get("APPLE_SHARED_SECRET")!;
 
 // (iOS 신식: App Store Server API)
-const ASC_ISSUER_ID         = Deno.env.get("ASC_ISSUER_ID")!;
-const ASC_KEY_ID            = Deno.env.get("ASC_KEY_ID")!;
+const ASC_ISSUER_ID         = (Deno.env.get("ASC_ISSUER_ID") ?? "").trim().replace(/^"+|"+$/g, "");
+const ASC_KEY_ID            = (Deno.env.get("ASC_KEY_ID") ?? "").trim().replace(/^"+|"+$/g, "");
+const IOS_BUNDLE_ID         = (Deno.env.get("IOS_BUNDLE_ID") ?? "").trim().replace(/^"+|"+$/g, "");
 const ASC_PRIVATE_KEY_P8    = Deno.env.get("ASC_PRIVATE_KEY_P8")!; // PEM 원문
 
 /** Supabase REST helper(Service Role로 호출) */
@@ -138,13 +139,64 @@ async function importAscP8Key(pem: string): Promise<CryptoKey> {
 async function makeAscJwt(issuerId: string, keyId: string, key: CryptoKey): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: "ES256", kid: keyId, typ: "JWT" };
-  const payload = { iss: issuerId, iat: now, exp: now + 1800, aud: "appstoreconnect-v1" };
+  const payload = { iss: issuerId, iat: now - 5, exp: now + 1200, aud: "appstoreconnect-v1" };
   const enc = (o: unknown) => btoa(JSON.stringify(o)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   const unsigned = `${enc(header)}.${enc(payload)}`;
   const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(unsigned));
   const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
   return `${unsigned}.${sigB64}`;
 }
+
+// ====== ASC JWT 생성(수정판) ======
+async function makeAscJwtWithBid(issuerId: string, keyId: string, key: CryptoKey, bundleId: string): Promise<string> {
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: "ES256", kid: keyId, typ: "JWT" };
+  const payload = {
+    iss: issuerId,
+    iat: now - 5,
+    exp: now + 1200,             // 30분 유효
+    aud: "appstoreconnect-v1",
+    bid: bundleId,               // <<< 반드시 포함
+  };
+  const enc = (o: unknown) => btoa(JSON.stringify(o)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  const unsigned = `${enc(header)}.${enc(payload)}`;
+  const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode(unsigned));
+  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  return `${unsigned}.${sigB64}`;
+}
+
+// ====== ASC 호출 헬퍼 (프로덕션 -> 샌드박스 자동 재시도) ======
+async function callAscSubscriptions(otid: string, jwt: string) {
+  const PROD = "https://api.storekit.itunes.apple.com";
+  const SB   = "https://api.storekit-sandbox.itunes.apple.com";
+
+  // subscriptions 조회 시도 (Prod -> Sandbox 재시도)
+  async function trySub(base: string) {
+    const url = `${base}/inApps/v1/subscriptions/${encodeURIComponent(otid)}`;
+    const r = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
+    const txt = await r.text();
+    // r.ok일 경우 JSON 반환, 401이면 throw with status
+    if (!r.ok) {
+      const st = r.status;
+      const err = new Error(`ASC subscriptions ${st}: ${txt}`);
+      (err as any).status = st;
+      throw err;
+    }
+    return JSON.parse(txt);
+  }
+
+  try {
+    return { data: await trySub(PROD), sandbox: false };
+  } catch (e) {
+    // ✅ 상태코드 무관, 샌드박스도 시도 (401 포함)
+    try {
+      return { data: await trySub(SB), sandbox: true };
+    } catch (e2) {
+      throw e;
+    }
+  }
+}
+
 // iTunes verifyReceipt 폴백
 const APPLE_PROD = "https://buy.itunes.apple.com/verifyReceipt";
 const APPLE_SB   = "https://sandbox.itunes.apple.com/verifyReceipt";
@@ -159,6 +211,30 @@ async function callAppleReceipt(url: string, receipt: string, secret: string) {
     }),
   });
   return await r.json();
+}
+
+function normalizeP8(pem: string) {
+  // 1) 리터럴 \n → 실제 개행
+  const withRealNL = pem.includes("\\n") ? pem.replace(/\\n/g, "\n") : pem;
+  // 2) 앞뒤 공백/따옴표 제거
+  return withRealNL.trim().replace(/^"+|"+$/g, "");
+}
+
+async function testAscJwtConnectivity(jwt: string) {
+  const url = "https://api.appstoreconnect.apple.com/v1/apps?limit=1";
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
+  return { ok: r.ok, status: r.status, body: await r.text() };
+}
+
+function decodeBase64UrlToJson(b64u: string) {
+  const pad = b64u.replace(/-/g, "+").replace(/_/g, "/");
+  const json = atob(pad + "=".repeat((4 - (pad.length % 4)) % 4));
+  return JSON.parse(json);
+}
+function decodeJwsPayload(jws: string) {
+  const parts = jws.split(".");
+  if (parts.length < 2) throw new Error("invalid JWS");
+  return decodeBase64UrlToJson(parts[1]); // payload
 }
 
 /** ========= 메인 ========= */
@@ -181,11 +257,12 @@ Deno.serve(async (req) => {
     const { user_id } = body;
     if (!user_id) return res400("user_id required");
 
-    /** ================== iOS 분기 (StoreKit2 우선, 영수증 폴백) ================== */
+    // ====== iOS 분기: ASC -> (401 -> verifyReceipt 폴백) 흐름 예시 ======
     if (body.store === "apple_app_store") {
+      // (purchase_token 확보 로직은 기존 코드와 동일)
+      // purchase_token은 StoreKit2 JSON string OR base64 receipt
+      // 이미 있으면 사용, 없으면 DB에서 최신 row를 읽음
       let { purchase_token, product_id } = body;
-
-      // 최신 row
       if (!purchase_token) {
         const r = await supa(`subscriptions?user_id=eq.${user_id}&store=eq.apple_app_store&order=created_at.desc&limit=1`);
         const rows = await r.json();
@@ -194,129 +271,177 @@ Deno.serve(async (req) => {
         product_id = product_id ?? rows[0].product_id;
       }
 
-      // === 0) 토큰 파싱: StoreKit2(JSON) 인지, base64 영수증인지 판별
-      let otid: string | null = null;
+      // 0) 토큰 형태 판단: JSON(StoreKit2)인지 base64(verifyReceipt)인지
       let tokenLooksJson = false;
+      let otid: string | null = null;
       if (purchase_token && purchase_token.trim().startsWith("{")) {
         tokenLooksJson = true;
         try {
           const obj = JSON.parse(purchase_token);
-          otid = obj.originalTransactionId || obj.original_transaction_id || obj.originalPurchaseId || null;
+          otid = String(obj.originalTransactionId ?? obj.original_transaction_id ?? "").trim();
+          if (!/^\d+$/.test(otid)) {
+            return res200({ ok:false, error:"invalid otid", sample: obj.originalTransactionId ?? obj.original_transaction_id });
+          }
           product_id = product_id ?? obj.productId ?? obj.product_id;
         } catch {
-          // JSON 파싱 실패 → 아래에서 base64 여부로 이어짐
+          tokenLooksJson = false;
         }
       }
 
-      // === 1) StoreKit2(JSON)라면: App Store Server API v2 호출 (Prod → Sandbox 재시도)
+      // 1) StoreKit2 JSON 경로 -> ASC 호출 (정상 루트)
       if (tokenLooksJson && otid) {
-        const key = await importAscP8Key(ASC_PRIVATE_KEY_P8);
-        const jwt = await makeAscJwt(ASC_ISSUER_ID, ASC_KEY_ID, key);
-
-        async function fetchSub(baseUrl: string) {
-          const url = `${baseUrl}/inApps/v1/subscriptions/${otid}`;
-          const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
-          if (!res.ok) throw new Error(`ASC subscriptions ${res.status}`);
-          return await res.json();
-        }
-        async function fetchHist(baseUrl: string) {
-          const url = `${baseUrl}/inApps/v1/history/${otid}`;
-          const res = await fetch(url, { headers: { Authorization: `Bearer ${jwt}` } });
-          if (!res.ok) throw new Error(`ASC history ${res.status}`);
-          return await res.json();
-        }
-
-        const PROD = "https://api.storekit.itunes.apple.com";
-        const SB   = "https://api.storekit-sandbox.itunes.apple.com";
-
-        let j: any | null = null;
-        let envIsSandbox = false;
-
         try {
-          // 1차: 프로덕션
-          j = await fetchSub(PROD);
-        } catch {
-          // 2차: 샌드박스 재시도
-          try {
-            j = await fetchSub(SB);
-            envIsSandbox = true;
-          } catch {
-            // subscriptions가 안 나오는 앱/케이스가 있음 → history로 보조 조회
-            try {
-              j = await fetchHist(SB);
-              envIsSandbox = true;
-            } catch {
-              // 마지막으로 Prod history도 확인
-              j = await fetchHist(PROD);
+          const ascKeyPem = normalizeP8(ASC_PRIVATE_KEY_P8);
+          const ascKey = await importAscP8Key(ascKeyPem);
+          const jwt = await makeAscJwtWithBid(ASC_ISSUER_ID, ASC_KEY_ID, ascKey, IOS_BUNDLE_ID);
+
+          // 사용 예 (디버그용; bid 없는 JWT로 만드세요)
+          const jwtNoBid = await makeAscJwt(ASC_ISSUER_ID, ASC_KEY_ID, ascKey);
+          const probe = await testAscJwtConnectivity(jwtNoBid);
+          // return res200({ ok:false, probe }); // 임시로 확인
+
+          // jwt 생성 직후, payload 디코드해 확인(디버깅용)
+          function decodeJwtPayload(jwt: string) {
+            const part = jwt.split(".")[1];
+            const pad = part.replace(/-/g, "+").replace(/_/g, "/");
+            const json = atob(pad + "=".repeat((4 - (pad.length % 4)) % 4));
+            return JSON.parse(json);
+          }
+
+          function decodeJwtHeader(jwt: string) {
+            const part = jwt.split(".")[0];
+            const pad = part.replace(/-/g, "+").replace(/_/g, "/");
+            const json = atob(pad + "=".repeat((4 - (pad.length % 4)) % 4));
+            return JSON.parse(json);
+          }
+
+          function decodeJwtParts(jwt: string) {
+            const dec = (s: string) => atob(s.replace(/-/g,"+").replace(/_/g,"/") + "=".repeat((4-(s.length%4))%4));
+            const [h,p] = jwt.split(".");
+            return { header: JSON.parse(dec(h)), claims: JSON.parse(dec(p)) };
+          }
+          // jwt 만들고 바로 아래
+//           const { header, claims } = decode(jwt);
+//           return res200({ ok:false, debug: { kid_env: Deno.env.get("ASC_KEY_ID"), header, claims } });
+//
+//           const header = decodeJwtHeader(jwt);
+//
+//           // 디버깅: 실제 들어간 클레임 확인 (배포 후 호출해서 값 확인하고, 나중에 제거)
+//           const claims = decodeJwtPayload(jwt);
+//           // return res200({ ok:false, debug: { header, claims } }); // ← 임시로 열고 확인해도 됨
+
+          // ── 여기만 임시 디버그 ──
+          const decode = (s:string)=>atob(s.replace(/-/g,"+").replace(/_/g,"/")+"=".repeat((4-(s.length%4))%4));
+          const [h,p] = jwt.split(".");
+          const header = JSON.parse(decode(h));
+          const claims = JSON.parse(decode(p));
+          // return res200({ ok:false, debug: { kid_env: Deno.env.get("ASC_KEY_ID"), header, claims } });
+          // ───────────────────────
+
+          const ascResp = await callAscSubscriptions(otid, jwt); // may throw 401
+          const j = ascResp.data;
+
+          // candidates 추출(기존 로직)
+          let candidates: any[] = [];
+
+          // 1) v1/subscriptions 표준 응답: data[0].lastTransactions[*].signedTransactionInfo (JWS)
+          const dataArr = Array.isArray(j?.data) ? j.data : [];
+          if (dataArr.length && Array.isArray(dataArr[0]?.lastTransactions)) {
+            for (const t of dataArr[0].lastTransactions) {
+              const jws = t?.signedTransactionInfo || t?.signedRenewalInfo; // 보통 signedTransactionInfo
+              if (typeof jws === "string") {
+                try {
+                  const payload = decodeJwsPayload(jws);
+                  candidates.push(payload);
+                } catch {/* ignore bad token */}
+              }
             }
           }
-        }
 
-        // subscriptions 응답 형태 보정: data[].lastTransactions 또는 data[]
-        let candidates: any[] = [];
-        const data = Array.isArray(j?.data) ? j.data : [];
-        if (data.length && Array.isArray(data[0]?.lastTransactions)) {
-          candidates = data[0].lastTransactions;
-        } else if (data.length) {
-          candidates = data;
-        } else if (Array.isArray(j?.signedTransactions)) {
-          // history 응답 케이스(서명된 JWS 목록) → 필요한 경우 파싱 확장 가능
-          candidates = j.signedTransactions.map((x: any) => ({ /* 필요시 파싱 */ ...x }));
-        }
+          // 2) 혹시 signedTransactions 배열만 있는 케이스(JWS 배열)
+          if (!candidates.length && Array.isArray(j?.signedTransactions)) {
+            for (const jws of j.signedTransactions) {
+              if (typeof jws === "string") {
+                try { candidates.push(decodeJwsPayload(jws)); } catch {/* ignore */}
+              }
+            }
+          }
 
-        // productId 일치 우선 필터
-        if (product_id) {
-          candidates = candidates.filter((x: any) => x.productId === product_id || x.product_id === product_id);
-        }
+          // 3) 그래도 없으면 (비표준/중간형) data 자체에 평문이 있는지 마지막 확인
+          if (!candidates.length && dataArr.length) {
+            // 극히 드뭄: 일부 프록시/도큐 버전에서 평문 필드가 올 수도 있어 방어적으로
+            candidates = dataArr;
+          }
 
-        if (!candidates.length) {
-          // 찾지 못하면 일단 pending 유지 + 환경만 표기
-          await supa(
+          if (product_id) {
+            candidates = candidates.filter((x: any) => x.productId === product_id || x.product_id === product_id);
+          }
+
+          // 없으면 pending 업데이트
+          if (!candidates.length) {
+            await supa(
+              `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,
+              { method: "PATCH", body: JSON.stringify({ status: "pending", last_verified_date: new Date().toISOString(), is_sandbox: ascResp.sandbox }) }
+            );
+            return res200({ ok: false, reason: "no-candidates", sandbox: ascResp.sandbox });
+          }
+
+          // 정렬 및 최신 선택 (StoreKit2 JWS payload 기준: 밀리초 혹은 초 단위가 혼재 가능)
+          function toMs(v: any) {
+            const n = Number(v ?? 0);
+            // 10자리면 초, 13자리면 밀리초로 간주
+            if (n > 0 && n < 1e12) return n * 1000;
+            return n;
+          }
+          candidates.sort((a: any, b: any) => toMs(a.expiresDate ?? a.expires_date_ms) - toMs(b.expiresDate ?? b.expires_date_ms));
+          const latest = candidates[candidates.length - 1];
+
+          const expiresMs = toMs(latest.expiresDate ?? latest.expires_date_ms);
+          const startMs   = toMs(latest.signedDate ?? latest.originalPurchaseDate ?? latest.original_purchase_date_ms ?? latest.purchaseDate ?? latest.purchase_date_ms);
+          const active    = expiresMs > Date.now();
+          const canceled  = !!(latest.revocationDate || latest.cancellation_date_ms || latest.revocationReason);
+
+          // DB 업데이트 payload
+          const payload = {
+            product_id: latest.productId ?? latest.product_id ?? product_id,
+            status: canceled ? "canceled" : (active ? "active" : "expired"),
+            start_date: startMs ? new Date(startMs).toISOString() : null,
+            end_date: expiresMs ? new Date(expiresMs).toISOString() : null,
+            last_verified_date: new Date().toISOString(),
+            is_sandbox: ascResp.sandbox,
+          };
+
+          const u = await supa(
             `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,
-            { method: "PATCH", body: JSON.stringify({ status: "pending", last_verified_date: new Date().toISOString(), is_sandbox: envIsSandbox }) }
+            { method: "PATCH", body: JSON.stringify(payload) }
           );
-          return res200({ ok: false, reason: "no-candidates", sandbox: envIsSandbox });
+          if (!u.ok) {
+            const t = await u.text();
+            return new Response(JSON.stringify({ ok: false, source: "supabase", status: u.status, body: t }), { status: 500, headers: { "Content-Type": "application/json" } });
+          }
+          return res200({ ok: true, active, sandbox: ascResp.sandbox });
+        } catch (err: any) {
+          // ASC가 왜 죽는지 그대로 알려주고 종료 (폴백은 base64 있을 때만)
+          return res200({
+            ok: false,
+            source: "asc",
+            error: String(err),
+          });
         }
-
-        // 만료시간 정렬
-        candidates.sort((a: any, b: any) => Number(a.expiresDate ?? a.expires_date_ms ?? 0) - Number(b.expiresDate ?? b.expires_date_ms ?? 0));
-        const latest = candidates[candidates.length - 1];
-
-        const expiresMs = Number(latest.expiresDate ?? latest.expires_date_ms ?? 0);
-        const startMs   = Number(latest.signedDate ?? latest.original_purchase_date_ms ?? latest.purchase_date_ms ?? 0);
-        const active    = expiresMs > Date.now();
-        const canceled  = !!(latest.revocationDate || latest.cancellation_date_ms);
-
-        const payload = {
-          product_id: latest.productId ?? latest.product_id ?? product_id,
-          status: canceled ? "canceled" : (active ? "active" : "expired"),
-          start_date: startMs ? new Date(startMs).toISOString() : null,
-          end_date: expiresMs ? new Date(expiresMs).toISOString() : null,
-          last_verified_date: new Date().toISOString(),
-          is_sandbox: envIsSandbox,
-        };
-
-        const u = await supa(
-          `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,
-          { method: "PATCH", body: JSON.stringify(payload) }
-        );
-        if (!u.ok) {
-          const t = await u.text();
-          return new Response(JSON.stringify({ ok: false, source: "supabase", status: u.status, body: t }), { status: 500 });
-        }
-        return res200({ ok: true, active, sandbox: envIsSandbox });
       }
 
-      // === 2) (폴백) base64 앱 영수증 → verifyReceipt(21007 처리)
+      // 2) 폴백: verifyReceipt (base64 영수증 필요)
       const looksBase64 = !!purchase_token && !purchase_token.trim().startsWith("{") && /^[A-Za-z0-9+/=\s]+$/.test(purchase_token.trim());
       if (!looksBase64) {
+        // 폴백하려면 base64 영수증이 필요함 — 없으면 pending으로 표시
         await supa(
           `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,
-          { method: "PATCH", body: JSON.stringify({ last_verified_date: new Date().toISOString() }) }
+          { method: "PATCH", body: JSON.stringify({ status: "pending", last_verified_date: new Date().toISOString() }) }
         );
-        return res200({ ok: false, error: "invalid ios token format" });
+        return res200({ ok: false, error: "invalid ios token format for fallback" });
       }
 
+      // verifyReceipt: Prod -> 21007 -> Sandbox 재시도
       let resp = await callAppleReceipt(APPLE_PROD, purchase_token!, APPLE_SHARED_SECRET);
       let isSandbox = false;
       if (resp?.status === 21007) {
@@ -331,28 +456,29 @@ Deno.serve(async (req) => {
         return res200({ ok: false, source: "apple", status: resp?.status });
       }
 
+      // latest_receipt_info 처리(기존 로직)
       const infos = Array.isArray(resp?.latest_receipt_info) ? resp.latest_receipt_info : [];
       const mine = product_id ? infos.filter((it: any) => it.product_id === product_id) : infos;
-      if (!mine.length) {
+      const selected = (mine.length ? mine : infos).sort((a: any, b: any) => Number(a.expires_date_ms ?? 0) - Number(b.expires_date_ms ?? 0)).slice(-1)[0];
+
+      if (!selected) {
         await supa(
           `subscriptions?purchase_token=eq.${encodeURIComponent(purchase_token!)}`,
           { method: "PATCH", body: JSON.stringify({ status: "expired", last_verified_date: new Date().toISOString(), is_sandbox: isSandbox }) }
         );
         return res200({ ok: true, active: false });
       }
-      mine.sort((a: any, b: any) => Number(a.expires_date_ms ?? 0) - Number(b.expires_date_ms ?? 0));
-      const latest = mine[mine.length - 1];
 
-      const expiresMs  = Number(latest.expires_date_ms ?? 0);
-      const purchaseMs = Number(latest.original_purchase_date_ms ?? latest.purchase_date_ms ?? 0);
+      const expiresMs  = Number(selected.expires_date_ms ?? 0);
+      const purchaseMs = Number(selected.original_purchase_date_ms ?? selected.purchase_date_ms ?? 0);
       const active     = expiresMs > Date.now();
-      const canceled   = !!latest.cancellation_date_ms;
+      const canceled   = !!selected.cancellation_date_ms;
 
       const payload2 = {
-        product_id: latest.product_id,
+        product_id: selected.product_id,
         status: canceled ? "canceled" : (active ? "active" : "expired"),
-        start_date: new Date(purchaseMs).toISOString(),
-        end_date: new Date(expiresMs).toISOString(),
+        start_date: purchaseMs ? new Date(purchaseMs).toISOString() : null,
+        end_date: expiresMs ? new Date(expiresMs).toISOString() : null,
         last_verified_date: new Date().toISOString(),
         is_sandbox: isSandbox,
       };
@@ -362,7 +488,7 @@ Deno.serve(async (req) => {
       );
       if (!u2.ok) {
         const t = await u2.text();
-        return new Response(JSON.stringify({ ok: false, source: "supabase", status: u2.status, body: t }), { status: 500 });
+        return new Response(JSON.stringify({ ok: false, source: "supabase", status: u2.status, body: t }), { status: 500, headers: { "Content-Type": "application/json" } });
       }
       return res200({ ok: true, active, isSandbox });
     }

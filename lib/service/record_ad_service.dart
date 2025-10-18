@@ -38,4 +38,12 @@ class RecordAdService {
     final count = await getAdWatchedCount();
     await prefs.setInt(_keyAdCount, count + 1);
   }
+
+  static Future<void> resetToday() async {
+    final prefs = await SharedPreferences.getInstance();
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    await prefs.setString(_keyDate, today);
+    await prefs.setInt(_keyCount, 0);
+    await prefs.setInt(_keyAdCount, 0);
+  }
 }

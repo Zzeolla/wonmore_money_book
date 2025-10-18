@@ -148,53 +148,53 @@ class _PaywallScreenState extends State<PaywallScreen> {
                 },
                 child: const Text("DB 더미 Insert 테스트"),
               ),
-            const SizedBox(height: 12),
-
-            // 2-1) 복원 -> 즉시 검증 (권장 테스트 경로)
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  await IapService().restore();              // 영수증 재발급/복원
-                  await IapService().verifyNow();            // 서버 검증 호출
-                  final sub = await context.read<UserProvider>().loadUserSubscription();
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(sub?.planName == 'pro' ? 'PRO 활성화 완료' : '복원 후 검증 완료(아직 미활성)')),
-                  );
-                  setState(() {});
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('복원→검증 실패: $e')));
-                }
-              },
-              child: const Text('복원 → 즉시 검증'),
-            ),
-
-            const SizedBox(height: 8),
-
-            // 2-2) 최신 pending 강제 검증
-            TextButton(
-              onPressed: () async {
-                final ok = await IapService().verifyLatestPendingOfMine();
-                final sub = await context.read<UserProvider>().loadUserSubscription();
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(ok
-                      ? (sub?.planName == 'pro' ? '검증 완료: PRO 활성화' : '검증 요청 전송(대기중)')
-                      : '검증 대상 없음')),
-                );
-                setState(() {});
-              },
-              child: const Text('즉시 검증'),
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<String>(
-              future: _latestInfo(),
-              builder: (_, snap) {
-                final txt = snap.data ?? '불러오는 중...';
-                return Text(txt, style: const TextStyle(fontSize: 12));
-              },
-            ),
+            // const SizedBox(height: 12),
+            //
+            // // 2-1) 복원 -> 즉시 검증 (권장 테스트 경로)
+            // ElevatedButton(
+            //   onPressed: () async {
+            //     try {
+            //       await IapService().restore();              // 영수증 재발급/복원
+            //       await IapService().verifyNow();            // 서버 검증 호출
+            //       final sub = await context.read<UserProvider>().loadUserSubscription();
+            //       if (!mounted) return;
+            //       ScaffoldMessenger.of(context).showSnackBar(
+            //         SnackBar(content: Text(sub?.planName == 'pro' ? 'PRO 활성화 완료' : '복원 후 검증 완료(아직 미활성)')),
+            //       );
+            //       setState(() {});
+            //     } catch (e) {
+            //       if (!mounted) return;
+            //       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('복원→검증 실패: $e')));
+            //     }
+            //   },
+            //   child: const Text('복원 → 즉시 검증'),
+            // ),
+            //
+            // const SizedBox(height: 8),
+            //
+            // // 2-2) 최신 pending 강제 검증
+            // TextButton(
+            //   onPressed: () async {
+            //     final ok = await IapService().verifyLatestPendingOfMine();
+            //     final sub = await context.read<UserProvider>().loadUserSubscription();
+            //     if (!mounted) return;
+            //     ScaffoldMessenger.of(context).showSnackBar(
+            //       SnackBar(content: Text(ok
+            //           ? (sub?.planName == 'pro' ? '검증 완료: PRO 활성화' : '검증 요청 전송(대기중)')
+            //           : '검증 대상 없음')),
+            //     );
+            //     setState(() {});
+            //   },
+            //   child: const Text('즉시 검증'),
+            // ),
+            // const SizedBox(height: 12),
+            // FutureBuilder<String>(
+            //   future: _latestInfo(),
+            //   builder: (_, snap) {
+            //     final txt = snap.data ?? '불러오는 중...';
+            //     return Text(txt, style: const TextStyle(fontSize: 12));
+            //   },
+            // ),
 
           ],
         ),
