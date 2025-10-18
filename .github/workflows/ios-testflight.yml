@@ -131,6 +131,14 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: '16.0'
+      - name: Initialize Xcode & install iOS platform
+        run: |
+          sudo xcodebuild -runFirstLaunch
+          # 필요한 플랫폼을 다운로드 (iOS만 또는 전부)
+          sudo xcodebuild -downloadPlatform iOS
+          # 필요하면 아래도 함께
+          # sudo xcodebuild -downloadPlatform tvOS
+          # sudo xcodebuild -downloadPlatform watchOS
 
       - name: Xcode first launch
         run: sudo xcodebuild -runFirstLaunch
