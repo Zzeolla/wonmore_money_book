@@ -51,6 +51,20 @@ jobs:
           p12-file-base64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
           p12-password: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
 
+      - name: Import code signing certs
+        uses: apple-actions/import-codesign-certs@v5
+        with:
+          p12-file-base64: ${{ secrets.APPSTORE_CERTIFICATES_FILE_BASE64 }}
+          p12-password: ${{ secrets.APPSTORE_CERTIFICATES_PASSWORD }}
+      
+      # ✅ 배포 인증서가 실제로 들어왔는지 확인
+      - name: Keychains / Identities (debug)
+        run: |
+          security find-identity -p codesigning -v || true
+          echo "----- List installed Apple Distribution certs (SHA-1) -----"
+          security find-identity -p codesigning -v | grep "Apple Distribution" || true
+
+
       # 6. 프로비저닝 프로파일 자동 다운로드
       - name: Download provisioning profiles
         uses: apple-actions/download-provisioning-profiles@v1
