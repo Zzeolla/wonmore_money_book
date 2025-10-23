@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -138,6 +139,51 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
                   },
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('계정 삭제'),
+                      content: const Text(
+                          '계정을 삭제하면 앱에 저장된 개인정보가 비식별화되며, '
+                              '재로그인이 불가능합니다. 진행하시겠습니까?'
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('취소')),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('삭제')),
+                      ],
+                    ),
+                  );
+                  if (ok != true) return;
+
+                  try {
+                    await Supabase.instance.client.functions.invoke('anonymize-account', body: {});
+                    await Supabase.instance.client.auth.signOut();
+                    if (context.mounted) {
+                      Navigator.pushNamedAndRemoveUntil(context, '/', (_) => false);
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('계정 삭제에 실패했습니다: $e')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('계정 삭제'),
+              ),
             ),
 
             // FutureBuilder(
@@ -293,27 +339,55 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
     );
   }
 
-  void getCameraImage() async {
-    var image = await ImagePicker().pickImage(source: ImageSource.camera);
-    if (image != null) {
-      setState(() {
-        profileImage = File(image.path);
-        isInterProfile = true;
-      });
+  Future<XFile?> _safePick(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      // 필요하면 옵션 추가 가능 (예: maxWidth, imageQuality 등)
+      final file = await picker.pickImage(source: source);
+      return file; // 정상 선택 시
+    } on PlatformException catch (e) {
+      // image_picker가 던지는 대표 코드들 대응
+      final code = e.code.toLowerCase();
+      String msg = '사진을 불러오지 못했습니다.';
+
+      if (code.contains('camera')) {
+        // 예: camera_access_denied, camera_unavailable, not_available 등
+        msg = '카메라를 사용할 수 없습니다. 권한을 확인해주세요.';
+      } else if (code.contains('photo') || code.contains('gallery')) {
+        // 예: photo_access_denied 등
+        msg = '사진 보관함에 접근할 수 없습니다. 설정에서 사진 권한을 허용해 주세요.';
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
+      return null; // 실패 시 null
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('알 수 없는 오류가 발생했습니다. 다시 시도해 주세요.')),
+        );
+      }
+      return null;
     }
   }
 
+  void getCameraImage() async {
+    final picked = await _safePick(ImageSource.camera);
+    if (picked == null) return; // 취소/오류 → 아무 것도 안 함
+    setState(() {
+      profileImage = File(picked.path);
+      isInterProfile = true;
+    });
+  }
+
   void getGalleryImage() async {
-    var image = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 10,
-    );
-    if (image != null) {
-      setState(() {
-        profileImage = File(image.path);
-        isInterProfile = true;
-      });
-    }
+    final picked = await _safePick(ImageSource.gallery);
+    if (picked == null) return;
+    setState(() {
+      profileImage = File(picked.path);
+      isInterProfile = true;
+    });
   }
 
   void deleteProfileImage() async {

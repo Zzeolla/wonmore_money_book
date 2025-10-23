@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
+import 'package:app_tracking_transparency/app_tracking_transparency.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -30,7 +32,8 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _initATT();
       _guardedInit();
     });
 
@@ -55,6 +58,21 @@ class _SplashScreenState extends State<SplashScreen> {
       throw TimeoutException('Splash init timed out');
     });
   }
+
+  Future<void> _initATT() async {
+    if (!Platform.isIOS) return; // Android/기타 무시
+    try {
+      final status = await AppTrackingTransparency.trackingAuthorizationStatus;
+      if (status == TrackingStatus.notDetermined) {
+        // 초기 렌더 직후 약간의 딜레이가 더 안정적 (iOS17+)
+        await Future.delayed(const Duration(milliseconds: 400));
+        await AppTrackingTransparency.requestTrackingAuthorization();
+      }
+    } catch (e) {
+      debugPrint('ATT request failed: $e'); // 실패해도 앱 흐름은 계속
+    }
+  }
+
 
   Future<void> _guardedInit() async {
     if (_initializing || _navigated) return;
@@ -228,4 +246,5 @@ class _SplashScreenState extends State<SplashScreen> {
       body: Center(child: CircularProgressIndicator()),
     );
   }
+
 }
